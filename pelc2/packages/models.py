@@ -9,7 +9,8 @@ class File(models.Model):
     swhid = models.CharField(
         max_length=50,
         verbose_name="SWH ID",
-        help_text='SoftWare Heritage persistent IDentifier'
+        help_text='SoftWare Heritage persistent IDentifier',
+        unique=True
     )
 
     class Meta:
