@@ -11,7 +11,10 @@ class Container(models.Model):
     reference = models.TextField(unique=True)
 
     class Meta:
-        db_table = 'container'
+        app_label = 'products'
+
+    def __str__(self):
+        return self.reference
 
 
 class ContainerPackage(models.Model):
@@ -21,19 +24,29 @@ class ContainerPackage(models.Model):
     source = models.SmallIntegerField()
 
     class Meta:
-        db_table = 'container_package'
-        unique_together = (('container', 'package_nvr'),)
+        app_label = 'products'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['container', 'package_nvr'],
+                name='unique_container_package')
+        ]
+
+    def __str__(self):
+        return "%s-%s" % (self.container, self.package_nvr)
 
 
 class Product(models.Model):
     """Red Hat products"""
     name = models.TextField(unique=True)
+    display_name = models.TextField(blank=True, null=True)
     description = models.TextField(blank=True, null=True)
-    displayname = models.TextField(blank=True, null=True)
     family = models.TextField(blank=True, null=True)
 
     class Meta:
-        db_table = 'product'
+        app_label = 'products'
+
+    def __str__(self):
+        return self.name
 
 
 class Release(models.Model):
@@ -43,8 +56,16 @@ class Release(models.Model):
     notes = models.TextField(blank=True, null=True)
 
     class Meta:
-        db_table = 'release'
+        app_label = 'products'
         unique_together = (('product', 'version'),)
+        constraints = [
+            models.UniqueConstraint(
+                fields=['product', 'version'],
+                name='unique_product_version')
+        ]
+
+    def __str__(self):
+        return "%s-%s" % (product, version)
 
 
 class ReleaseContainer(models.Model):
@@ -53,17 +74,30 @@ class ReleaseContainer(models.Model):
     container = models.ForeignKey(Container)
 
     class Meta:
-        db_table = 'release_container'
-        unique_together = (('release', 'container'),)
+        app_label = 'products'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['release', 'container'],
+                name='unique_release_container')
+        ]
+
+    def __str__(self):
+        return "%s-%s" % (self.release, self.container)
 
 
 class ReleasePackage(models.Model):
     """packages within each release"""
     release = models.ForeignKey('Release')
-    # FIXME: need to be consistent with definition from Package
     package_nvr = models.TextField()
     source = models.SmallIntegerField()
 
     class Meta:
-        db_table = 'release_package'
-        unique_together = (('release', 'package_nvr'),)
+        app_label = 'products'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['release', 'package_nvr'],
+                name='unique_release_package_nvr')
+        ]
+
+    def __str__(self):
+        return "%s-%s" % (self.release, self.package_nvr)
