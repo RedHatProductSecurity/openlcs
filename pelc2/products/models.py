@@ -19,7 +19,10 @@ class Container(models.Model):
 
 class ContainerPackage(models.Model):
     """packages in each container"""
-    container = models.ForeignKey('Container')
+    container = models.ForeignKey(
+        Container,
+        on_delete=models.CASCADE
+    )
     package_nvr = models.TextField()
     source = models.SmallIntegerField()
 
@@ -51,7 +54,10 @@ class Product(models.Model):
 
 class Release(models.Model):
     """releases of each product"""
-    product = models.ForeignKey(Product)
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE
+    )
     version = models.TextField()
     notes = models.TextField(blank=True, null=True)
 
@@ -65,13 +71,19 @@ class Release(models.Model):
         ]
 
     def __str__(self):
-        return "%s-%s" % (product, version)
+        return "%s-%s" % (self.product, self.version)
 
 
 class ReleaseContainer(models.Model):
     """containers as part of a release"""
-    release = models.ForeignKey(Release)
-    container = models.ForeignKey(Container)
+    release = models.ForeignKey(
+        Release,
+        on_delete=models.CASCADE
+    )
+    container = models.ForeignKey(
+        Container,
+        on_delete=models.RESTRICT
+    )
 
     class Meta:
         app_label = 'products'
@@ -87,7 +99,10 @@ class ReleaseContainer(models.Model):
 
 class ReleasePackage(models.Model):
     """packages within each release"""
-    release = models.ForeignKey('Release')
+    release = models.ForeignKey(
+        Release,
+        on_delete=models.CASCADE
+    )
     package_nvr = models.TextField()
     source = models.SmallIntegerField()
 
