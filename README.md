@@ -59,6 +59,9 @@ echo "export REQUESTS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt" \
 source $VIRTUAL_ENV/bin/postactivate
 # Install python dependencies
 pip install -r requirements.txt
+# Create soft links under $(PYTHON_SITELIB)
+cd $VIRTUAL_ENV/lib/python3.6/site-packages
+ln -snf /pelc_project_path/pelcd2
 # Execute migrations
 pelc/manage.py migrate --noinput
 # Create admin account, use name `admin` and password `test`
@@ -78,5 +81,19 @@ pelc2/manage.py runserver
 It can be accessed on http://localhost:8000/. You can log in by going to
 http://127.0.0.1:8000/admin/login/ and using the account you set up in 
 the previous section (user `admin`, password `test`).
+
+### Running PELC2 worker
+PELC2 worker can be started using the following (from the top directory of 
+the repo):
+```bash
+celery -A pelcd2 worker --loglevel=INFO
+# If you want to debug using celery log, use:
+celery -A pelcd2 worker --loglevel=DEBUG
+```
+
+Or start the celery service
+```shell
+sudo systemctl start celery
+```
 
 Hint: You can remove all currently queued tasks using `redis-cli FLUSHALL`.

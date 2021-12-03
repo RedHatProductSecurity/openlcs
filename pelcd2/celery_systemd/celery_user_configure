@@ -1,0 +1,96 @@
+#!/bin/sh -e
+# ============================================
+#  celery_user_configure - Create celery user/group if not exist.
+# ============================================
+#
+CreateCelerytUser() {
+    grep "^${CELERY_USER}" /etc/passwd > /dev/null
+    if [ $? -ne 0 ]; then
+        useradd "${CELERY_USER}" -s /sbin/nologin -c "Celery user" -g "${CELERY_GROUP}"
+    fi
+    echo "Added Celery user $CELERY_USER"
+}
+
+CreateCeleryGroup() {
+    grep "^${CELERY_GROUP}" /etc/group > /dev/null
+    if [ $? -ne 0 ]; then
+        groupadd "$CELERY_GROUP"
+    fi
+    echo "Added Celery group $CELERY_GROUP."
+}
+
+# Use to delete not used celery user/group
+DeleteCeleryUser() {
+    userdel -r "$CELERY_USER"
+    if [ $? -ne 0 ]; then
+        echo "Successful delete ${CELERY_USER} user."
+    fi
+    if [ x"$CELERY_USER" != x"$CELERY_GROUP" ]; then
+        groupdel "$CELERY_GROUP"
+    fi
+    echo "Successful delete $CELERY_GROUP group"
+}
+
+FindCeleryGroup() {
+    CELERY_GROUP=$($CELERY_USER|awk '{print $2}'|awk -F "[(|)]" '{print $2}')
+}
+
+ArgErrorEcho(){
+    echo "Error: Invalid parameter provided."
+    echo "Usage: celery_user_configure -u user_name [-g group_name]"
+    echo "       user_name: Celery user name."
+    echo "                  Cannot be kerberos user, or privileged user."
+    echo "                  Default is celery."
+    echo "       group_name: Celery group name. Default is celery."
+    exit 1
+}
+
+UnprivilegedErrorEcho(){
+      echo "Error:"
+      echo "Workers should run as an unprivileged user."
+      echo "You need to create this user manually (or you can choose"
+      echo "a user/group combination that already exists (e.g., nobody)."
+      exit 1
+}
+
+CheckPrivilege() {
+    if [ x"$CELERY_USER" = x"root" ]; then
+        UnprivilegedErrorEcho
+    fi
+}
+
+main()
+{
+    echo "Check the privilege of the Celery user $CELERY_USER"
+    CheckPrivilege
+
+    echo "Checking Celery group..."
+    CreateCeleryGroup
+    echo "Done"
+
+    echo "Checking Celery user..."
+    CreateCelerytUser
+    echo "Done"
+
+    exit 0
+}
+
+if [ $# -eq 2 ]; then
+    if [ "x$1" != x"-u" ]; then
+        ArgErrorEcho
+    else
+       CELERY_USER=$2
+       CELERY_GROUP=$2
+    fi
+elif [ $# -eq 4 ]; then
+    if [ "x$1" != x"-u" ] || [ "x$3" != x"-g" ]; then
+        ArgErrorEcho
+    else
+       CELERY_USER=$2
+       CELERY_GROUP=$4
+    fi
+else
+    ArgErrorEcho
+fi
+
+main
