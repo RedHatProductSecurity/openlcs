@@ -23,7 +23,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-8c4w#_a7k&1^!#+af%unwddrcc0=og^j7k@n*gjxm$^8b#tzdm'  # noqa
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ['*']
 
@@ -57,7 +57,7 @@ ROOT_URLCONF = 'pelc2.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -125,8 +125,23 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/3.2/howto/static-files/
 
 STATIC_URL = '/static/'
+STATIC_ROOT = '/var/pelc2/static/'
+STATICFILES_DIRS = (
+    BASE_DIR / "static",
+)
+STATICFILES_STORAGE = (
+    'utils.static.Pelc2StaticFilesStorage'
+)
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/3.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+LOGGER_DIR = '/var/log/pelc2/'
+
+
+try:
+    # pylint:disable=wildcard-import,relative-import,unused-wildcard-import
+    from .settings_local import *  # noqa
+except ImportError:
+    pass

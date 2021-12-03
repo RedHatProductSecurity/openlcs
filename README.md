@@ -3,7 +3,8 @@
 The next generation of PELC
 
 ## Setting up development environment
-This section assumes you're running sufficiently recent version of Fedora.
+This section assumes you're running sufficiently recent version of RHEL 8 
+(OCP environment using this version).
 
 ### Setting up database
 ```shell
@@ -26,5 +27,56 @@ createdb pelc2
 #    | gunzip -cd | psql pelc
 ```
 
-Hint: you can put `export PGDATABASE=pelc2` into your `.bashrc` and then you don't have to
-specify `pelc2` as the database when using `psql`.
+Hint: you can put `export PGDATABASE=pelc2` into your `.bashrc`, 
+and then you don't have to specify `pelc2` as the database when using `psql`.
+
+### Setting up Redis
+```
+# Install redis
+sudo dnf install redis
+# Start redis and enable it on startup
+sudo systemctl enable --now redis
+```
+
+### Setting up PELC2
+```shell
+# Install rpm dependencies
+sudo dnf install python36 virtualenvwrapper gcc
+# Setup virtualenv
+echo "
+# Set virtualenv
+export WORKON_HOME=$HOME/.virtualenvs
+source /usr/local/bin/virtualenvwrapper.sh" >> ~/.bashrc
+# Reload bash to pick up newly installed functions for virtualenv
+exec bash
+# Create a new virtualenv named pelc2
+mkvirtualenv pelc2 --python /usr/bin/python3.6
+# Set $VIRTUAL_ENV
+VIRTUAL_ENV=~/.virtualenvs/$ENV_NAME
+# Set CA for requests library in the virtualenv
+echo "export REQUESTS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt" \
+    > $VIRTUAL_ENV/bin/postactivate
+source $VIRTUAL_ENV/bin/postactivate
+# Install python dependencies
+pip install -r requirements.txt
+# Execute migrations
+pelc/manage.py migrate --noinput
+# Create admin account, use name `admin` and password `test`
+pelc/manage.py createsuperuser
+```
+
+Virtualenv note: When opening a new shell, you need to activate the virtualenv
+using `workon pelc2`.
+
+### Running PELC2 web interface
+PELC2 web interface can be started for local development (built-in server with
+auto reloading) using the following:
+```bash
+pelc2/manage.py runserver
+```
+
+It can be accessed on http://localhost:8000/. You can log in by going to
+http://127.0.0.1:8000/admin/login/ and using the account you set up in 
+the previous section (user `admin`, password `test`).
+
+Hint: You can remove all currently queued tasks using `redis-cli FLUSHALL`.
