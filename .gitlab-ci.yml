@@ -1,0 +1,26 @@
+stages:
+  # Run static analysis tools
+  # build PELC2 image
+  - static-analysis-build
+
+.ci-image: &ci-image
+  # this image is built from openshift https://console-openshift-console.apps.ocp-c1.prod.psi.redhat.com/k8s/ns/pelc-ci-cd/buildconfigs/pelc2-gitlab-ci
+  image:
+    name: quay.io/pelc/pelc2-ci:latest
+  # the tags come from the labels of shared runner in 'gitlab.cee.redhat.com/pelc/pelc2/-/settings/ci_cd'
+  tags:
+    - docker
+    - shared
+# ======== test-unit-style ========
+
+flake8:
+  <<: *ci-image
+  stage: static-analysis-build
+  script:
+    - tox -e flake8
+
+pylint:
+  <<: *ci-image
+  stage: static-analysis-build
+  script:
+    - tox -e pylint
