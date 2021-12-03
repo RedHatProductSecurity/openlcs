@@ -66,7 +66,7 @@ class Path(models.Model):
     )
     file = models.ForeignKey(
         File,
-        on_delete=models.CASCADE,
+        on_delete=models.RESTRICT,
         help_text='Reference to a file'
     )
     path = models.TextField(
