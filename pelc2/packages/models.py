@@ -102,7 +102,7 @@ class Package(models.Model):
     )
     sum_license = models.TextField(
         null=True, blank=True,
-        help_text='File path within source package'
+        help_text='Package declared summary license expression'
     )
     is_source = models.BooleanField(
         default=False,
