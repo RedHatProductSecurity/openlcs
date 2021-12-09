@@ -1,0 +1,10 @@
+[MASTER]
+init-hook='import sys; sys.path.insert(0, "pelc2")'
+ignore=migrations
+#load-plugins=pylint_django
+jobs=2
+[MESSAGES CONTROL]
+disable=R,C,no-member,fixme,no-init,unused-argument,deprecated-lambda,
+        broad-except,redefined-builtin,protected-access,abstract-method,
+        useless-super-delegation,arguments-differ,model-missing-unicode,
+        attribute-defined-outside-init,unpacking-non-sequence
