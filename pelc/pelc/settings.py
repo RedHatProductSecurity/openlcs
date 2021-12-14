@@ -146,6 +146,11 @@ LOGGER_DIR = '/var/log/pelc/'
 
 EXTRACTCODE_CLI = '/bin/extractcode'
 
+# Brew settings
+BREW_DOWNLOAD = 'http://download.eng.bos.redhat.com/brewroot'
+BREW_WEBSERVICE = 'https://brewhub.engineering.redhat.com/brewhub'
+BREW_WEBURL = 'https://brewweb.engineering.redhat.com/brew'
+
 try:
     # pylint:disable=wildcard-import,unused-wildcard-import
     from .settings_local import *  # noqa

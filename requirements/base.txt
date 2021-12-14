@@ -12,3 +12,4 @@ extractcode-libarchive==3.5.1.210531
 tox==3.24.4 # Run test cases
 # FIXME: latest version of workflow only supports python3.6
 workflow==2.1.6
+koji==1.27.0

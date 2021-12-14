@@ -4,8 +4,10 @@ import tempfile
 import unittest
 import warnings
 from kobo.shortcuts import run
+from django.conf import settings
 
-from libs.unpack import UnpackArchive
+from pelc.libs.unpack import UnpackArchive
+from pelc.libs.download import BrewBuild
 
 
 class TestUnpack(unittest.TestCase):
@@ -26,7 +28,7 @@ class TestUnpack(unittest.TestCase):
         archive_url = TestUnpack.brew_url + archive_path + archive_name
 
         tmp_dir = tempfile.mkdtemp(prefix='download_')
-        cmd = ('wget %s' % archive_url)
+        cmd = f'wget {archive_url}'
         run(cmd, stdout=False, can_fail=True, workdir=tmp_dir)
 
         source_archives = os.listdir(tmp_dir)
@@ -36,9 +38,9 @@ class TestUnpack(unittest.TestCase):
         src_filepath = os.path.join(tmp_dir, archive_name)
         dest_dir = tempfile.mkdtemp(prefix='unpack_')
         ua = UnpackArchive(
-                config=TestUnpack.config,
-                src_file=src_filepath,
-                dest_dir=dest_dir)
+            config=TestUnpack.config,
+            src_file=src_filepath,
+            dest_dir=dest_dir)
         ua.extract()
         shutil.rmtree(tmp_dir, ignore_errors=True)
         extracted_files = os.listdir(dest_dir)
@@ -51,13 +53,13 @@ class TestUnpack(unittest.TestCase):
         archive_url = TestUnpack.brew_url + archive_path + archive_name
 
         tmp_dir = tempfile.mkdtemp(prefix='download_')
-        cmd = ('wget %s' % archive_url)
+        cmd = f'wget {archive_url}'
         run(cmd, stdout=False, can_fail=True, workdir=tmp_dir)
         src_filepath = os.path.join(tmp_dir, archive_name)
         ua = UnpackArchive(
-                config=TestUnpack.config,
-                src_file=src_filepath,
-                dest_dir=tmp_dir)
+            config=TestUnpack.config,
+            src_file=src_filepath,
+            dest_dir=tmp_dir)
         ua.unpack_archives_using_extractcode(tmp_dir)
 
         unpacked_sources = os.listdir(tmp_dir)
@@ -73,13 +75,13 @@ class TestUnpack(unittest.TestCase):
         archive_url = TestUnpack.brew_url + archive_path + archive_name
 
         tmp_dir = tempfile.mkdtemp(prefix='download_')
-        cmd = ('wget %s' % archive_url)
+        cmd = f'wget {archive_url}'
         run(cmd, stdout=False, can_fail=True, workdir=tmp_dir)
         src_filepath = os.path.join(tmp_dir, archive_name)
         ua = UnpackArchive(
-                config=TestUnpack.config,
-                src_file=src_filepath,
-                dest_dir=tmp_dir)
+            config=TestUnpack.config,
+            src_file=src_filepath,
+            dest_dir=tmp_dir)
         ua.unpack_archives_using_atool(tmp_dir, top_dir=True)
 
         unpacked_sources = os.listdir(tmp_dir)
@@ -87,3 +89,36 @@ class TestUnpack(unittest.TestCase):
         is_replaced = os.path.isdir(src_filepath)
         self.assertTrue(is_replaced)
         shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
+class TestDownloadFromBrew(unittest.TestCase):
+
+    def setUp(self):
+        os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'pelc.pelc.settings')
+        self.test_package_nvr = 'python-futures-3.1.1-5.el7'
+        self.context = {'config': {'BREW_DOWNLOAD': settings.BREW_DOWNLOAD,
+                                   'BREW_WEBSERVICE': settings.BREW_WEBSERVICE,
+                                   'BREW_WEBURL': settings.BREW_WEBURL
+                                   },
+                        'package_nvr': self.test_package_nvr
+                        }
+        self.tmp_dir = tempfile.mkdtemp(prefix='download_')
+
+    def test_download_build_source(self):
+        """
+        When use kobo.shortcuts.run function to download
+        file will throw warnings
+        https://stackoverflow.com/questions/48160728/resourcewarning-unclosed-socket-in-python-3-unit-test # noqa
+        """
+        warnings.filterwarnings(
+            action="ignore", message="unclosed", category=ResourceWarning
+        )
+        try:
+            brew_build = BrewBuild(self.context.get('config'))
+            build = brew_build.get_build(
+                package_nvr=self.context.get('package_nvr')
+            )
+            result = brew_build.download_source(build)
+            self.assertTrue(result.find(self.test_package_nvr))
+        finally:
+            shutil.rmtree(self.tmp_dir, ignore_errors=True)
