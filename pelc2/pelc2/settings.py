@@ -129,9 +129,6 @@ STATIC_ROOT = '/var/pelc2/static/'
 STATICFILES_DIRS = (
     BASE_DIR / "static",
 )
-STATICFILES_STORAGE = (
-    'utils.static.Pelc2StaticFilesStorage'
-)
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/3.2/ref/settings/#default-auto-field
