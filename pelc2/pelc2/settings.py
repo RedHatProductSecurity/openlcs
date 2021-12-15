@@ -138,7 +138,7 @@ LOGGER_DIR = '/var/log/pelc2/'
 
 
 try:
-    # pylint:disable=wildcard-import,relative-import,unused-wildcard-import
+    # pylint:disable=wildcard-import,unused-wildcard-import
     from .settings_local import *  # noqa
 except ImportError:
     pass
