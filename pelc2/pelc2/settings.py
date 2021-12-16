@@ -144,6 +144,7 @@ CELERY_RESULT_BACKEND = 'db+postgresql://{USER}:{PASSWORD}@{HOST}/{NAME}'.format
 CELERY_TASK_TRACK_STARTED = True
 LOGGER_DIR = '/var/log/pelc2/'
 
+EXTRACTCODE_CLI = '/bin/extractcode'
 
 try:
     # pylint:disable=wildcard-import,unused-wildcard-import

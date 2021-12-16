@@ -4,3 +4,8 @@ celery==5.1.2 # The latest version for Python3.6
 requests==2.26.0 # An HTTP library for Python
 redis==4.0.2  # Celery broker
 SQLAlchemy==1.4.27  # The Database Toolkit for Python
+kobo==0.20.1
+filetype==1.0.8
+extractcode==30.0.0
+extractcode-7z==16.5.210531
+extractcode-libarchive==3.5.1.210531
