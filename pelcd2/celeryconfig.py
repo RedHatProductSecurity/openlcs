@@ -23,4 +23,4 @@ task_soft_time_limit = 430200
 broker_transport_options = {'visibility_timeout': 86400}
 
 # List of modules to import when celery starts.
-imports = ('pelcd2.tasks',)
+imports = ('pelcd2.tasks', 'pelcd2.pelcflow.tasks')

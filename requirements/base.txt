@@ -10,3 +10,5 @@ extractcode==30.0.0
 extractcode-7z==16.5.210531
 extractcode-libarchive==3.5.1.210531
 tox==3.24.4 # Run test cases
+# FIXME: latest version of workflow only supports python3.6
+workflow==2.1.6
