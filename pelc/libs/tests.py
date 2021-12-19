@@ -6,8 +6,8 @@ import warnings
 from kobo.shortcuts import run
 from django.conf import settings
 
-from pelc.libs.unpack import UnpackArchive
-from pelc.libs.download import BrewBuild
+from libs.unpack import UnpackArchive
+from libs.download import BrewBuild
 
 
 class TestUnpack(unittest.TestCase):
@@ -17,7 +17,7 @@ class TestUnpack(unittest.TestCase):
         super().setUpClass()
         cls.config = {
             # Update below path to your virtualenv path in local
-            'EXTRACTCODE_CLI': '/bin/extractcode',
+            'EXTRACTCODE_CLI': '/opt/app-root/bin/extractcode',
         }
         cls.brew_url = 'http://download.eng.bos.redhat.com/brewroot'
         warnings.simplefilter('ignore', ResourceWarning)

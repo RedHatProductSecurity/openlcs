@@ -1,5 +1,5 @@
 import tempfile
-from pelc.libs.brewconn import BrewConnector
+from libs.brewconn import BrewConnector
 
 
 class BrewBuild:

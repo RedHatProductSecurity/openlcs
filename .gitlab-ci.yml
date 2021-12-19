@@ -3,6 +3,16 @@ stages:
   # build PELC2 image
   - static-analysis-build
 
+  # Run unit and functional tests that do not require fully deployed PELC
+  # Run integration tests
+  # Deploy master branch to pelc-dev
+  - tests-it-promote
+
+variables:
+  PELC_DATABASE_USER: postgres
+  PELC_DATABASE_PASSWORD: test
+  POSTGRESQL_ADMIN_PASSWORD: $DATABASE_PASSWORD
+
 .ci-image: &ci-image
   # this image is built from openshift https://console-openshift-console.apps.ocp-c1.prod.psi.redhat.com/k8s/ns/pelc-ci-cd/buildconfigs/pelc2-gitlab-ci
   image:
@@ -11,16 +21,44 @@ stages:
   tags:
     - docker
     - shared
+
+.postgresql: &postgresql
+  services:
+    - 'quay.io/pelc/postgresql-12'
+
+## Currently public runner no cache server
+#.pip-cache: &pip-cache
+#  cache:
+#    # all branches and jobs will use the same cache
+#    key: shared-key
+#    paths:
+#      - .cache/pip
+
 # ======== test-unit-style ========
 
 flake8:
   <<: *ci-image
   stage: static-analysis-build
   script:
-    - tox -e flake8
+    - tox -e flake8 --current-env
 
 pylint:
   <<: *ci-image
   stage: static-analysis-build
   script:
-    - tox -e pylint
+    - tox -e pylint --current-env
+
+unit-tests:
+  <<: *ci-image
+  <<: *postgresql  
+  stage: tests-it-promote
+# # Currently, no shared runner, comment these code
+#  artifacts:
+#    name: unit-tests-coverage
+#    paths:
+#    - .coverage.*
+#    expire_in: 30 days
+  script:
+    # FIXME: currently only test class TestDownloadFromBrew
+    # the original unit test case should cover all like 'pelc'
+    - tox -e unit --current-env -- libs.tests.TestDownloadFromBrew
