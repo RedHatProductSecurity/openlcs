@@ -41,7 +41,7 @@ sudo systemctl enable --now redis
 ### Setting up PELC2
 ```shell
 # Install rpm dependencies
-sudo dnf install python36 virtualenvwrapper gcc
+sudo dnf install python38 python38-devel virtualenvwrapper gcc
 # Setup virtualenv
 echo "
 # Set virtualenv
@@ -50,17 +50,17 @@ source /usr/local/bin/virtualenvwrapper.sh" >> ~/.bashrc
 # Reload bash to pick up newly installed functions for virtualenv
 exec bash
 # Create a new virtualenv named pelc2
-mkvirtualenv pelc2 --python /usr/bin/python3.6
+mkvirtualenv pelc2 --python /usr/bin/python3.8
 # Set $VIRTUAL_ENV
 VIRTUAL_ENV=~/.virtualenvs/$ENV_NAME
 # Set CA for requests library in the virtualenv
 echo "export REQUESTS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt" \
     > $VIRTUAL_ENV/bin/postactivate
 source $VIRTUAL_ENV/bin/postactivate
-# Install python dependencies
-pip install -r requirements.txt
+# Install Python dependencies
+pip install -r requirements/devel.txt
 # Create soft links under $(PYTHON_SITELIB)
-cd $VIRTUAL_ENV/lib/python3.6/site-packages
+cd $VIRTUAL_ENV/lib/python3.8/site-packages
 ln -snf /pelc_project_path/pelcd2
 # Execute migrations
 pelc/manage.py migrate --noinput
@@ -89,11 +89,6 @@ the repo):
 celery -A pelcd2 worker --loglevel=INFO
 # If you want to debug using celery log, use:
 celery -A pelcd2 worker --loglevel=DEBUG
-```
-
-Or start the celery service
-```shell
-sudo systemctl start celery
 ```
 
 Hint: You can remove all currently queued tasks using `redis-cli FLUSHALL`.

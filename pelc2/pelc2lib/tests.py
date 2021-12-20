@@ -15,7 +15,7 @@ class TestUnpack(unittest.TestCase):
         super().setUpClass()
         cls.config = {
             # Update below path to your virtualenv path in local
-            u'EXTRACTCODE_CLI': u'/bin/extractcode',
+            'EXTRACTCODE_CLI': '/bin/extractcode',
         }
         cls.brew_url = 'http://download.eng.bos.redhat.com/brewroot'
         warnings.simplefilter('ignore', ResourceWarning)

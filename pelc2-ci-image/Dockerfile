@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi8/python-36:1-159
+FROM registry.access.redhat.com/ubi8/python-38:1-75
 
 MAINTAINER xubiao yao <xyao@redhat.com>
 
