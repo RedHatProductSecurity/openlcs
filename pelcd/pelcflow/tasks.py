@@ -1,7 +1,7 @@
 from workflow.patterns.controlflow import IF
 
-from pelcd2.pelcflow.task_wrapper import WorkflowWrapperTask
-from pelcd2.celery import app
+from pelcd.pelcflow.task_wrapper import WorkflowWrapperTask
+from pelcd.celery import app
 
 
 def get_config(context, engine):
@@ -143,7 +143,7 @@ def register_task_flow(name, flow, **kwargs):
     def task(self, *args):
         # Note that the imports that this function requires must be done
         # inside since our code will not be running in the global context.
-        from pelcd2.pelcflow.core import PelcWorkflowEngine
+        from pelcd.pelcflow.core import PelcWorkflowEngine
 
         wfe = PelcWorkflowEngine()
         wfe.setWorkflow(flow)

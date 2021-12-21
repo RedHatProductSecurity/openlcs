@@ -1,9 +1,9 @@
 [MASTER]
-init-hook='import sys; sys.path.insert(0, "pelc2")'
+init-hook='import sys; sys.path.insert(0, "pelc")'
 ignore=migrations
 load-plugins=pylint_django
 # Disable the django not configured error temporarily
-# django-settings-module=pelc2.pelc2.settings
+# django-settings-module=pelc.pelc.settings
 disable=django-not-configured
 jobs=2
 [MESSAGES CONTROL]

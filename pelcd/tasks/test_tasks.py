@@ -1,4 +1,4 @@
-from pelcd2.celery import app
+from pelcd.celery import app
 
 
 @app.task

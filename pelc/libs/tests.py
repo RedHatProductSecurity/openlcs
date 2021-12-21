@@ -5,7 +5,7 @@ import unittest
 import warnings
 from kobo.shortcuts import run
 
-from pelc2lib.unpack import UnpackArchive
+from libs.unpack import UnpackArchive
 
 
 class TestUnpack(unittest.TestCase):

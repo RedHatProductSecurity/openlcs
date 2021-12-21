@@ -52,7 +52,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-ROOT_URLCONF = 'pelc2.urls'
+ROOT_URLCONF = 'pelc.urls'
 
 TEMPLATES = [
     {
@@ -70,7 +70,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'pelc2.wsgi.application'
+WSGI_APPLICATION = 'pelc.wsgi.application'
 
 
 # Database
@@ -125,7 +125,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/3.2/howto/static-files/
 
 STATIC_URL = '/static/'
-STATIC_ROOT = '/var/pelc2/static/'
+STATIC_ROOT = '/var/pelc/static/'
 STATICFILES_DIRS = (
     BASE_DIR / "static",
 )
@@ -142,7 +142,7 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_RESULT_BACKEND = 'db+postgresql://{USER}:{PASSWORD}@{HOST}/{NAME}'.format(**DATABASES.get('default'))    # noqa
 CELERY_TASK_TRACK_STARTED = True
-LOGGER_DIR = '/var/log/pelc2/'
+LOGGER_DIR = '/var/log/pelc/'
 
 EXTRACTCODE_CLI = '/bin/extractcode'
 

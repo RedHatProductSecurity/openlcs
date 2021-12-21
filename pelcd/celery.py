@@ -4,7 +4,7 @@ from celery.signals import celeryd_init
 
 from . import celeryconfig
 
-app = Celery('pelcd2')
+app = Celery('pelcd')
 
 app.config_from_object(celeryconfig)
 

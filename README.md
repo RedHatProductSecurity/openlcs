@@ -61,7 +61,7 @@ source $VIRTUAL_ENV/bin/postactivate
 pip install -r requirements/devel.txt
 # Create soft links under $(PYTHON_SITELIB)
 cd $VIRTUAL_ENV/lib/python3.8/site-packages
-ln -snf /pelc_project_path/pelcd2
+ln -snf /pelc_project_path/pelcd
 # Execute migrations
 pelc/manage.py migrate --noinput
 # Create admin account, use name `admin` and password `test`
@@ -86,9 +86,9 @@ the previous section (user `admin`, password `test`).
 PELC2 worker can be started using the following (from the top directory of 
 the repo):
 ```bash
-celery -A pelcd2 worker --loglevel=INFO
+celery -A pelcd worker --loglevel=INFO
 # If you want to debug using celery log, use:
-celery -A pelcd2 worker --loglevel=DEBUG
+celery -A pelcd worker --loglevel=DEBUG
 ```
 
 Hint: You can remove all currently queued tasks using `redis-cli FLUSHALL`.

@@ -1,4 +1,4 @@
-from pelcd2.tasks.test_tasks import add, mul, xsum
+from pelcd.tasks.test_tasks import add, mul, xsum
 
 
 add_res = add.delay(4, 5)
