@@ -37,9 +37,14 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django_filters',
+    'rest_framework',
+    'rest_framework.authtoken',
+    'authentication',
     'packages',
     'products',
-    'reports'
+    'reports',
+    'utils'
 ]
 
 MIDDLEWARE = [
@@ -60,6 +65,7 @@ TEMPLATES = [
         'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
+            'debug': DEBUG,
             'context_processors': [
                 'django.template.context_processors.debug',
                 'django.template.context_processors.request',
@@ -150,6 +156,34 @@ EXTRACTCODE_CLI = '/bin/extractcode'
 BREW_DOWNLOAD = 'http://download.eng.bos.redhat.com/brewroot'
 BREW_WEBSERVICE = 'https://brewhub.engineering.redhat.com/brewhub'
 BREW_WEBURL = 'https://brewweb.engineering.redhat.com/brew'
+
+# Used to identify namespace for restful api endpoints.
+DRF_NAMESPACE = 'rest'
+DRF_API_VERSION = 'v1'
+
+# Update the HOSTNAME to that of the running server
+HOSTNAME = '127.0.0.1:8000'
+BROWSABLE_DOCUMENT_MACROS = {
+    'HOST_NAME': 'http://%s' % (HOSTNAME),
+    'API_PATH': '%s/%s' % (DRF_NAMESPACE, DRF_API_VERSION),
+}
+
+
+REST_FRAMEWORK = {
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    ),
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework.authentication.TokenAuthentication',
+    ),
+    'DEFAULT_FILTER_BACKENDS': (
+        'django_filters.rest_framework.DjangoFilterBackend',
+    ),
+    'DEFAULT_RENDERER_CLASSES': (
+        'rest_framework.renderers.JSONRenderer',
+        'utils.renderers.ReadOnlyBrowsableAPIRenderer',
+    ),
+}
 
 try:
     # pylint:disable=wildcard-import,unused-wildcard-import

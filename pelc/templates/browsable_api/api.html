@@ -1,0 +1,54 @@
+{% extends "rest_framework/base.html" %}
+{% load static %}
+
+{% block title %}PELC2 REST framework browsable API{% endblock %}
+
+{% block branding %}
+<a class='brand' rel="nofollow" href='http://www.django-rest-framework.org'>
+    PELC REST framework <span class="version">{{ version }}</span>
+</a>
+{% endblock %}
+{% block userlinks %}
+  {{ user }}
+{% endblock %}
+{% block description %}
+  {{ overview }}
+  <br>
+  <div class="tabbable tabs-left">
+    <ul class="nav nav-tabs">
+      {% for method in description.keys %}
+      <li {% if forloop.first %}class="active"{% endif %}>
+        <a href="#tab_{{ method }}" data-toggle="tab">{{ method.upper }}</a>
+      </li>
+      {% endfor %}
+    </ul>
+    <div class="tab-content">
+      {% for method, docstring in description.items %}
+      <div class="tab-pane {% if forloop.first %}active{% endif %}" id="tab_{{ method }}">
+        <p>{{docstring}}</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+{% endblock %}
+{% block script %}
+  <script src="{% static "rest_framework/js/jquery-3.5.1.min.js" %}"></script>
+  <script src="{% static "rest_framework/js/bootstrap.min.js" %}"></script>
+  <script src="{% static "rest_framework/js/prettify-min.js" %}"></script>
+  <script src="{% static "rest_framework/js/default.js" %}"></script>
+  <script type="text/javascript">
+    $(document).ready(function() {
+      $(".content-main div:nth-child(2)").removeAttr("style");
+      var loc = window.location.pathname;
+      // Comment out request info under /rest/v1/auth/.
+      if (loc.endsWith('/rest/v1/')) {
+        $("div.request-info").hide();
+      }
+      // Comment out request/response info under /rest/v1/auth/.
+      if (loc.endsWith('/rest/v1/auth/')) {
+        $("div.request-info").hide();
+        $("div.response-info").hide();
+      }
+    });
+  </script>
+{% endblock %}

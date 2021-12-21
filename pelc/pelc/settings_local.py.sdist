@@ -31,7 +31,6 @@ SECRET_KEY = 'django-insecure-8c4w#_a7k&1^!#+af%unwddrcc0=og^j7k@n*gjxm$^8b#tzdm
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
-TEMPLATE_DEBUG = True
 
 # Database
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases

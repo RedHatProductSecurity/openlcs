@@ -13,3 +13,6 @@ tox==3.24.4 # Run test cases
 # FIXME: latest version of workflow only supports python3.6
 workflow==2.1.6
 koji==1.27.0
+djangorestframework==3.13.1
+django_filter==21.1
+Markdown==3.3.6
