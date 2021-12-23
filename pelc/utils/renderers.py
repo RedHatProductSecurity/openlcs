@@ -29,6 +29,17 @@ Responses are available in JSON format.
 
 class ReadOnlyBrowsableAPIRenderer(BrowsableAPIRenderer):
     template = "browsable_api/api.html"
+    methods_mapping = (
+        'list',
+        'retrieve',
+        'create',
+        'update',
+        'destroy',
+        'partial_update',
+        'compare',
+        'retry',
+        'rescan',
+    )
 
     def get_raw_data_form(self, data, view, method, request):
         return None
@@ -52,7 +63,7 @@ class ReadOnlyBrowsableAPIRenderer(BrowsableAPIRenderer):
         return context
 
     def get_overview(self, view):
-        if view.__class__.__name__ == 'APIRoot':
+        if view.__class__.__name__ == 'APIRootView':
             return self.format_docstring(APIROOT_DOC)
         overview = view.__doc__ or ''
         return self.format_docstring(overview)
@@ -62,7 +73,7 @@ class ReadOnlyBrowsableAPIRenderer(BrowsableAPIRenderer):
         if status_code in (HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN):
             return ''
 
-        if view.__class__.__name__ == 'APIRoot':
+        if view.__class__.__name__ == 'APIRootView':
             return ''
 
         description = OrderedDict()

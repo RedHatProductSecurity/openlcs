@@ -90,7 +90,7 @@ class TokenViewSet(ModelViewSet):
 
             {"token": "00bf04e8187f6e6d54f510515e8bde88e5bb7904"}
         """
-        if request.user.is_authenticated():
+        if request.user.is_authenticated:
             if request.user.is_active:
                 token, _ = Token.objects.get_or_create(user=request.user)
                 return Response({'token': token.key})
@@ -107,7 +107,7 @@ class TokenViewSet(ModelViewSet):
         ### Refresh Token
 
         __URL__:
-        /refresh-token/
+        /refresh_token/
 
         __EXAMPLE__:
 
@@ -119,7 +119,7 @@ class TokenViewSet(ModelViewSet):
 
             {"token": "00bf04e8187f6e6d54f510515e8bde88e5bb7904"}
         """
-        if request.user.is_authenticated():
+        if request.user.is_authenticated:
             if request.user.is_active:
                 try:
                     token = Token.objects.get(user=request.user)
