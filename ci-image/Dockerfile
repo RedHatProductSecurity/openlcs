@@ -4,18 +4,15 @@ MAINTAINER xubiao yao <xyao@redhat.com>
 
 USER root
 
-RUN pip install --upgrade 'pip==21.3.1'
-# Install from pip, because the RPM one is not compatible with current pip
-RUN pip install 'tox==3.24.4' \
-    'flake8==4.0.1' \
-    'pylint==2.12.2' \
-    'pylint-django==2.4.4' \
-    'pytest==6.2.5'
-
 RUN cd /etc/pki/ca-trust/source/anchors/ && \
     curl -skO https://password.corp.redhat.com/RH-IT-Root-CA.crt && \
     curl -skO https://engineering.redhat.com/Eng-CA.crt && \
     update-ca-trust
+
+RUN git clone https://gitlab.cee.redhat.com/pelc/pelc2.git && \
+    pip install --upgrade 'pip==21.3.1' && \
+    pip install -r pelc2/requirements/devel.txt && \
+    rm -rf pelc2
 
 # This download url is from currently ocp cluster console
 RUN wget https://downloads-openshift-console.apps.ocp-c1.prod.psi.redhat.com/amd64/linux/oc.tar && \
