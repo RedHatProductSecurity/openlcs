@@ -1,7 +1,11 @@
-from workflow.patterns.controlflow import IF
+import os.path
+import shutil
+import tarfile
 
+from workflow.patterns.controlflow import IF
 from pelcd.pelcflow.task_wrapper import WorkflowWrapperTask
 from pelcd.celery import app
+from pelc.libs.deposit import UploadToDeposit
 
 
 def get_config(context, engine):
@@ -31,7 +35,8 @@ def unpack_source(context, engine):
 
 def get_unprocessed_files(context, engine):
     """
-    Exclude files that were already in db, and returns a subset of source
+    Exclude files that were already in db,
+    and returns a subset of source
     directory with only files unseen before.
 
     Note: this requires to traverse the whole source directory, get
@@ -41,24 +46,88 @@ def get_unprocessed_files(context, engine):
     raise NotImplementedError
 
 
-def split_and_repack_source(context, engine):
+def repack_source(context, engine):
     """
-    Accept a source directory, split it into smaller directories(if
-    necessary), and repack the directories into archives such that each
-    archive could be deposited successfuly into swh.
+    Repack the directories into archives so that each
+    archive could be deposited successfully into swh.
 
-    Note that original directory hierarchy should be preserved,
-    see also `retrieve_source_from_swh` below.
+    @requires: `unpack_source_dir_path`,the archive unpack directory
+    @requires: `archive_name`, archive original name
+                which will be saved in swh
+    @requires: `tmp_filepath`, temporary repacked archived path
+    @feeds: `tmp_repack_archive_path`,temporary repack directory
     """
-    raise NotImplementedError
+    # unpack_source_dir_path is unpacked path of archive file
+    unpack_source_dir_path = context.get("unpack_source_dir_path")
+    archive_name = context.get('archive_name')
+    tmp_repack_dir_filepath = context.get('tmp_filepath')
+    tmp_repack_archive_path = f'{tmp_repack_dir_filepath}/{archive_name}'
+    # https://docs.python.org/3/library/tarfile.html
+    with tarfile.open(tmp_repack_archive_path, mode='w:gz') as tar:
+        tar.add(unpack_source_dir_path,
+                arcname=os.path.basename(unpack_source_dir_path))
+    context.update({'tmp_repack_archive_path': tmp_repack_archive_path})
 
 
 def upload_to_deposit(context, engine):
     """
-    Accept a list of archives, upload the archives into swh using
+    Accept a directory path of unpack archives,
+    upload the archives into swh using
     the deposit api.
+
+    @requires: `config`, configuration from hub server
+    @requires: `archive_name`, archive original name which will saved in swh
+    @requires: `tmp_repack_archive_path`, temporary repacked archived path
+    @feeds: Upload archive to deposit, and save archive metadata in pelc and
+            delete temporary archive
     """
-    raise NotImplementedError
+    tmp_repack_archive_path = context.get('tmp_repack_archive_path')
+    archive_name = context.get('archive_name')
+    logger = engine.logger
+    _settings = context.get('config')
+    _deposit = UploadToDeposit(_settings)
+    ret_output = None
+    upload_status = None
+
+    # Start to upload to deposit
+    try:
+        ret_output = _deposit.deposit_archive(
+                tmp_repack_archive_path,
+                archive_name,
+        )
+    except RuntimeError as err:
+        err_msg = "Upload to deposit timeout,Reason: {}".format(err)
+        logger.error(err_msg)
+        raise RuntimeError(err_msg) from None
+
+    if not ret_output:
+        raise RuntimeError("Upload deposit failed, please check log")
+    deposit_id = _deposit.get_deposit_id(ret_output)
+
+    # Check deposit status
+    try:
+        upload_status = _deposit.check_deposit_archive_status(
+                            deposit_id
+                        )
+    except TimeoutError as err:
+        err_msg = "Check deposit archive timeout, Reason: {}".format(err)
+        logger.error(err_msg)
+        raise TimeoutError(err_msg) from None
+
+    if upload_status == "done":
+        logger.info("Upload to deposit success")
+    else:
+        logger.error("Upload to deposit failed")
+    logger.info(f"Start to save {archive_name} metadata to database")
+
+    # TODO update status for archive in database
+    _deposit.save_data_to_pelc()
+
+    # After upload to deposit success , delete repack archive
+    tmp_repack_archive_path = context.get('tmp_repack_archive_path')
+    logger.info(f"Remove {archive_name} in disk")
+    shutil.rmtree(tmp_repack_archive_path)
+    logger.info(f"Upload archive {archive_name} finished")
 
 
 def retrieve_source_from_swh(context, engine):
@@ -104,7 +173,10 @@ flow_default = [
     download_source,
     unpack_source,
     get_unprocessed_files,
-    split_and_repack_source,
+    # If add the split large archive function
+    # please check task PVLEGAL-1840
+    # split_source,
+    repack_source,
     # FIXME: upload_to_deposit/license_scan/copyright_scan are time
     # consuming, we don't have an agreement yet whether they should
     # be run one after another or in parallel.
@@ -120,7 +192,6 @@ flow_default = [
     send_result,
     clean_up,
 ]
-
 
 flow_retry = [
     get_config,

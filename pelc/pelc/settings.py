@@ -169,6 +169,11 @@ BROWSABLE_DOCUMENT_MACROS = {
     'API_PATH': '%s/%s' % (DRF_NAMESPACE, DRF_API_VERSION),
 }
 
+# SWH settings
+DEPOSIT_URL = os.environ.get('DEPOSIT_URL',
+                             'http://10.0.211.248:5080/deposit/1')
+DEPOSIT_USER = os.environ.get('DEPOSIT_USER', 'test')
+DEPOSIT_PASSWORD = os.environ.get('DEPOSIT_PASSWORD', 'test')
 
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (

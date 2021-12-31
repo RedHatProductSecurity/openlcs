@@ -17,3 +17,4 @@ django_filter==21.1
 Markdown==3.3.6
 swh.model==3.2.0
 jsonschema==4.3.3
+swh.deposit==0.16.1
