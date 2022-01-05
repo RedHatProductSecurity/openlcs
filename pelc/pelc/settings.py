@@ -186,6 +186,14 @@ REST_FRAMEWORK = {
     ),
 }
 
+# Bulk create settings
+CREATE_FILES_RAND = True
+CREATE_FILES_MAX_RETRIES = 5
+CREATE_FILES_MAX_WAIT_INTERVAL = 10
+CREATE_PATHS_RAND = True
+CREATE_PATHS_MAX_RETRIES = 5
+CREATE_PATHS_MAX_WAIT_INTERVAL = 10
+
 try:
     # pylint:disable=wildcard-import,unused-wildcard-import
     from .settings_local import *  # noqa

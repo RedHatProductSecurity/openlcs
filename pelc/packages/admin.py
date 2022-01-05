@@ -15,18 +15,18 @@ class FileAdmin(admin.ModelAdmin):
 @admin.register(Path)
 class PathAdmin(admin.ModelAdmin):
     raw_id_fields = ('source', 'file')
-    list_display = ('source', 'file', 'path')
+    list_display = ('id', 'source', 'file', 'path')
     search_fields = ['source__name', 'file__swhid', 'path']
 
 
 @admin.register(Source)
 class SourceAdmin(admin.ModelAdmin):
-    list_display = ('checksum', 'name', 'url', 'state', 'archive_type')
+    list_display = ('id', 'checksum', 'name', 'url', 'state', 'archive_type')
     search_fields = ['checksum', 'name', 'url', 'archive_type']
 
 
 @admin.register(Package)
 class PackageAdmin(admin.ModelAdmin):
     raw_id_fields = ('source',)
-    list_display = ('nvr', 'source', 'sum_license', 'is_source')
+    list_display = ('id', 'nvr', 'source', 'sum_license', 'is_source')
     search_fields = ['nvr', 'source__name', 'sum_license']

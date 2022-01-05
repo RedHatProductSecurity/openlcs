@@ -39,6 +39,8 @@ class ReadOnlyBrowsableAPIRenderer(BrowsableAPIRenderer):
         'compare',
         'retry',
         'rescan',
+        'bulk_create_files',
+        'bulk_create_paths'
     )
 
     def get_raw_data_form(self, data, view, method, request):

@@ -23,10 +23,14 @@ from rest_framework.authtoken import views as token_views
 from rest_framework import routers
 
 from authentication import views as auth_views
-
+from packages import views as package_views
 
 router = routers.DefaultRouter()
-router.register(r'auth', auth_views.TokenViewSet)
+router.register(r'auth', auth_views.TokenViewSet, basename='auth')
+router.register(r'files', package_views.FileViewSet, basename='files')
+router.register(r'sources', package_views.SourceViewSet, basename='sources')
+router.register(r'paths', package_views.PathViewSet, basename='paths')
+router.register(r'packages', package_views.PackageViewSet, basename='packages')
 
 DRF_ROOT = os.path.join(settings.DRF_NAMESPACE, settings.DRF_API_VERSION)
 
@@ -37,4 +41,7 @@ urlpatterns = [
          include('rest_framework.urls', namespace='rest_framework')),
     path(f'{DRF_ROOT}/', include(router.urls)),
     path('admin/', admin.site.urls),
+    path(f'{DRF_ROOT}/packageimporttransaction/',
+         package_views.PackageImportTransactionView.as_view(),
+         name='package_import_transaction'),
 ]
