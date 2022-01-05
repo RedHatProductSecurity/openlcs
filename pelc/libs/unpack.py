@@ -45,7 +45,7 @@ class UnpackArchive(object):
         except RuntimeError as e:
             err_msg = 'Error while extracting files from %s. Reason: %s' % (
                     self.src_file, e)
-            raise RuntimeError from err_msg
+            raise RuntimeError(err_msg) from None
 
     def _extract_non_rpm(self, mime_type):
         """
@@ -73,7 +73,7 @@ class UnpackArchive(object):
             fname = os.path.basename(self.src_file)
             err_msg = 'Failed to extract source archive %s. Reason: %s' % (
                     fname, e)
-            raise RuntimeError from err_msg
+            raise RuntimeError(err_msg) from None
 
     @staticmethod
     def unpack_file(file_name, main_dir=None):
@@ -100,7 +100,7 @@ class UnpackArchive(object):
         except RuntimeError:
             shutil.rmtree(tmp_dir)
             err_msg = 'Unable to decompress file %s.' % file_name
-            raise ValueError from err_msg
+            raise ValueError(err_msg) from None
 
     def unpack_archives_using_extractcode(self, src_dir=None):
         """
