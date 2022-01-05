@@ -1,0 +1,5 @@
+[pelc-noarch]
+name=pelc-noarch
+baseurl = http://tito.eng.nay.redhat.com/yum/redhat/pelc/qe/rhel8/noarch
+enabled = 1
+gpgcheck = 0
