@@ -29,9 +29,11 @@ createdb pelc2
 
 Hint: you can put `export PGDATABASE=pelc2` into your `.bashrc`, 
 and then you don't have to specify `pelc2` as the database when using `psql`.
+And if configured postgresql, ignore the configure steps, only update
+the database.
 
 ### Setting up Redis
-```
+```shell
 # Install redis
 sudo dnf install redis
 # Start redis and enable it on startup
@@ -53,15 +55,19 @@ exec bash
 mkvirtualenv pelc2 --python /usr/bin/python3.8
 # Set $VIRTUAL_ENV
 VIRTUAL_ENV=~/.virtualenvs/$ENV_NAME
+
 # Set CA for requests library in the virtualenv
 echo "export REQUESTS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt" \
     > $VIRTUAL_ENV/bin/postactivate
 source $VIRTUAL_ENV/bin/postactivate
+
 # Install Python dependencies
 pip install -r requirements/devel.txt
+
 # Create soft links under $(PYTHON_SITELIB)
 cd $VIRTUAL_ENV/lib/python3.8/site-packages
 ln -snf /pelc_project_path/pelcd
+
 # Execute migrations
 pelc/manage.py migrate --noinput
 # Create admin account, use name `admin` and password `test`
