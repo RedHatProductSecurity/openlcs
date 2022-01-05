@@ -26,7 +26,8 @@ class Source(models.Model):
     Sources for source package information.
     """
     checksum = models.CharField(
-        max_length=50,
+        max_length=64,
+        unique=True,
         help_text='Checksum for this package'
     )
     name = models.CharField(
@@ -52,7 +53,7 @@ class Source(models.Model):
         app_label = 'packages'
 
     def __str__(self):
-        return self.name
+        return self.checksum
 
 
 class Path(models.Model):
@@ -83,7 +84,7 @@ class Path(models.Model):
         ]
 
     def __str__(self):
-        return self.path
+        return f'{self.source}, {self.file}, {self.path}'
 
 
 class Package(models.Model):
@@ -119,4 +120,4 @@ class Package(models.Model):
         ]
 
     def __str__(self):
-        return self.nvr
+        return f'{self.nvr}, {self.source}'
