@@ -36,9 +36,10 @@ MANIFEST_FILE_SCHEMA = {
 }
 
 
-def parse_manifest_file(filepath):
+def parse_manifest_file(fp):
     """
-    Accept a filepath for the manifest json file, returns a dict as follows:
+    Accept a filepath or file-like object for the manifest json file,
+    returns a dict as follows:
     {
         'productname': 'name_of_product',
         'version': 'product version',
@@ -48,16 +49,23 @@ def parse_manifest_file(filepath):
     }
     Raise runtime error in case of exceptions.
     """
-    if not os.path.isfile(filepath):
-        raise RuntimeError(f'{filepath} is not a file.')
-    with open(filepath) as fp:
-        try:
-            manifest_json = json.load(fp)
-            # Validate is done here so that the file is loaded only once.
-            validate(instance=manifest_json, schema=MANIFEST_FILE_SCHEMA)
-        except json.JSONDecodeError as e:
-            raise RuntimeError(e.msg)
-        except ValidationError as e:
-            raise RuntimeError(e.message)
+    manifest_file = None
+    if not hasattr(fp, 'read'):
+        if not os.path.isfile(fp):
+            raise RuntimeError(f'{fp} is not a file.')
         else:
-            return manifest_json['release']
+            # 'utf-8' is the default encoding for python3
+            manifest_file = open(fp, mode='r', encoding='utf-8')
+    else:
+        manifest_file = fp
+
+    try:
+        manifest_json = json.load(manifest_file)
+        # Validate is done here so that the file is loaded only once.
+        validate(instance=manifest_json, schema=MANIFEST_FILE_SCHEMA)
+    except json.JSONDecodeError as e:
+        raise RuntimeError(e.msg) from e
+    except ValidationError as e:
+        raise RuntimeError(e.message) from e
+    else:
+        return manifest_json['release']
