@@ -36,9 +36,7 @@ class ReadOnlyBrowsableAPIRenderer(BrowsableAPIRenderer):
         'update',
         'destroy',
         'partial_update',
-        'compare',
-        'retry',
-        'rescan',
+        'import_package',
         'bulk_create_files',
         'bulk_create_paths'
     )

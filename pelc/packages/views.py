@@ -3,14 +3,10 @@ import json
 from django.db import transaction
 
 from rest_framework import status
-from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
-
-from libs.backoff_strategy import ProcedureException
-
-from packages.mixins import PackageImportTransactionMixin
+from rest_framework.viewsets import ModelViewSet
 
 from packages.models import File
 from packages.models import Source
@@ -23,10 +19,14 @@ from packages.serializers import FileSerializer
 from packages.serializers import PackageSerializer
 from packages.serializers import PathSerializer
 from packages.serializers import SourceSerializer
+from packages.serializers import NVRImportSerializer
+from packages.mixins import PackageImportTransactionMixin
+
+from libs.backoff_strategy import ProcedureException
 
 
 # Create your views here.
-class FileViewSet(viewsets.ModelViewSet, PackageImportTransactionMixin):
+class FileViewSet(ModelViewSet, PackageImportTransactionMixin):
     """
     API endpoint that allows files to be viewed or edited.
     """
@@ -226,12 +226,13 @@ already exists.\\n"
             status=status.HTTP_400_BAD_REQUEST)
 
 
-class SourceViewSet(viewsets.ModelViewSet, PackageImportTransactionMixin):
+class SourceViewSet(ModelViewSet, PackageImportTransactionMixin):
     """
-    API endpoint that allows sources to be viewed or edited.
+    API endpoint that allows sources to be imported, viewed or edited.
     """
     queryset = Source.objects.all()
     serializer_class = SourceSerializer
+    nvr_import_serializer = NVRImportSerializer
 
     def list(self, request, *args, **kwargs):
         """
@@ -246,44 +247,19 @@ class SourceViewSet(viewsets.ModelViewSet, PackageImportTransactionMixin):
 
             HTTP 200 OK
             Content-Type: application/json
+
             [
                 {
                     "id": 1,
                     "checksum": \
-"72c9cfa91c6f417dc36053787f7ebd74791c0df8456554fdbaaab8e1aeb3c32d",
-                    "name": "xsom-20110809svn.tar.gz",
-                    "url": null,
-                    "state": 0,
-                    "archive_type": "rpm"
-                },
-                {
-                    "id": 2,
-                    "checksum": \
-"1a07e3b8433a840f8eda2ba9300309c7023e92f9a053c01d777bf8f4a9c5e9fe",
-                    "name": "xstring.tar.xz",
-                    "url": null,
-                    "state": 0,
-                    "archive_type": "rpm"
-                },
-                {
-                    "id": 3,
-                    "checksum": \
-"677fd81a6e8221e0d9064c9995373e180291f95d96d21920b994191154f51c9f",
-                    "name": "xunicode.doc.tar.xz",
-                    "url": null,
-                    "state": 0,
-                    "archive_type": "rpm"
-                },
-                {
-                    "id": 4,
-                    "checksum": \
-"ba215daaa78c415fce11b9e58c365d03bb602eaa5ea916578d76861a468cc3d9",
-                    "name": "xsetroot-1.1.1.tar.bz2",
-                    "url": null,
+"45f5aacb70f6eddac629375bd4739471ece1a2747123338349df069919e909ac",
+                    "name": "ansible-2.4.2.0-2.el7",
+                    "url": "http://ansible.com",
                     "state": 0,
                     "archive_type": "rpm"
                 }
             ]
+
         """
         return super().list(request, *args, **kwargs)
 
@@ -345,15 +321,17 @@ Token your_token'
 
             HTTP 200 OK
             Content-Type: application/json
+
             {
                 "id": 1,
                 "checksum": \
-"72c9cfa91c6f417dc36053787f7ebd74791c0df8456554fdbaaab8e1aeb3c32d",
-                "name": "xsom-20110809svn.tar.gz",
-                "url": null,
+"45f5aacb70f6eddac629375bd4739471ece1a2747123338349df069919e909ac",
+                "name": "ansible-2.4.2.0-2.el7",
+                "url": "http://ansible.com",
                 "state": 0,
                 "archive_type": "rpm"
             }
+
         """
         return super().retrieve(request, *args, **kwargs)
 
@@ -376,8 +354,52 @@ Token your_token'
         """
         return super().update(request, *args, **kwargs)
 
+    @action(methods=['post'], detail=False, url_path='import')
+    def import_package(self, request, *args, **kwargs):
+        """
+        ####__Import a package(multiple packages) from command line.__####
 
-class PathViewSet(viewsets.ModelViewSet, PackageImportTransactionMixin):
+        By default, both `license_scan` and `crypto_scan` will be performed for
+        package imports, this can be changed by setting respective option to
+        'false'.
+
+        ####__Bulk import with product release and package NVRs__####
+
+        ``product_release``: product release name, **OPTIONAL**
+
+        ``package_nvrs``: list of package nvr, **REQUIRED**
+
+        ``license_scan``: boolean option, 'true' if not specified, **OPTIONAL**
+
+        ``copyright_scan``: boolean option, 'true' if not specified, \
+**OPTIONAL**
+
+        Example(bulk import two packages with license and copyright scannings):
+
+            curl -X POST -H "Content-Type: application/json" -H \
+"Authorization: Token your_token" %(HOST_NAME)s/%(API_PATH)s/sources/import/ \
+-d '{"product_release": "satellite-6.9.0", "package_nvrs": \
+["ansible-2.4.2.0-2.el7", "fio-3.1-2.el7"]}'
+
+        ####__Response__####
+
+            HTTP 200 OK
+
+            {"ansible-2.4.2.0-2.el7":{"task_id":21},"fio-3.1-2.el7":\
+{"task_id":22}}
+        """
+
+        serializer = self.nvr_import_serializer(data=request.data)
+        user_id = request.data.get('owner_id') or request.user.id
+        if serializer.is_valid():
+            resp = serializer.fork_import_tasks(user_id)
+        else:
+            return Response(data=serializer.errors,
+                            status=status.HTTP_400_BAD_REQUEST)
+        return Response(data=resp)
+
+
+class PathViewSet(ModelViewSet, PackageImportTransactionMixin):
     """
     API endpoint that allows Paths to be viewed or edited.
     """
@@ -626,7 +648,7 @@ Key (id)=(5) already exists.\\n"]
                     status=status.HTTP_400_BAD_REQUEST)
 
 
-class PackageViewSet(viewsets.ModelViewSet):
+class PackageViewSet(ModelViewSet):
     """
     API endpoint that allows Packages to be viewed or edited.
     """

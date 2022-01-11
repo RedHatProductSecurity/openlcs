@@ -25,6 +25,7 @@ from rest_framework import routers
 from authentication import views as auth_views
 from packages import views as package_views
 
+
 router = routers.DefaultRouter()
 router.register(r'auth', auth_views.TokenViewSet, basename='auth')
 router.register(r'files', package_views.FileViewSet, basename='files')
@@ -40,6 +41,7 @@ urlpatterns = [
     path(f'{DRF_ROOT}/api-auth/',
          include('rest_framework.urls', namespace='rest_framework')),
     path(f'{DRF_ROOT}/', include(router.urls)),
+
     path('admin/', admin.site.urls),
     path(f'{DRF_ROOT}/packageimporttransaction/',
          package_views.PackageImportTransactionView.as_view(),
