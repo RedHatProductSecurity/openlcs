@@ -38,12 +38,14 @@ class PelcProcessingFactory(ProcessingFactory):
 
         Save a pointer to the processed objects.
         """
-        super().before_processing(eng, objects)
+        super(PelcProcessingFactory, PelcProcessingFactory).before_processing(
+                eng, objects)
 
     @staticmethod
     def after_processing(eng, objects):
         """Standard post-processing callback; basic cleaning."""
-        super().after_processing(eng, objects)
+        super(PelcProcessingFactory, PelcProcessingFactory).after_processing(
+                eng, objects)
 
 
 class PelcTransitionActions(TransitionActions):
@@ -54,12 +56,14 @@ class PelcTransitionActions(TransitionActions):
     @staticmethod
     def HaltProcessing(obj, eng, callbacks, exc_info):
         """Interrupt the execution of the engine."""
-        super().HaltProcessing(obj, eng, callbacks, exc_info)
+        super(PelcTransitionActions, PelcTransitionActions).HaltProcessing(
+                obj, eng, callbacks, exc_info)
 
     @staticmethod
     def StopProcessing(obj, eng, callbacks, exc_info):
         """Gracefully stop the execution of the engine."""
-        super().StopProcessing(obj, eng, callbacks, exc_info)
+        super(PelcTransitionActions, PelcTransitionActions).StopProcessing(
+                obj, eng, callbacks, exc_info)
 
     @staticmethod
     def Exception(obj, eng, callbacks, exc_info):
@@ -67,4 +71,5 @@ class PelcTransitionActions(TransitionActions):
 
         FIXME: clean up/logging goes here in terms of exceptions.
         """
-        super().Exception(obj, eng, callbacks, exc_info)
+        super(PelcTransitionActions, PelcTransitionActions).Exception(
+                obj, eng, callbacks, exc_info)
