@@ -7,6 +7,10 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
+from rest_framework.parsers import FileUploadParser
+
+from libs.backoff_strategy import ProcedureException
+from libs.parsers import parse_manifest_file
 
 from packages.models import File
 from packages.models import Source
@@ -21,8 +25,6 @@ from packages.serializers import PathSerializer
 from packages.serializers import SourceSerializer
 from packages.serializers import NVRImportSerializer
 from packages.mixins import PackageImportTransactionMixin
-
-from libs.backoff_strategy import ProcedureException
 
 
 # Create your views here.
@@ -816,3 +818,41 @@ class CheckDuplicateFiles(APIView):
             return Response(data={"existing_swhids": existing_swhids})
         else:
             return Response(data={"existing_swhids": None})
+
+
+class ManifestFileParserView(APIView):
+
+    parser_classes = [FileUploadParser]
+
+    def put(self, request, filename, format=None):
+        """
+        The API endpoint is used to upload/parse manifest file.
+
+        ####__Request__####
+        curl -X PUT -H 'Content-Disposition: attachment; filename=data.json' \
+            -d @data.json  localhost:8000/rest/v1/manifest_parser/data.json
+
+        ####__Response__####
+            Success: HTTP 200 with json data with below format:
+            {
+                "productname": "satellite",
+                "version": "6.9.0",
+                "notes": "Notes goes here",
+                "containers": [],
+                "src_packages": ["ansible-2.4.2.0-2.el7",
+                                 "ansiblerole-foreman_scap_client-0.1.0-1.el7sat",
+                                 ...
+                                ]
+            }
+
+            Error: HTTP 400 BAD REQUEST
+        """
+        manifest_file = request.data['file']
+        try:
+            data = parse_manifest_file(manifest_file)
+        except RuntimeError as e:
+            return Response(
+                f"Runtime error: {e.args[0]}",
+                status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response(data=data, status=status.HTTP_200_OK)
