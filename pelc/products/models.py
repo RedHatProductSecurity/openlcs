@@ -58,6 +58,8 @@ class Release(models.Model):
         on_delete=models.CASCADE
     )
     version = models.TextField()
+    # 'name' is a joint string: product-version
+    name = models.TextField()
     notes = models.TextField(blank=True, null=True)
 
     class Meta:
@@ -70,7 +72,7 @@ class Release(models.Model):
         ]
 
     def __str__(self):
-        return "%s-%s" % (self.product, self.version)
+        return self.name
 
 
 class ReleaseContainer(models.Model):
