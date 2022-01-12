@@ -1,8 +1,9 @@
 import os
 import shutil
 import tempfile
-import unittest
 import warnings
+from unittest import TestCase
+from unittest import skip
 from kobo.shortcuts import run
 from django.conf import settings
 
@@ -10,7 +11,8 @@ from libs.unpack import UnpackArchive
 from libs.download import BrewBuild
 
 
-class TestUnpack(unittest.TestCase):
+@skip("Skip temporarily due to PVLEGAL-1905")
+class TestUnpack(TestCase):
 
     @classmethod
     def setUpClass(cls):
@@ -91,7 +93,7 @@ class TestUnpack(unittest.TestCase):
         shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
-class TestDownloadFromBrew(unittest.TestCase):
+class TestDownloadFromBrew(TestCase):
 
     def setUp(self):
         os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'pelc.pelc.settings')
