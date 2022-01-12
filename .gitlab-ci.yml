@@ -50,7 +50,7 @@ pylint:
 
 unit-tests:
   <<: *ci-image
-  <<: *postgresql  
+  <<: *postgresql
   stage: tests-it-promote
 # # Currently, no shared runner, comment these code
 #  artifacts:
@@ -59,6 +59,4 @@ unit-tests:
 #    - .coverage.*
 #    expire_in: 30 days
   script:
-    # FIXME: currently only test class TestDownloadFromBrew
-    # the original unit test case should cover all like 'pelc'
-    - tox -e unit --current-env -- libs.tests.TestDownloadFromBrew
+    - tox -e unit --current-env
