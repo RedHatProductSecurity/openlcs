@@ -1,4 +1,6 @@
 import os
+from io import StringIO
+import json
 import shutil
 import tempfile
 import warnings
@@ -9,6 +11,7 @@ from django.conf import settings
 
 from libs.unpack import UnpackArchive
 from libs.download import BrewBuild
+from libs.parsers import parse_manifest_file
 
 
 @skip("Skip temporarily due to PVLEGAL-1905")
@@ -126,3 +129,63 @@ class TestDownloadFromBrew(TestCase):
             self.assertTrue(os.path.exists(test_file_path))
         finally:
             shutil.rmtree(result, ignore_errors=True)
+
+
+class TestParseManifestFile(TestCase):
+
+    def setUp(self):
+        # data with valid form
+        valid_data = {
+            'release': {
+                'productname': 'testproduct',
+                'version': '1.0.0',
+                'notes': 'sample notes',
+                'containers': [],
+                'src_packages': [
+                    'nvr1', 'nvr2', 'nvr3'
+                ]}
+        }
+        # missing required field 'release'
+        invalid_data1 = {
+            'product': 'foo'
+        }
+        # missing required field 'version'
+        invalid_data2 = {
+            'release': {
+                'productname': 'testproduct',
+                'src_packages': ['nvr1', 'nvr2', 'nvr3']
+            }
+        }
+        # 'src_packages' is of incorrect type(should be array)
+        invalid_data3 = {
+            'release': {
+                'productname': 'testproduct',
+                'version': '1.0.0',
+                'src_packages': {},
+            }
+        }
+        self.non_existent_file = '/path/to/non-existent'
+        self.valid_json = json.dumps(valid_data)
+        self.invalid_json_form1 = json.dumps(invalid_data1)
+        self.invalid_json_form2 = json.dumps(invalid_data2)
+        self.invalid_json_form3 = json.dumps(invalid_data3)
+
+    def test_parse_non_existent_file(self):
+        with self.assertRaises(RuntimeError) as exception_context:
+            parse_manifest_file(self.non_existent_file)
+            self.assertEqual(
+                str(exception_context.exception),
+                f'{self.non_existent_file} is not a file'
+            )
+
+    def test_parse_invalid_file(self):
+        with self.assertRaises(RuntimeError):
+            parse_manifest_file(self.invalid_json_form1)
+            parse_manifest_file(self.invalid_json_form2)
+            parse_manifest_file(self.invalid_json_form3)
+
+    def test_parse_valid_file(self):
+        # Transfer json string to file-like object before parsing
+        result = parse_manifest_file(StringIO(self.valid_json))
+        self.assertIn('productname', result)
+        self.assertIn('version', result)
