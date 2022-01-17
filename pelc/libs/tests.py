@@ -104,7 +104,6 @@ class TestDownloadFromBrew(TestCase):
                                    },
                         'package_nvr': self.test_package_nvr
                         }
-        self.tmp_dir = tempfile.mkdtemp(prefix='download_')
 
     def test_download_build_source(self):
         """
@@ -121,6 +120,8 @@ class TestDownloadFromBrew(TestCase):
                 package_nvr=self.context.get('package_nvr')
             )
             result = brew_build.download_source(build)
-            self.assertTrue(result.find(self.test_package_nvr))
+            test_file_name = self.test_package_nvr + '.src.rpm'
+            test_file_path = os.path.join(result, test_file_name)
+            self.assertTrue(os.path.exists(test_file_path))
         finally:
-            shutil.rmtree(self.tmp_dir, ignore_errors=True)
+            shutil.rmtree(result, ignore_errors=True)
