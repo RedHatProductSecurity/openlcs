@@ -121,7 +121,7 @@ class TestDownloadFromBrew(TestCase):
             )
             result = brew_build.download_source(build)
             test_file_name = self.test_package_nvr + '.src.rpm'
-            test_file_path = os.path.join(result, test_file_name)
-            self.assertTrue(os.path.exists(test_file_path))
+            self.test_file_path = os.path.join(result, test_file_name)
+            self.assertTrue(os.path.exists(self.test_file_path))
         finally:
-            shutil.rmtree(result, ignore_errors=True)
+            shutil.rmtree(self.test_file_path, ignore_errors=True)
