@@ -41,12 +41,18 @@ class PackageImportTransactionMixin:
     @retry(rand=settings.CREATE_PATHS_RAND,
            max_retries=settings.CREATE_PATHS_MAX_RETRIES,
            max_wait_interval=settings.CREATE_PATHS_MAX_WAIT_INTERVAL)
-    def create_paths(self, paths):
+    def create_paths(self, source_checksum, paths):
         """
         Create paths.
         """
-        objs = [Path(source=Source.objects.get(checksum=p.get('source')),
-                     file=File.objects.get(swhid=p.get('file')),
+        # Three SQL queries will be run here.
+        # One is to get the Source object, one is to get all File objects.
+        # One is to created Path objects.
+        source = Source.objects.get(checksum=source_checksum)
+        swhids = [path.get('file') for path in paths]
+        files_dict = File.objects.in_bulk(id_list=list(swhids),
+                                          field_name='swhid')
+        objs = [Path(source=source, file=files_dict.get(p.get('file')),
                      path=p.get('path')) for p in paths]
         if objs:
             try:
@@ -60,10 +66,9 @@ class PackageImportTransactionMixin:
             return {'message': 'No paths created.'}
 
     @staticmethod
-    def create_package(package):
+    def create_package(source_checksum, package):
         """
         Create package.
         """
-        source, _ = Package.objects.get_or_create(
-            checksum=package.pop('source'))
+        source, _ = Source.objects.get_or_create(checksum=source_checksum)
         Package.objects.get_or_create(source=source, **package)

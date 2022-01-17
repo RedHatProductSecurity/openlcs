@@ -14,7 +14,7 @@ from packages.models import Package
 from packages.models import Path
 
 from packages.serializers import BulkCreateFileSerializer
-from packages.serializers import BulkPathSerializer
+from packages.serializers import BulkCreatePathSerializer
 from packages.serializers import FileSerializer
 from packages.serializers import PackageSerializer
 from packages.serializers import PathSerializer
@@ -221,9 +221,8 @@ already exists.\\n"
                     data={'message': err.args},
                     status=status.HTTP_400_BAD_REQUEST)
 
-        return Response(
-            data={'message': serializer.errors},
-            status=status.HTTP_400_BAD_REQUEST)
+        return Response(data={'message': serializer.errors},
+                        status=status.HTTP_400_BAD_REQUEST)
 
 
 class SourceViewSet(ModelViewSet, PackageImportTransactionMixin):
@@ -405,7 +404,7 @@ class PathViewSet(ModelViewSet, PackageImportTransactionMixin):
     """
     queryset = Path.objects.all()
     serializer_class = PathSerializer
-    bulk_path_serializer = BulkPathSerializer
+    bulk_create_path_serializer = BulkCreatePathSerializer
 
     def list(self, request, *args, **kwargs):
         """
@@ -637,15 +636,19 @@ Key (id)=(5) already exists.\\n"]
                Server Error (500)
         """
         data = request.data
-        serializer = self.bulk_path_serializer(data=data)
+        serializer = self.bulk_create_path_serializer(data=data)
         if serializer.is_valid():
             try:
-                res_data = self.create_paths(data.get("paths"))
+                res_data = self.create_paths(data.get('source'),
+                                             data.get("paths"))
                 return Response(data=res_data, status=status.HTTP_200_OK)
             except (RuntimeError, ProcedureException) as err:
                 return Response(
                     data={'message': err.args},
                     status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(data=serializer.errors,
+                        status=status.HTTP_400_BAD_REQUEST)
 
 
 class PackageViewSet(ModelViewSet):
@@ -749,17 +752,14 @@ class PackageImportTransactionView(APIView, PackageImportTransactionMixin):
         "paths": [
             {
                 "file": "swh:1:cnt:1fa0d32c021a24447540ab6dca496948de8088aa",
-                "source": "597cf23c7b32beaee76dc7ec42f6f04903a3d8239a4b820adf3a3350b93cd65e",
                 "path": "/test5"
             },
             {
                 "file": "swh:1:cnt:1fa0d32c021a24447540ab6dca496948de8088bb",
-                "source": "597cf23c7b32beaee76dc7ec42f6f04903a3d8239a4b820adf3a3350b93cd65e",
                 "path": "/test6"
             }
         ],
         "package": {
-            "source": "597cf23c7b32beaee76dc7ec42f6f04903a3d8239a4b820adf3a3350b93cd65e",
             "nvr": "rhel8.0",
             "sum_license": "",
             "is_source": false
@@ -787,12 +787,13 @@ class PackageImportTransactionView(APIView, PackageImportTransactionMixin):
         try:
             with transaction.atomic():
                 self.create_files(swhids)
-                source, created = Source.objects.get_or_create(**source)
+                _, created = Source.objects.get_or_create(**source)
                 # If source not exist in database, that's mean the paths
                 # is not exist, bulk created them directly.
                 if created:
-                    self.create_paths(paths)
-                    self.create_package(package)
+                    source_checksum = source.get('checksum')
+                    self.create_paths(source_checksum, paths)
+                    self.create_package(source_checksum, package)
             msg = f'Build {package.get("nvr")} imported successfully.'
             return Response(
                 data={'message': msg},
@@ -801,3 +802,17 @@ class PackageImportTransactionView(APIView, PackageImportTransactionMixin):
             return Response(
                 data={'message': err.args},
                 status=status.HTTP_400_BAD_REQUEST)
+
+
+class CheckDuplicateFiles(APIView):
+    """
+    Check duplicate files, so that we can skip scan step for these files.
+    """
+    def get(self, request, *args, **kwargs):
+        swhids = request.query_params.get('swhids')
+        if swhids:
+            existing_swhids = File.objects.in_bulk(id_list=list(swhids),
+                                                   field_name='swhid').keys()
+            return Response(data={"existing_swhids": existing_swhids})
+        else:
+            return Response(data={"existing_swhids": None})

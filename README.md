@@ -98,3 +98,12 @@ celery -A pelcd worker --loglevel=DEBUG
 ```
 
 Hint: You can remove all currently queued tasks using `redis-cli FLUSHALL`.
+
+
+### How to add unit test cases for PELC2
+```text
+For Django app, add test cases in tests.py.
+For lib in Django, add test cases in tests.py.
+For workflow in pelcd/pelcflow/tasks.py, write test files in tests,
+and add test file in suite defined in __init__.py
+```

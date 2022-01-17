@@ -46,4 +46,7 @@ urlpatterns = [
     path(f'{DRF_ROOT}/packageimporttransaction/',
          package_views.PackageImportTransactionView.as_view(),
          name='package_import_transaction'),
+    path(f'{DRF_ROOT}/check_duplicate_files/',
+         package_views.CheckDuplicateFiles.as_view(),
+         name='check_duplicate_files'),
 ]

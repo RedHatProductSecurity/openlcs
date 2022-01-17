@@ -19,4 +19,11 @@ def get_swhids(paths):
     """
     Get SWH IDs of package source file paths.
     """
-    return [swhid_of_file(path) for path in paths]
+    return [str(swhid_of_file(path)) for path in paths]
+
+
+def get_swhids_with_paths(paths):
+    """
+    Get SWH IDs with package source file paths.
+    """
+    return [(path, str(swhid_of_file(path))) for path in paths]

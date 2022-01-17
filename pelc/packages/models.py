@@ -78,13 +78,13 @@ class Path(models.Model):
         app_label = 'packages'
         constraints = [
             models.UniqueConstraint(
-                fields=['source', 'file', 'path'],
-                name='unique_source_file_path'
+                fields=['source', 'path'],
+                name='unique_source_path'
             ),
         ]
 
     def __str__(self):
-        return f'{self.source}, {self.file}, {self.path}'
+        return f'{self.source}, {self.path}'
 
 
 class Package(models.Model):

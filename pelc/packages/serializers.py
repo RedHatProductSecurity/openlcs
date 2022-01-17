@@ -82,9 +82,33 @@ class PathSerializer(serializers.ModelSerializer):
 
 class BulkPathSerializer(serializers.Serializer):
     """
-    Bulk path serializer, se to validate request paths data.
+    Bulk file serializer, use to return validate paths after created.
     """
     paths = PathSerializer(many=True)
+
+
+class CreatePathSerializer(serializers.Serializer):
+    """
+    Create path serializer, use to return validated paths data in paths list.
+    """
+    file = serializers.SlugRelatedField(
+        queryset=File.objects.all(),
+        slug_field='swhid',
+        allow_null=False,
+        required=True)
+    path = serializers.CharField(required=True)
+
+
+class BulkCreatePathSerializer(serializers.Serializer):
+    """
+    Bulk path serializer, use to validate request paths data.
+    """
+    source = serializers.SlugRelatedField(
+        queryset=Source.objects.all(),
+        slug_field='checksum',
+        allow_null=False,
+        required=True)
+    paths = CreatePathSerializer(many=True)
 
 
 class PackageSerializer(serializers.ModelSerializer):

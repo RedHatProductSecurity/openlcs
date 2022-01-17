@@ -1,11 +1,13 @@
-import os.path
+import os
 import shutil
 import tarfile
-
+from requests.exceptions import HTTPError
 from workflow.patterns.controlflow import IF
+
 from pelcd.pelcflow.task_wrapper import WorkflowWrapperTask
 from pelcd.celery import app
 from pelc.libs.deposit import UploadToDeposit
+from pelc.libs.swh_tools import get_swhids_with_paths
 
 
 def get_config(context, engine):
@@ -130,6 +132,81 @@ def upload_to_deposit(context, engine):
     logger.info(f"Upload archive {archive_name} finished")
 
 
+def get_source_files_paths(source_dir):
+    """
+    Get all paths to these files in the source, except soft link.
+    """
+    path_list = []
+    if source_dir:
+        for root, _, files in os.walk(source_dir):
+            for file in files:
+                file_path = os.path.join(root, file)
+                if not os.path.islink(file_path):
+                    path_list.append(file_path)
+    return path_list
+
+
+def check_duplicate_files(context, swhids):
+    """
+    Check if the files exist in database, return a dict contain swhids
+    of existing files.
+    """
+    cli = context.get('client')
+    resp = cli.get('/check_duplicate_files/', {'swhids': swhids})
+    try:
+        resp.raise_for_status()
+    except HTTPError as err:
+        raise RuntimeError(err) from None
+    return resp.json()
+
+
+def deduplicate_source(context, engine):
+    """
+    Deduplicate source. Remove the existing files in unpack source path,
+    because they have been scanned before.
+
+    @requires: `unpack_source_dir_path`,the archive unpack directory.
+    @feeds: `swhids`, swhid list for files in the source.
+    @feeds: `paths`, path information list for files in the source.
+    """
+    unpack_source_dir_path = context.get("unpack_source_dir_path")
+    if unpack_source_dir_path:
+        path_list = get_source_files_paths(unpack_source_dir_path)
+        if path_list:
+            path_swhid_list = get_swhids_with_paths(path_list)
+            swhids = [path_swhid[1] for path_swhid in path_swhid_list]
+
+            try:
+                # Deduplicate files.
+                response = check_duplicate_files(context, swhids)
+                existing_swhids = response.get('existing_swhids')
+                if existing_swhids:
+                    swhids = list(set(swhids).difference(set(existing_swhids)))
+                    for path, swhid in path_swhid_list:
+                        if swhid not in swhids:
+                            os.remove(path)
+
+                # Only non exist file need to be stored.
+                if swhids:
+                    context['swhids'] = swhids
+
+                # All the paths need to be stored. because even if file exist,
+                # that's not mean the path object exist.
+                # They are many-one relationship.
+                context['paths'] = [{
+                    "file": swhid,
+                    "path": path
+                } for (path, swhid) in path_swhid_list]
+            except RuntimeError as err:
+                err_msg = f"Failed to check duplicate files. Reason: {err}"
+                # engine.logger.error(err_msg)
+                raise RuntimeError(err_msg) from None
+    else:
+        err_msg = "Failed to find unpack source directory path."
+        # engine.logger.error(err_msg)
+        raise RuntimeError(err_msg)
+
+
 def retrieve_source_from_swh(context, engine):
     """
     Accept a build or package nvr, retrieve the source directory tree
@@ -181,6 +258,7 @@ flow_default = [
     # consuming, we don't have an agreement yet whether they should
     # be run one after another or in parallel.
     upload_to_deposit,
+    deduplicate_source,
     IF(
         lambda o, e: o.get('license_scan'),
         license_scan,

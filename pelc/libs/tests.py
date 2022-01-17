@@ -114,6 +114,7 @@ class TestDownloadFromBrew(TestCase):
         warnings.filterwarnings(
             action="ignore", message="unclosed", category=ResourceWarning
         )
+        result = None
         try:
             brew_build = BrewBuild(self.context.get('config'))
             build = brew_build.get_build(

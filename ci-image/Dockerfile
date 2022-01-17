@@ -27,5 +27,13 @@ RUN mkdir -p ${HOME} && \
 RUN wget https://downloads-openshift-console.apps.ocp-c1.prod.psi.redhat.com/amd64/linux/oc.tar && \
     tar xf oc.tar -C /usr/local/bin/
 
+# Link the site-packages to correct location, so that tox can find it when use current-env plugin
+# CI image site packages path is /usr/local/lib/python3.8/site-packages.
+# But tox will use one of ['/usr/local/lib64/python3.8/site-packages',
+# '/usr/local/lib/python3.8/site-packages', '/usr/lib64/python3.8/site-packages',
+# '/usr/lib/python3.8/site-packages'] as site packages path
+RUN mkdir -p /usr/local/lib64/python3.8/ && \
+    ln -s /opt/app-root/lib64/python3.8/site-packages /usr/local/lib64/python3.8/
+
 WORKDIR /home/pelc
 USER 1001
