@@ -11,6 +11,7 @@ class PelcWorkflowEngine(GenericWorkflowEngine):
     """
 
     @classproperty
+    # pylint: disable=no-self-argument
     def processing_factory(cls):
         """Provide a processing factory."""
         return PelcProcessingFactory
@@ -26,11 +27,11 @@ class PelcProcessingFactory(ProcessingFactory):
 
     # We also have our own `transition_actions`
     @classproperty
+    # pylint: disable=no-self-argument
     def transition_exception_mapper(cls):
         """Set a transition exception mapper for actions while processing.
         """
         return PelcTransitionActions
-
 
     @staticmethod
     def before_processing(eng, objects):

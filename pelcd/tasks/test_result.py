@@ -9,4 +9,3 @@ assert mul_res.get() == 30
 
 xsum_res = xsum.delay([1, 2, 3, 4, 5, 6])
 assert xsum_res.get() == 21
-
