@@ -18,7 +18,7 @@ import os
 from django.conf import settings
 from django.conf.urls import include
 from django.contrib import admin
-from django.urls import path, re_path
+from django.urls import path
 from rest_framework.authtoken import views as token_views
 from rest_framework import routers
 
@@ -51,7 +51,7 @@ urlpatterns = [
     path(f'{DRF_ROOT}/check_duplicate_files/',
          package_views.CheckDuplicateFiles.as_view(),
          name='check_duplicate_files'),
-    re_path(f'{DRF_ROOT}/manifest_parser/(?P<filename>[^/]+)$',
-            package_views.ManifestFileParserView.as_view(),
-            name='manifest_parser_view'),
+    path(f'{DRF_ROOT}/manifest_parser/',
+         package_views.ManifestFileParserView.as_view(),
+         name='manifest_parser_view'),
 ]

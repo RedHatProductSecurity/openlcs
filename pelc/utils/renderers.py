@@ -33,6 +33,7 @@ class ReadOnlyBrowsableAPIRenderer(BrowsableAPIRenderer):
         'list',
         'retrieve',
         'create',
+        'put',
         'update',
         'destroy',
         'partial_update',

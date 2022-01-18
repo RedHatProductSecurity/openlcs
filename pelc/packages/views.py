@@ -824,13 +824,15 @@ class ManifestFileParserView(APIView):
 
     parser_classes = [FileUploadParser]
 
-    def put(self, request, filename, format=None):
+    def put(self, request, format=None):
         """
         The API endpoint is used to upload/parse manifest file.
 
         ####__Request__####
-        curl -X PUT -H 'Content-Disposition: attachment; filename=data.json' \
-            -d @data.json  localhost:8000/rest/v1/manifest_parser/data.json
+        curl -X PUT -H "Authorization: Token your_token"
+            -H 'Content-Disposition: attachment; filename=data.json' \
+            -d @data.json \
+            %(HOST_NAME)s/%(API_PATH)s/rest/v1/manifest_parser/
 
         ####__Response__####
             Success: HTTP 200 with json data with below format:
