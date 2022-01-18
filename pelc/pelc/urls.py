@@ -24,6 +24,7 @@ from rest_framework import routers
 
 from authentication import views as auth_views
 from packages import views as package_views
+from tasks import views as task_views
 
 
 router = routers.DefaultRouter()
@@ -32,6 +33,7 @@ router.register(r'files', package_views.FileViewSet, basename='files')
 router.register(r'sources', package_views.SourceViewSet, basename='sources')
 router.register(r'paths', package_views.PathViewSet, basename='paths')
 router.register(r'packages', package_views.PackageViewSet, basename='packages')
+router.register(r'tasks', task_views.TaskViewSet, basename='tasks')
 
 DRF_ROOT = os.path.join(settings.DRF_NAMESPACE, settings.DRF_API_VERSION)
 
