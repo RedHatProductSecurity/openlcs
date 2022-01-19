@@ -463,8 +463,7 @@ class PathViewSet(ModelViewSet, PackageImportTransactionMixin):
 %(HOST_NAME)s/%(API_PATH)s/paths/ \
 -d '{"file": "swh:1:cnt:1fa0d32c021a24447540ab6dca496948de8088aa", \
 "source": "ab7cf23c7b32beaee76dc7ec42f6f04903a3d8239a4b820adf3a3ss0b93cd652", \
-"path": "/test5"}
--H 'Authorization: Token your_token'
+"path": "/test5"} -H 'Authorization: Token your_token'
 
         ####__Response__####
 
@@ -520,8 +519,9 @@ Token your_token'
 
             curl -X PATCH -H "Content-Type: application/json" \
 %(HOST_NAME)s/%(API_PATH)s/paths/instance_pk/ -d \
-'{"file_id": 5, "source_id": 5, "path": "/test5"}' \
--H 'Authorization: Token your_token'
+'{"file": "swh:1:cnt:1fa0d32c021a24447540ab6dca496948de8088aa", \
+"source": "ab7cf23c7b32beaee76dc7ec42f6f04903a3d8239a4b820adf3a3ss0b93cd652", \
+"path": "/test5"}' -H 'Authorization: Token your_token'
 
         ####__Response__####
 
