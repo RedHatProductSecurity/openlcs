@@ -12,7 +12,7 @@ stages:
   - tests-it-promote
 
   # Release new ci-image when merged
-  - release-ci
+  - release-ci-image
 
 variables:
   PELC_DATABASE_USER: postgres
@@ -20,8 +20,17 @@ variables:
   POSTGRESQL_ADMIN_PASSWORD: $DATABASE_PASSWORD
   OCP_ADDRESS: https://api.ocp-c1.prod.psi.redhat.com:6443
 
-.ci-image: &ci-image
-  # this image is built from openshift https://console-openshift-console.apps.ocp-c1.prod.psi.redhat.com/k8s/ns/pelc-ci-cd/buildconfigs/pelc2-gitlab-ci
+# images are built from openshift
+# https://console-openshift-console.apps.ocp-c1.prod.psi.redhat.com/k8s/ns/pelc-ci-cd/buildconfigs/pelc2-gitlab-ci
+.ci-image-commit: &ci-image-commit
+  image:
+    name: quay.io/pelc/pelc2-ci:$CI_COMMIT_SHA
+  # the tags come from the labels of shared runner in 'gitlab.cee.redhat.com/pelc/pelc2/-/settings/ci_cd'
+  tags:
+    - docker
+    - shared
+
+.ci-image-latest: &ci-image-latest
   image:
     name: quay.io/pelc/pelc2-ci:latest
   # the tags come from the labels of shared runner in 'gitlab.cee.redhat.com/pelc/pelc2/-/settings/ci_cd'
@@ -33,7 +42,27 @@ variables:
   services:
     - 'quay.io/pelc/postgresql-12'
 
-## Currently public runner no cache server
+.only-ci-image-latest: &only-ci-image-latest
+  only:
+    refs:
+      - merge_requests
+  except:
+    changes:
+      - "*.md"
+      - ci-image/Dockerfile
+      - requirements/base.txt
+      - requirements/devel.txt
+
+.only-ci-image-commit: &only-ci-image-commit
+  only:
+    changes:
+      - ci-image/Dockerfile
+      - requirements/base.txt
+      - requirements/devel.txt
+    refs:
+      - merge_requests
+
+## Currently, public runner no cache server
 #.pip-cache: &pip-cache
 #  cache:
 #    # all branches and jobs will use the same cache
@@ -41,44 +70,18 @@ variables:
 #    paths:
 #      - .cache/pip
 
-# ======== test-unit-style ========
-
-flake8:
-  <<: *ci-image
-  stage: static-analysis-build
-  script:
-    - tox -e flake8 --current-env
-
-pylint:
-  <<: *ci-image
-  stage: static-analysis-build
-  script:
-    - tox -e pylint --current-env
-
-unit-tests:
-  <<: *ci-image
-  <<: *postgresql
-  stage: tests-it-promote
-# # Currently, no shared runner, comment these code
-#  artifacts:
-#    name: unit-tests-coverage
-#    paths:
-#    - .coverage.*
-#    expire_in: 30 days
-  script:
-    - tox -e unit --current-env
-
-# ======== build-image  ========
+# ======== build-ci-image  ========
 build-ci-image:
-  <<: *ci-image
+  <<: *ci-image-latest
+  <<: *only-ci-image-commit
   variables:
     PELC_PROJECT: "pelc2-dev"
   stage: build-ci-image
-  only:
-    changes:
-      - ci-image/Dockerfile
-    refs:
-      - merge_requests
+  artifacts:
+    name: image-digest
+    paths:
+    - image-digest.txt
+    expire_in: 30 days
   before_script:
     - oc login "$OCP_ADDRESS" --token "$PELC_CI_TOKEN"
     - oc project $PELC_PROJECT
@@ -102,23 +105,77 @@ build-ci-image:
       docker://quay.io/pelc/pelc2-ci@$(cat image-digest.txt)
       docker://quay.io/pelc/pelc2-ci:$CI_COMMIT_SHA
 
-# ======== release-ci-image  ========
+# ======== test-unit-style ========
+flake8-commit:
+  <<: *ci-image-commit
+  <<: *only-ci-image-commit
+  stage: static-analysis-build
+  script:
+    - tox -e flake8 --current-env
 
+flake8-latest:
+  <<: *ci-image-latest
+  <<: *only-ci-image-latest
+  stage: static-analysis-build
+  script:
+    - tox -e flake8 --current-env
+
+pylint-commit:
+  <<: *ci-image-commit
+  <<: *only-ci-image-commit
+  stage: static-analysis-build
+  script:
+    - tox -e pylint --current-env
+
+pylint-latest:
+  <<: *ci-image-latest
+  <<: *only-ci-image-latest
+  stage: static-analysis-build
+  script:
+    - tox -e pylint --current-env
+
+unit-tests-commit:
+  <<: *ci-image-commit
+  <<: *postgresql
+  <<: *only-ci-image-commit
+  stage: tests-it-promote
+# # Currently, no shared runner, comment these code
+#  artifacts:
+#    name: unit-tests-coverage
+#    paths:
+#    - .coverage.*
+#    expire_in: 30 days
+  script:
+    - tox -e unit --current-env
+
+
+unit-tests-latest:
+  <<: *ci-image-latest
+  <<: *postgresql
+  <<: *only-ci-image-latest
+  stage: tests-it-promote
+# # Currently, no shared runner, comment these code
+#  artifacts:
+#    name: unit-tests-coverage
+#    paths:
+#    - .coverage.*
+#    expire_in: 30 days
+  script:
+    - tox -e unit --current-env
+
+# ======== release-ci-image  ========
 release-ci-image:
-  <<: *ci-image
+  <<: *ci-image-latest
   variables:
     PELC_PROJECT: "pelc2-dev"
   only:
     changes:
       - ci-image/Dockerfile
+      - requirements/base.txt
+      - requirements/devel.txt
     refs:
       - main
-  stage: release-ci
-  before_script:
-    - oc login "$OCP_ADDRESS" --token "$PELC_CI_TOKEN"
-    - oc project $PELC_PROJECT
-  after_script:
-    - oc logout
+  stage: release-ci-image
   script:
     - skopeo copy
       --src-creds=$QUAY_USERNAME:$QUAY_TOKEN

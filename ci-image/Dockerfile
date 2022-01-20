@@ -9,9 +9,8 @@ RUN cd /etc/pki/ca-trust/source/anchors/ && \
     curl -skO https://engineering.redhat.com/Eng-CA.crt && \
     update-ca-trust
 
-RUN yum install --nogpgcheck -y \
-    skopeo \
-    && yum clean all
+RUN yum install --nogpgcheck -y skopeo && \
+    yum clean all
 
 RUN git clone https://gitlab.cee.redhat.com/pelc/pelc2.git && \
     pip install --upgrade 'pip==21.3.1' && \
