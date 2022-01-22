@@ -11,174 +11,89 @@ stages:
   # Deploy master branch to pelc-dev
   - tests-it-promote
 
-  # Release new ci-image when merged
-  - release-ci-image
+  - deploy-to-dev
+
 
 variables:
   PELC_DATABASE_USER: postgres
   PELC_DATABASE_PASSWORD: test
   POSTGRESQL_ADMIN_PASSWORD: $DATABASE_PASSWORD
   OCP_ADDRESS: https://api.ocp-c1.prod.psi.redhat.com:6443
+  CI_REGISTRY_IMAGE: quay.io/pelc/pelc2-ci
+  PELC_IMAGE: quay.io/pelc/pelc2
+  PELC_CI_USER: pelc+pelc_ci_cd
+  PELC_CI_PASSWORD: $pelc_ci_cd_password
 
-# images are built from openshift
-# https://console-openshift-console.apps.ocp-c1.prod.psi.redhat.com/k8s/ns/pelc-ci-cd/buildconfigs/pelc2-gitlab-ci
-.ci-image-commit: &ci-image-commit
+.ci-image: &ci-image
   image:
-    name: quay.io/pelc/pelc2-ci:$CI_COMMIT_SHA
+    name: $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
   # the tags come from the labels of shared runner in 'gitlab.cee.redhat.com/pelc/pelc2/-/settings/ci_cd'
   tags:
-    - docker
-    - shared
-
-.ci-image-latest: &ci-image-latest
-  image:
-    name: quay.io/pelc/pelc2-ci:latest
-  # the tags come from the labels of shared runner in 'gitlab.cee.redhat.com/pelc/pelc2/-/settings/ci_cd'
-  tags:
-    - docker
-    - shared
+    - pelc-docker-runner
 
 .postgresql: &postgresql
   services:
     - 'quay.io/pelc/postgresql-12'
 
-.only-ci-image-latest: &only-ci-image-latest
-  only:
-    refs:
-      - merge_requests
-  except:
-    changes:
-      - "*.md"
-      - ci-image/Dockerfile
-      - requirements/base.txt
-      - requirements/devel.txt
-
-.only-ci-image-commit: &only-ci-image-commit
-  only:
-    changes:
-      - ci-image/Dockerfile
-      - requirements/base.txt
-      - requirements/devel.txt
-    refs:
-      - merge_requests
-
-## Currently, public runner no cache server
-#.pip-cache: &pip-cache
-#  cache:
-#    # all branches and jobs will use the same cache
-#    key: shared-key
-#    paths:
-#      - .cache/pip
-
-# ======== build-ci-image  ========
+# ======== build-docker-ci  ========
+# Image build will always be triggered, and will read cache from latest tag image
 build-ci-image:
-  <<: *ci-image-latest
-  <<: *only-ci-image-commit
-  variables:
-    PELC_PROJECT: "pelc2-dev"
+  tags:
+    - pelc-shell-runner
   stage: build-ci-image
-  artifacts:
-    name: image-digest
-    paths:
-    - image-digest.txt
-    expire_in: 30 days
-  before_script:
-    - oc login "$OCP_ADDRESS" --token "$PELC_CI_TOKEN"
-    - oc project $PELC_PROJECT
-  after_script:
-    - oc logout
   script:
-    - oc start-build pelc2-ci
-      -o name
-      --commit "$CI_COMMIT_SHA"
-      --follow --wait
-      | tee output
-    - oc get "$(head -n1 output)" -o jsonpath='{.status.output.to.imageDigest}' > image-digest.txt
-    - if [ ! -s image-digest.txt ]; then
-          echo "The image build not success, please rerun this step!!!"
-          exit 1 ;
-      fi
-    #To avoid untagged image will be automatically deleted
-    - skopeo copy
-      --src-creds=$QUAY_USERNAME:$QUAY_TOKEN
-      --dest-creds=$QUAY_USERNAME:$QUAY_TOKEN
-      docker://quay.io/pelc/pelc2-ci@$(cat image-digest.txt)
-      docker://quay.io/pelc/pelc2-ci:$CI_COMMIT_SHA
+    - docker login -u="$PELC_CI_USER" -p=$PELC_CI_PASSWORD quay.io
+    # TO avoid image accumulate, auto delete after 14 days
+    - quay_expiration="14d";
+    # https://docs.gitlab.com/ee/ci/docker/using_docker_build.html#docker-caching-example
+    # image tag 'latest' cache image is from local
+    - >
+      docker build --cache-from $CI_REGISTRY_IMAGE:latest 
+      --build-arg quay_expiration="$quay_expiration"
+      --tag $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA 
+      --tag $CI_REGISTRY_IMAGE:latest -f docker-ci/Dockerfile . ;
+    - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA;
 
-# ======== test-unit-style ========
-flake8-commit:
-  <<: *ci-image-commit
-  <<: *only-ci-image-commit
+
+
+# ======== static-analysis-build========
+flake8:
+  <<: *ci-image
   stage: static-analysis-build
   script:
     - tox -e flake8 --current-env
 
-flake8-latest:
-  <<: *ci-image-latest
-  <<: *only-ci-image-latest
-  stage: static-analysis-build
-  script:
-    - tox -e flake8 --current-env
 
-pylint-commit:
-  <<: *ci-image-commit
-  <<: *only-ci-image-commit
+pylint:
+  <<: *ci-image
   stage: static-analysis-build
   script:
     - tox -e pylint --current-env
 
-pylint-latest:
-  <<: *ci-image-latest
-  <<: *only-ci-image-latest
-  stage: static-analysis-build
-  script:
-    - tox -e pylint --current-env
-
-unit-tests-commit:
-  <<: *ci-image-commit
+# ======== tests-it-promote ========
+unit-tests:
+  <<: *ci-image
   <<: *postgresql
-  <<: *only-ci-image-commit
   stage: tests-it-promote
-# # Currently, no shared runner, comment these code
-#  artifacts:
-#    name: unit-tests-coverage
-#    paths:
-#    - .coverage.*
-#    expire_in: 30 days
   script:
     - tox -e unit --current-env
 
 
-unit-tests-latest:
-  <<: *ci-image-latest
-  <<: *postgresql
-  <<: *only-ci-image-latest
-  stage: tests-it-promote
-# # Currently, no shared runner, comment these code
-#  artifacts:
-#    name: unit-tests-coverage
-#    paths:
-#    - .coverage.*
-#    expire_in: 30 days
-  script:
-    - tox -e unit --current-env
+# ======== deploy-to-dev ========
 
-# ======== release-ci-image  ========
-release-ci-image:
-  <<: *ci-image-latest
-  variables:
-    PELC_PROJECT: "pelc2-dev"
+deploy-dev-instance:
+  tags:
+    - pelc-shell-runner
   only:
-    changes:
-      - ci-image/Dockerfile
-      - requirements/base.txt
-      - requirements/devel.txt
     refs:
       - main
-  stage: release-ci-image
+  stage: deploy-to-dev
   script:
-    - skopeo copy
-      --src-creds=$QUAY_USERNAME:$QUAY_TOKEN
-      --dest-creds=$QUAY_USERNAME:$QUAY_TOKEN
-      docker://quay.io/pelc/pelc2-ci:$CI_COMMIT_SHA
-      docker://quay.io/pelc/pelc2-ci:latest
+    - docker build --cache-from $PELC_IMAGE:dev
+      --build-arg quay_expiration='90d'
+      -t $PELC_IMAGE:dev
+      -f docker-pelc/Dockerfile . ;
+    - docker login -u="$PELC_CI_USER" -p=$PELC_CI_PASSWORD quay.io
+    - docker push $PELC_IMAGE:dev
+    # FIXME placeholder for future
+    - echo 'trigger ansible tower job'
