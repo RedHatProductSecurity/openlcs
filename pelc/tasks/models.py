@@ -35,7 +35,7 @@ class Task(models.Model):
     objects = TaskManager()
 
     def __str__(self):
-        return self.pk
+        return str(self.pk)
 
     class Meta:
         app_label = 'tasks'
