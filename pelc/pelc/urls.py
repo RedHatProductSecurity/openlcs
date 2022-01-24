@@ -20,14 +20,17 @@ from django.conf.urls import include
 from django.contrib import admin
 from django.urls import path
 from rest_framework.authtoken import views as token_views
-from rest_framework import routers
 
 from authentication import views as auth_views
 from packages import views as package_views
 from tasks import views as task_views
+from libs.router import HybridRouter
 
 
-router = routers.DefaultRouter()
+DRF_ROOT = os.path.join(settings.DRF_NAMESPACE, settings.DRF_API_VERSION)
+
+# Default router where ModelViewSet resides
+router = HybridRouter()
 router.register(r'auth', auth_views.TokenViewSet, basename='auth')
 router.register(r'files', package_views.FileViewSet, basename='files')
 router.register(r'sources', package_views.SourceViewSet, basename='sources')
@@ -35,14 +38,23 @@ router.register(r'paths', package_views.PathViewSet, basename='paths')
 router.register(r'packages', package_views.PackageViewSet, basename='packages')
 router.register(r'tasks', task_views.TaskViewSet, basename='tasks')
 
-DRF_ROOT = os.path.join(settings.DRF_NAMESPACE, settings.DRF_API_VERSION)
+# Router where APIView resides
+additional_router = HybridRouter()
+additional_router.add_api_view(r'manifest parser', path(
+    'manifest_parser/',
+    package_views.ManifestFileParserView.as_view(),
+    name='manifest_parser_view'))
+
+main_router = HybridRouter()
+main_router.register_router(router)
+main_router.register_router(additional_router)
 
 urlpatterns = [
     path(f'{DRF_ROOT}/obtain_token_local/',
          token_views.obtain_auth_token),
     path(f'{DRF_ROOT}/api-auth/',
          include('rest_framework.urls', namespace='rest_framework')),
-    path(f'{DRF_ROOT}/', include(router.urls)),
+    path(f'{DRF_ROOT}/', include(main_router.urls)),
 
     path('admin/', admin.site.urls),
     path(f'{DRF_ROOT}/packageimporttransaction/',
@@ -51,7 +63,4 @@ urlpatterns = [
     path(f'{DRF_ROOT}/check_duplicate_files/',
          package_views.CheckDuplicateFiles.as_view(),
          name='check_duplicate_files'),
-    path(f'{DRF_ROOT}/manifest_parser/',
-         package_views.ManifestFileParserView.as_view(),
-         name='manifest_parser_view'),
 ]
