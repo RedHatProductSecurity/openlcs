@@ -13,7 +13,8 @@ RUN cd /etc/pki/ca-trust/source/anchors/ && \
     curl -skO https://engineering.redhat.com/Eng-CA.crt && \
     update-ca-trust
 
-RUN dnf config-manager --add-repo http://tito.eng.nay.redhat.com/yum/redhat/pelc/qe/rhel8/noarch && \
+RUN dnf config-manager --add-repo http://tito.eng.nay.redhat.com/yum/redhat/pelc/qe/rhel8/noarch \
+    --add-repo http://tito.eng.nay.redhat.com/yum/redhat/pelc/qe/rhel8/noarch && \
     dnf install --nogpgcheck --nodoc -y  \
     cpio \
     atool && \

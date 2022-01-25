@@ -1,0 +1,81 @@
+version: "2.1"
+
+# This docker file is for developer debugging
+services:
+  postgresql:
+    image: quay.io/pelc/postgresql-12
+    environment:
+      POSTGRESQL_USER: 'pelc2'
+      POSTGRESQL_PASSWORD: 'redhat'
+      POSTGRESQL_DATABASE: 'pelc2'
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: quay.io/pelc/redis
+    healthcheck:
+      test: ["CMD", "redis-cli","ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  gunicorn:
+    # image build
+    image: local/pelc2
+    build: ../../
+    entrypoint: /opt/app-root/src/containers/docker-pelc/bin/entrypoint-gunicorn.sh
+    environment:
+      PELC_DATABASE_USER: 'pelc2'
+      PELC_DATABASE_PASSWORD: 'redhat'
+      PELC_DATABASE_HOST: 'postgresql'
+      PELC_HOSTNAME: 'gunicorn'
+      CELERY_BROKER_URL: 'redis://redis:6379/0'
+    ports:
+      - "8000:8000"
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgresql:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD-SHELL", "curl http://localhost:8000 > /dev/null || exit 1" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  worker:
+    image: local/pelc2
+    build: ../../
+    entrypoint: /opt/app-root/src/containers/docker-pelc/bin/entrypoint-worker.sh
+    healthcheck:
+      test: [ "CMD-SHELL", "celery -A pelcd inspect ping | grep OK" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    environment:
+      CELERY_BROKEN_URL: 'redis://redis:6379/0'
+      CELERY_RESULT_BACKEND: 'db+postgresql://pelc2:redhat@postgresql/pelc2'
+    depends_on:
+      gunicorn:
+        condition: service_healthy
+
+  nginx:
+    image: quay.io/pelc/nginx
+    volumes:
+      - "./nginx.conf:/etc/nginx/nginx.conf:ro"
+    command: 'nginx -g "daemon off;"'
+    ports:
+      - "80:80"
+    healthcheck:
+      test: [ "CMD-SHELL", "curl http://localhost > /dev/null || exit 1" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      gunicorn:
+        condition: service_healthy
+      worker:
+        condition: service_healthy

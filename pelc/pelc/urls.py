@@ -64,3 +64,9 @@ urlpatterns = [
          package_views.CheckDuplicateFiles.as_view(),
          name='check_duplicate_files'),
 ]
+
+if settings.DEBUG:
+    # To load static files in django , added this part
+    # https://docs.djangoproject.com/en/3.2/ref/contrib/staticfiles/
+    from django.contrib.staticfiles.urls import staticfiles_urlpatterns
+    urlpatterns += staticfiles_urlpatterns()

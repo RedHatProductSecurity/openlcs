@@ -1,9 +1,12 @@
+import os
 # celery broker settings
-broker_url = 'redis://localhost:6379/0'
+broker_url = os.environ.get('CELERY_BROKEN_URL',
+                            'redis://localhost:6379/0')
 
 # Access hub database from the worker nodes.
 # Tasks state / result will be stored in below db.
-result_backend = 'db+postgresql://pelc2:redhat@127.0.0.1/pelc2'
+result_backend = os.environ.get('CELERY_RESULT_BACKEND',
+                                'db+postgresql://pelc2:redhat@127.0.0.1/pelc2')
 
 task_serializer = 'json'
 accept_content = ['json']

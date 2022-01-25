@@ -87,9 +87,9 @@ using `workon pelc2`.
 
 ### Running PELC2 web interface
 PELC2 web interface can be started for local development (built-in server with
-auto reloading) using the following:
+auto reloading) using the following under pelc_project_path:
 ```shell
-pelc2/manage.py runserver
+gunicorn pelc.wsgi
 ```
 
 It can be accessed on http://localhost:8000/. You can log in by going to

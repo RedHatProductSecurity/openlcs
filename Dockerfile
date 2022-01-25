@@ -11,7 +11,9 @@ LABEL name="pelc2" \
 
 USER 0
 
-RUN dnf install --nogpgcheck --nodoc -y  \
+RUN dnf config-manager --add-repo http://tito.eng.nay.redhat.com/yum/redhat/pelc/qe/rhel8/noarch \
+    --add-repo http://download.eng.bos.redhat.com/brewroot/repos/brew-rhel-8/latest/x86_64/ && \
+    dnf install --nogpgcheck --nodoc -y  \
     cpio && \
     dnf clean all
 
@@ -21,18 +23,11 @@ RUN cd /etc/pki/ca-trust/source/anchors/ && \
     update-ca-trust
 
 # Install the dependencies
-RUN pip install --upgrade 'pip==21.3.1'
+RUN pip install --upgrade 'pip'
 
 # To make docker could cache pip package, copy requirement firstly
 COPY ./requirements /tmp
 RUN pip install -r /tmp/base.txt
-
-# Ordinary users
-USER 1001
-
-
-# Set the default command for the resulting image
-CMD exec gunicorn "pelc.wsgi"
 
 # To avoid docker cache invaild , put these code in the last part
 ARG quay_expiration
@@ -42,3 +37,14 @@ ENV HOME=/opt/app-root/src
 ENV PYTHONUNBUFFERED 1
 
 COPY . /opt/app-root/src
+RUN mkdir -p /var/pelc/static /var/log/pelc/ /var/cache/ && \
+    chmod a+rwX -R /var/log/pelc/ /var/cache/ /var/pelc/static  ${HOME}  /etc/passwd
+
+RUN chmod a+x -R ${HOME}/containers/docker-pelc/bin/*
+
+# Ordinary users
+USER 1001
+
+
+# Set the default command for the resulting image
+CMD exec gunicorn "pelc.wsgi"

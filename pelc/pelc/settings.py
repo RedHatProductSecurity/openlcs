@@ -23,7 +23,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-8c4w#_a7k&1^!#+af%unwddrcc0=og^j7k@n*gjxm$^8b#tzdm'  # noqa
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+# This value will be overwritten in production configuration
+DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
@@ -89,7 +90,7 @@ DATABASES = {
         'NAME': 'pelc2',
         'USER': os.environ.get('PELC_DATABASE_USER', 'pelc2'),
         'PASSWORD': os.environ.get('PELC_DATABASE_PASSWORD', ''),
-        'HOST': '127.0.0.1',
+        'HOST': os.environ.get('PELC_DATABASE_HOST', '127.0.0.1'),
         'PORT': '5432',
     }
 }
@@ -143,7 +144,8 @@ STATICFILES_DIRS = (
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # celery broker settings
-CELERY_BROKER_URL = 'redis://localhost:6379/0'
+CELERY_BROKER_URL = os.environ.get('CELERY_BROKEN_URL',
+                                   'redis://localhost:6379/0')
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
@@ -163,7 +165,7 @@ DRF_NAMESPACE = 'rest'
 DRF_API_VERSION = 'v1'
 
 # Update the HOSTNAME to that of the running server
-HOSTNAME = '127.0.0.1:8000'
+HOSTNAME = os.environ.get("HOSTNAME", '127.0.0.1:8000')
 BROWSABLE_DOCUMENT_MACROS = {
     'HOST_NAME': 'http://%s' % (HOSTNAME),
     'API_PATH': '%s/%s' % (DRF_NAMESPACE, DRF_API_VERSION),
