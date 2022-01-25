@@ -26,49 +26,67 @@ class BrewConnector:
         self._timeout = cache_timeout
         self._cache_build = {}
 
+    def get_maven_build(self, build_info, strict=False):
+        """
+        Retrieve Maven-specific information about a build.
+        buildInfo can be either a string (n-v-r) or an integer
+        (build ID).
+        Returns a map containing the following keys:
+
+        build_id: id of the build (integer)
+        group_id: Maven groupId (string)
+        artifact_id: Maven artifact_Id (string)
+        version: Maven version (string)
+        """
+        return self._service.getMavenBuild(build_info, strict)
+
     def download_build_source(self, build_id, dest_dir):
         """
         Download srpm/source archive for build to destination.
         """
+        url = ""
         source = self.get_build_source(build_id)
-        if source.get('scm') == 'git':
-            tmp_clone = tempfile.mkdtemp(prefix='pelc-clone-', dir='/var/tmp')
+        scm = source.get('scm')
+        if scm and scm == 'git':
+            tmp_clone = tempfile.mkdtemp(prefix='pelc_clone_', dir='/var/tmp')
             try:
                 # Full clone is needed to match koji's behavior.
                 # git archive --remote won't work, as it doesn't accept
                 # commit SHAs
                 try:
-                    subprocess.check_call(
-                        ['git', 'clone', '-n', source['url'], tmp_clone]
-                    )
-                except subprocess.CalledProcessError:
-                    raise RuntimeError(
-                        "Cloning git repository failed"
-                    ) from None
+                    cmd = ['git', 'clone', '-n', source['url'], tmp_clone]
+                    subprocess.check_call(cmd, shell=False)
+                except subprocess.CalledProcessError as err:
+                    err_msg = f'Failed to clone git repository. Reason: {err}'
+                    raise RuntimeError(err_msg) from None
                 git_src_file = os.path.join(dest_dir, 'git-src.tar')
                 with open(git_src_file, 'w', encoding='utf8') as out:
                     module = source.get('module')
-                    module_arg = [module] if module else []
+                    cmd = ['git', 'archive', source['rev']]
+                    if module:
+                        cmd.append(module)
                     try:
-                        subprocess.check_call(
-                            ['git', 'archive', source['rev']] + module_arg,
-                            stdout=out, cwd=tmp_clone,
-                        )
-                    except subprocess.CalledProcessError:
-                        raise RuntimeError(
-                            "Failed to create source archive from git"
-                        ) from None
+                        subprocess.check_call(cmd, shell=False, stdout=out,
+                                              cwd=tmp_clone)
+                    except subprocess.CalledProcessError as err:
+                        err_msg = f'Failed to create source archive from ' \
+                                  f'git. Reason: {err}'
+                        raise RuntimeError(err_msg) from None
             finally:
                 shutil.rmtree(tmp_clone, ignore_errors=True)
-            return 0, ''
-
-        if 'src' not in source:
-            return
-
-        file_path = self._get_pathinfo(build_id, source)
-        url = self._format_url(file_path)
-        rc, output = run(f'wget {url}', can_fail=True, workdir=dest_dir)
-        return rc, output
+            return source.get('url')
+        elif 'src' in source:
+            source_path = self._get_pathinfo(build_id, source)
+            url = self._format_url(source_path)
+            cmd = ['wget', url]
+            try:
+                subprocess.check_call(cmd, shell=False, cwd=dest_dir)
+            except subprocess.CalledProcessError as err:
+                err_msg = f'Failed to download build source. Reason: {err}'
+                raise RuntimeError(err_msg) from None
+            return url
+        else:
+            raise RuntimeError('Failed to find build source.')
 
     def _format_url(self, pathinfo):
         """
@@ -114,6 +132,34 @@ class BrewConnector:
 
     def _get_cached_build(self, build_id):
         return self._get_cached('_cache_build', build_id, 'getBuild')
+
+    def get_pom_pathinfo(self, build_id):
+        """
+        Shortcut to get pom file pathinfo for maven builds.
+        "get_build_source" is highly coupled thus I'd rather have a shortcut
+        instead of reusing the exising get_build_source.
+        """
+        build = self._get_cached_build(build_id)
+        if 'maven' not in self.get_build_type(build):
+            raise ValueError("Not a maven build.")
+        else:
+            source = {}
+            maven_build = self.get_maven_build(build_info=build_id)
+            artifact_id = maven_build.get('artifact_id')
+            version = maven_build.get('version')
+            # all maven builds in brew get one non-nullable 'xxx.pom' file,
+            # where 'xxx' follows the convention of 'artifactId-version'.
+            # artifactId/version can be retrieved from `get_maven_build`.
+            pom_filename = "-".join([artifact_id, version]) + ".pom"
+            archives = self._service.listArchives(
+                build_id, type='maven', filename=pom_filename)
+            if archives:
+                source.update({'src': archives[0]})
+                source.update({'type': 'maven'})
+                return self._get_pathinfo(build_id, source)
+            # method valid only for maven builds
+            else:
+                raise ValueError("pom file %s not found." % pom_filename)
 
     def get_build_source(self, build_id):
         """
@@ -170,6 +216,15 @@ class BrewConnector:
                     source['module'] = source_url.query
         return source
 
+    def get_build_type(self, build_info):
+        """
+        Return build for package-nvr.
+        """
+        if build_info.get('build_type') == 'rpm':
+            return 'rpm'
+        else:
+            return self._service.getBuildType(build_info)
+
     def get_build(self, build_info):
         """
         Return information about a build.
@@ -178,3 +233,11 @@ class BrewConnector:
         'name', 'version' and 'release.
         """
         return self._service.getBuild(build_info)
+
+    def download_pom(self, file_path, dest_dir):
+        """
+        Download xxx.pom file for maven build, to destination dir.
+        """
+        url = self._format_url(file_path)
+        rc, output = run('wget %s' % url, can_fail=True, workdir=dest_dir)
+        return rc, output

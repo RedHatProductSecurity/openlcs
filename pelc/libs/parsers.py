@@ -1,3 +1,4 @@
+import hashlib
 import os
 import json
 from jsonschema import validate
@@ -69,3 +70,22 @@ def parse_manifest_file(fp):
         raise RuntimeError(e.message) from e
     else:
         return manifest_json['release']
+
+
+def sha256sum(path, block_size=65536):
+    """
+    Counts checksum of file given by path
+
+    :param str path: path to file
+    :param int block_size: maximal length in bits read in one iteration
+    :return: Returns checks sum of given file
+    :rtype: str
+    """
+    checksum = hashlib.sha256()
+    with open(path, 'rb') as f:
+        chunk = f.read(block_size)
+        while chunk:
+            checksum.update(chunk)
+            chunk = f.read(block_size)
+
+    return checksum.hexdigest()

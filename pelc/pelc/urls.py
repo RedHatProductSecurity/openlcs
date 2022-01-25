@@ -26,6 +26,7 @@ from packages import views as package_views
 from tasks import views as task_views
 from libs.router import HybridRouter
 
+from utils.views import ObtainConfigView
 
 DRF_ROOT = os.path.join(settings.DRF_NAMESPACE, settings.DRF_API_VERSION)
 
@@ -55,7 +56,6 @@ urlpatterns = [
     path(f'{DRF_ROOT}/api-auth/',
          include('rest_framework.urls', namespace='rest_framework')),
     path(f'{DRF_ROOT}/', include(main_router.urls)),
-
     path('admin/', admin.site.urls),
     path(f'{DRF_ROOT}/packageimporttransaction/',
          package_views.PackageImportTransactionView.as_view(),
@@ -63,6 +63,11 @@ urlpatterns = [
     path(f'{DRF_ROOT}/check_duplicate_files/',
          package_views.CheckDuplicateFiles.as_view(),
          name='check_duplicate_files'),
+    path(f'{DRF_ROOT}/check_duplicate_source/',
+         package_views.CheckDuplicateSource.as_view(),
+         name='check_duplicate_source'),
+    path(f'{DRF_ROOT}/obtain_config/',
+         ObtainConfigView.as_view(), name='obtain_config'),
 ]
 
 if settings.DEBUG:

@@ -12,11 +12,12 @@ class TestDeduplicateSource(TestCase):
 
     def setUp(self) -> None:
         # Create temp unpack path for deduplicate.
-        self.unpack_source_dir_path = tempfile.mkdtemp()
+        self.src_dest_dir = tempfile.mkdtemp()
         self.context = {
-            "unpack_source_dir_path": self.unpack_source_dir_path
+            "src_dest_dir": self.src_dest_dir,
+            "source_info": {}
         }
-        self.engine = {}
+        self.engine = mock.Mock()
 
         # Create temp unpack data for deduplicate.
         # Create three files, the fist one is duplicate files, the second
@@ -26,32 +27,32 @@ class TestDeduplicateSource(TestCase):
         for i in range(3):
             if i < 2:
                 fd, tmp_file = tempfile.mkstemp(
-                    dir=self.unpack_source_dir_path)
+                    dir=self.src_dest_dir)
                 with open(fd, 'w', encoding="utf-8") as f:
                     f.write(f"This is a test content {i} for duplicate")
                 if i == 1:
                     src_file = tmp_file
                 paths.append(
-                    os.path.join(self.unpack_source_dir_path, tmp_file))
+                    os.path.join(self.src_dest_dir, tmp_file))
             else:
-                tmp_file = tempfile.mktemp(dir=self.unpack_source_dir_path)
+                tmp_file = tempfile.mktemp(dir=self.src_dest_dir)
                 os.symlink(src_file, tmp_file)
         self.paths = paths
 
-    @mock.patch.object(tasks, 'check_duplicate_files')
-    def test_deduplicate_source(self, mock_check_duplicate_files):
+    @mock.patch.object(tasks, 'get_data_using_post')
+    def test_deduplicate_source(self, mock_get_data_using_post):
         swhid_dict = {"existing_swhids": [
             "swh:1:cnt:c0de67c68fac3a78be782a7197f4072d8f2c8668"]}
-        mock_check_duplicate_files.return_value = swhid_dict
+        mock_get_data_using_post.return_value = swhid_dict
         tasks.deduplicate_source(self.context, self.engine)
 
         # swhids only contain not duplicate swhids
-        assert self.context.get('swhids') == [
+        assert self.context['source_info']['swhids'] == [
             "swh:1:cnt:cc81ecacefe341bcb52cde42a7cd4a8f82058862"
         ]
 
         # paths contain all paths object except soft link.
-        assert self.context.get('paths') == [
+        assert self.context['source_info']['paths'] == [
             {
                 "file": "swh:1:cnt:c0de67c68fac3a78be782a7197f4072d8f2c8668",
                 "path": self.paths[0]
@@ -63,4 +64,4 @@ class TestDeduplicateSource(TestCase):
         ]
 
     def tearDown(self) -> None:
-        shutil.rmtree(self.unpack_source_dir_path)
+        shutil.rmtree(self.src_dest_dir)

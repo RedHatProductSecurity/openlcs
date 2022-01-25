@@ -202,6 +202,22 @@ CREATE_PATHS_RAND = True
 CREATE_PATHS_MAX_RETRIES = 5
 CREATE_PATHS_MAX_WAIT_INTERVAL = 10
 
+# Directory where the source code will be hosted. Note that
+# appropriate permission(r+w) / secontext is needed.
+SRC_ROOT_DIR = '/srv/git/repos/pelc'
+
+# The root directory for package source tarball for package import retry
+RETRY_DIR = os.path.join(SRC_ROOT_DIR, 'retry')
+
+# The root directory for temporary package source tarball for package import
+TMP_ROOT_DIR = os.path.join(SRC_ROOT_DIR, 'tmp')
+
+# The root directory for post/adhoc post data file for package import
+POST_DIR = os.path.join(SRC_ROOT_DIR, 'post')
+
+# 'orphan' category will be used if product release is not specified
+ORPHAN_CATEGORY = 'orphan'
+
 try:
     # pylint:disable=wildcard-import,unused-wildcard-import
     from .settings_local import *  # noqa

@@ -1,5 +1,13 @@
 import tempfile
-from libs.brewconn import BrewConnector
+import os
+import sys
+
+# Fix absolute import issue in pelc and pelcd.
+# Import package workflow will use, test case in lib also use it.
+pelc_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if pelc_dir not in sys.path:
+    sys.path.append(pelc_dir)
+from libs.brewconn import BrewConnector  # noqa: E402
 
 
 class BrewBuild:
@@ -53,13 +61,12 @@ class BrewBuild:
         Download package build source from Brew.
         """
         temp_dir = tempfile.mkdtemp(prefix='download_')
-        result = self.brew_conn.download_build_source(
-            build.get('id'), dest_dir=temp_dir)
-        if not result:
-            nvr = build.get('nvr')
-            raise RuntimeError(f'Cannot find source for {nvr} in Brew.')
-        elif result and result[0] != 0:
-            raise RuntimeError(result[1])
+        try:
+            self.brew_conn.download_build_source(build.get('id'),
+                                                 dest_dir=temp_dir)
+        except RuntimeError as err:
+            err_msg = f'Failed to download source. Reason: {err}'
+            raise RuntimeError(err_msg) from None
         return temp_dir
 
     def list_build_tags(self, build):

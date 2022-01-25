@@ -7,7 +7,6 @@ import warnings
 from unittest import TestCase
 from kobo.shortcuts import run
 from django.conf import settings
-
 from libs.unpack import UnpackArchive
 from libs.download import BrewBuild
 from libs.parsers import parse_manifest_file

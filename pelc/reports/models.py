@@ -39,7 +39,7 @@ class LicenseDetection(models.Model):
     )
     detector = models.CharField(
         max_length=32,
-        help_text='License detecor with version detail'
+        help_text='License detector with version detail'
     )
 
     class Meta:

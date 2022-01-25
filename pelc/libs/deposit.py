@@ -46,32 +46,27 @@ class UploadToDeposit:
         Library for upload archive to deposit
         """
         # https://docs.softwareheritage.org/devel/swh-deposit/api/user-manual.html
-        upload_deposit_cmd = 'swh deposit upload --username {username} ' \
-                             '--password {password} ' \
-                             '--url {url} ' \
-                             '--archive {archive} ' \
-                             '--name {name} ' \
-                             '--author pelc-dev ' \
-                             '--format json '.format(
-                                username=self._upload_username,
-                                password=self._upload_password,
-                                url=self._upload_url,
-                                archive=tmp_archive_path,
-                                name=archive_name)
-        proc = subprocess.Popen(upload_deposit_cmd,
-                                shell=True,
-                                stdout=subprocess.PIPE,
+        cmd = f'swh deposit upload ' \
+              f'--username {self._upload_username} ' \
+              f'--password {self._upload_password} ' \
+              f'--url {self._upload_url} ' \
+              f'--archive {tmp_archive_path} ' \
+              f'--name {archive_name} ' \
+              f'--author pelc-dev ' \
+              f'--format json'
+        proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE)
         ret_output, error = proc.communicate()
-        err_msg = error.decode('utf-8')
-        ret_output = ret_output.decode('utf-8')
-        # Ignore this warning message
-        ignore_msg = 'WARNING:swh.deposit.cli.client:The metadata ' \
-                     ' file provided should contain ' \
-                     '"<swh:create_origin>" or "<swh:add_to_origin>" tag'
-        if err_msg.strip() != ignore_msg:
-            raise RuntimeError("Upload archive to deposit failed")
-        return ret_output
+        ret_code = proc.poll()
+        if ret_code:
+            err_msg = error.decode('utf-8')
+            # Ignore this warning message
+            ignore_msg = 'WARNING:swh.deposit.cli.client:The metadata ' \
+                         ' file provided should contain ' \
+                         '"<swh:create_origin>" or "<swh:add_to_origin>" tag'
+            if err_msg.rstrip() != ignore_msg:
+                raise RuntimeError(cmd, ret_code, err_msg)
+        return ret_output.decode('utf-8')
 
     def check_deposit_archive_status(self, deposit_id):
         """
@@ -88,19 +83,16 @@ class UploadToDeposit:
                 raise TimeoutError("Upload timeout")
 
             # https://docs.softwareheritage.org/devel/swh-deposit/endpoints/status.html
-            retrieve_url = os.path.join(self._upload_url,
-                                        self._upload_username,
-                                        deposit_id,
-                                        'status')
-            res = requests.get(retrieve_url, auth=(self._upload_username,
-                                                   self._upload_password))
+            retrieve_url = os.path.join(
+                self._upload_url,  self._upload_username, deposit_id, 'status')
+            res = requests.get(retrieve_url, auth=(
+                self._upload_username, self._upload_password))
             # Deposit return example:
             # https://docs.softwareheritage.org/devel/swh-deposit/endpoints/status.html
             DOMTree = xml.dom.minidom.parseString(res.text)
             collection = DOMTree.documentElement
-            deposit_status = collection.\
-                getElementsByTagName("sd:deposit_status")[0].\
-                childNodes[0].data
+            deposit_status = collection.getElementsByTagName(
+                "sd:deposit_status")[0].childNodes[0].data
             if deposit_status == "done":
                 return deposit_status
 

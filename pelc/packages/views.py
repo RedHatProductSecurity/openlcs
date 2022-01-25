@@ -788,7 +788,8 @@ class PackageImportTransactionView(APIView, PackageImportTransactionMixin):
                 status=status.HTTP_400_BAD_REQUEST)
         try:
             with transaction.atomic():
-                self.create_files(swhids)
+                if swhids:
+                    self.create_files(swhids)
                 _, created = Source.objects.get_or_create(**source)
                 # If source not exist in database, that's mean the paths
                 # is not exist, bulk created them directly.
@@ -810,14 +811,26 @@ class CheckDuplicateFiles(APIView):
     """
     Check duplicate files, so that we can skip scan step for these files.
     """
-    def get(self, request, *args, **kwargs):
-        swhids = request.query_params.get('swhids')
+    def post(self, request, *args, **kwargs):
+        swhids = request.data.get('swhids')
         if swhids:
             existing_swhids = File.objects.in_bulk(id_list=list(swhids),
                                                    field_name='swhid').keys()
             return Response(data={"existing_swhids": existing_swhids})
         else:
             return Response(data={"existing_swhids": None})
+
+
+class CheckDuplicateSource(APIView):
+    """
+    Check duplicate source, so that we can skip "upload_archive_to_deposit".
+    """
+    def post(self, request, *args, **kwargs):
+        checksum = request.data.get('checksum')
+        if checksum:
+            if Source.objects.filter(checksum=checksum).exists():
+                return Response(data={"source_exist": True})
+        return Response(data={"source_exist": False})
 
 
 class ManifestFileParserView(APIView):
