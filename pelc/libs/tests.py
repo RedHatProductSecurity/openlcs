@@ -5,7 +5,6 @@ import shutil
 import tempfile
 import warnings
 from unittest import TestCase
-# from unittest import skip
 from kobo.shortcuts import run
 from django.conf import settings
 
@@ -14,7 +13,6 @@ from libs.download import BrewBuild
 from libs.parsers import parse_manifest_file
 
 
-# @skip("Skip temporarily due to PVLEGAL-1905")
 class TestUnpack(TestCase):
 
     @classmethod
@@ -61,16 +59,13 @@ class TestUnpack(TestCase):
         cmd = f'wget {archive_url}'
         run(cmd, stdout=False, can_fail=True, workdir=tmp_dir)
         src_filepath = os.path.join(tmp_dir, archive_name)
-        print(src_filepath)
         ua = UnpackArchive(
             config=TestUnpack.config,
             src_file=src_filepath,
             dest_dir=tmp_dir)
-        errors = ua.unpack_archives_using_extractcode(tmp_dir)
-        print(errors)
+        ua.unpack_archives_using_extractcode(tmp_dir)
 
         unpacked_sources = os.listdir(tmp_dir)
-        print(unpacked_sources)
         self.assertEqual(len(unpacked_sources), 1)
         is_replaced = os.path.isdir(src_filepath)
         self.assertTrue(is_replaced)
@@ -86,16 +81,13 @@ class TestUnpack(TestCase):
         cmd = f'wget {archive_url}'
         run(cmd, stdout=False, can_fail=True, workdir=tmp_dir)
         src_filepath = os.path.join(tmp_dir, archive_name)
-        print(src_filepath)
         ua = UnpackArchive(
             config=TestUnpack.config,
             src_file=src_filepath,
             dest_dir=tmp_dir)
-        errors = ua.unpack_archives_using_atool(tmp_dir, top_dir=True)
-        print(errors)
+        ua.unpack_archives_using_atool(tmp_dir, top_dir=True)
 
         unpacked_sources = os.listdir(tmp_dir)
-        print(unpacked_sources)
         self.assertEqual(len(unpacked_sources), 1)
         is_replaced = os.path.isdir(src_filepath)
         self.assertTrue(is_replaced)
