@@ -13,8 +13,8 @@ RUN cd /etc/pki/ca-trust/source/anchors/ && \
     curl -skO https://engineering.redhat.com/Eng-CA.crt && \
     update-ca-trust
 
-ADD ./containers/repos/pelc.repo /etc/yum.repos.d/
-RUN dnf install --nogpgcheck --nodoc -y  \
+RUN dnf config-manager --add-repo http://tito.eng.nay.redhat.com/yum/redhat/pelc/qe/rhel8/noarch && \
+    dnf install --nogpgcheck --nodoc -y  \
     cpio \
     atool && \
     dnf clean all
@@ -22,7 +22,7 @@ RUN dnf install --nogpgcheck --nodoc -y  \
 # This download url is from currently ocp cluster console
 RUN curl -k  https://downloads-openshift-console.apps.ocp-c1.prod.psi.redhat.com/amd64/linux/oc.tar | tar xf - -C /usr/local/bin/
 
-COPY ./requirements /tmp
+ADD ./requirements /tmp
 RUN pip install --upgrade pip && pip install -r /tmp/devel.txt
 
 ADD ./containers/patches/magic2.patch /opt/app-root/lib64/python3.8/site-packages/typecode
