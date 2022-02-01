@@ -13,21 +13,19 @@ RUN cd /etc/pki/ca-trust/source/anchors/ && \
     curl -skO https://engineering.redhat.com/Eng-CA.crt && \
     update-ca-trust
 
-ADD pelc.repo /etc/yum.repos.d/
+ADD ./containers/repos/pelc.repo /etc/yum.repos.d/
 RUN dnf install --nogpgcheck --nodoc -y  \
     cpio \
     atool && \
     dnf clean all
 
-RUN pip install --upgrade 'pip==21.3.1'
-
 # This download url is from currently ocp cluster console
 RUN curl -k  https://downloads-openshift-console.apps.ocp-c1.prod.psi.redhat.com/amd64/linux/oc.tar | tar xf - -C /usr/local/bin/
 
 COPY ./requirements /tmp
-RUN pip install -r /tmp/devel.txt
+RUN pip install --upgrade pip && pip install -r /tmp/devel.txt
 
-ADD ./patches/magic2.patch /opt/app-root/lib64/python3.8/site-packages/typecode
+ADD ./containers/patches/magic2.patch /opt/app-root/lib64/python3.8/site-packages/typecode
 RUN cd /opt/app-root/lib64/python3.8/site-packages/typecode && patch < magic2.patch
 
 # Link the site-packages to correct location, so that tox can find it when use current-env plugin

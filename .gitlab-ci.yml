@@ -13,7 +13,6 @@ stages:
 
   - deploy-to-dev
 
-
 variables:
   PELC_DATABASE_USER: postgres
   PELC_DATABASE_PASSWORD: test
@@ -35,7 +34,6 @@ variables:
   services:
     - 'quay.io/pelc/postgresql-12'
 
-
 # ======== build-docker-ci  ========
 # Image build will always be triggered, and will read cache from latest tag image
 build-ci-image:
@@ -46,20 +44,18 @@ build-ci-image:
     - docker login -u="$PELC_CI_USER" -p=$PELC_CI_PASSWORD quay.io
     # https://docs.gitlab.com/ee/ci/docker/using_docker_build.html#docker-caching-example
     # build and get local image sha id
-    - LOCAL_IMAGE_SHA=`docker build  -q -f docker-ci/Dockerfile .`;
+    - LOCAL_IMAGE_SHA=`docker build  -q -f containers/docker-ci/Dockerfile .`;
     - REMOTE_IMAGE_SHA=`skopeo inspect --format {{.Digest}} docker://$CI_REGISTRY_IMAGE:latest 2> /dev/null`
     # If remote latest tag is not equal to current then
     # push current image to latest
     - >
         if [ $LOCAL_IMAGE_SHA = $REMOTE_IMAGE_SHA ]; then
-          echo "Existing same image,nothing to do";
+          echo "Existing same image, nothing to do";
         else
-          echo "replace latest image"
+          echo "Replace latest image"
           docker tag $LOCAL_IMAGE_SHA $CI_REGISTRY_IMAGE:latest;
           docker push $CI_REGISTRY_IMAGE:latest;
         fi
-
-
 
 # ======== static-analysis-build========
 flake8:
@@ -71,7 +67,6 @@ flake8:
         exit 0;
       fi
     - tox -e flake8 --current-env
-
 
 pylint:
   <<: *ci-image
@@ -95,9 +90,7 @@ unit-tests:
       fi
     - tox -e unit --current-env
 
-
 # ======== deploy-to-dev ========
-
 deploy-dev-instance:
   tags:
     - pelc-shell-runner

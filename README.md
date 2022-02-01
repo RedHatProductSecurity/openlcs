@@ -72,6 +72,14 @@ ln -snf /pelc_project_path/pelcd
 pelc/manage.py migrate --noinput
 # Create admin account, use name `admin` and password `test`
 pelc/manage.py createsuperuser
+
+# Install atool
+sudo cp containers/repos/pelc.repo /etc/yum.repos.d/
+sudo dnf install atool
+
+# Install extractcode patch
+cd $VIRTUAL_ENV/lib/python3.8/site-packages/typecode
+patch < /pelc_project_path/containers/patches/magic2.patch
 ```
 
 Virtualenv note: When opening a new shell, you need to activate the virtualenv
@@ -80,7 +88,7 @@ using `workon pelc2`.
 ### Running PELC2 web interface
 PELC2 web interface can be started for local development (built-in server with
 auto reloading) using the following:
-```bash
+```shell
 pelc2/manage.py runserver
 ```
 
@@ -91,7 +99,7 @@ the previous section (user `admin`, password `test`).
 ### Running PELC2 worker
 PELC2 worker can be started using the following (from the top directory of 
 the repo):
-```bash
+```shell
 celery -A pelcd worker --loglevel=INFO
 # If you want to debug using celery log, use:
 celery -A pelcd worker --loglevel=DEBUG
