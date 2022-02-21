@@ -14,7 +14,7 @@ RUN cd /etc/pki/ca-trust/source/anchors/ && \
     update-ca-trust
 
 RUN dnf config-manager --add-repo http://tito.eng.nay.redhat.com/yum/redhat/pelc/qe/rhel8/noarch \
-    --add-repo http://tito.eng.nay.redhat.com/yum/redhat/pelc/qe/rhel8/noarch && \
+    --add-repo http://download.eng.bos.redhat.com/brewroot/repos/brew-rhel-8/latest/x86_64/ && \
     dnf install --nogpgcheck --nodoc -y  \
     cpio \
     atool && \

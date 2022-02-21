@@ -11,23 +11,24 @@ LABEL name="pelc2" \
 
 USER 0
 
-RUN dnf config-manager --add-repo http://tito.eng.nay.redhat.com/yum/redhat/pelc/qe/rhel8/noarch \
-    --add-repo http://download.eng.bos.redhat.com/brewroot/repos/brew-rhel-8/latest/x86_64/ && \
-    dnf install --nogpgcheck --nodoc -y  \
-    cpio && \
-    dnf clean all
-
 RUN cd /etc/pki/ca-trust/source/anchors/ && \
     curl -skO https://password.corp.redhat.com/RH-IT-Root-CA.crt && \
     curl -skO https://engineering.redhat.com/Eng-CA.crt && \
     update-ca-trust
 
-# Install the dependencies
-RUN pip install --upgrade 'pip'
+RUN dnf config-manager --add-repo http://tito.eng.nay.redhat.com/yum/redhat/pelc/qe/rhel8/noarch \
+    --add-repo http://download.eng.bos.redhat.com/brewroot/repos/brew-rhel-8/latest/x86_64/ && \
+    dnf install --nogpgcheck --nodoc -y  \
+    cpio && \
+    atool && \
+    dnf clean all
 
-# To make docker could cache pip package, copy requirement firstly
-COPY ./requirements /tmp
-RUN pip install -r /tmp/base.txt
+# To make docker cache pip package, copy requirement and install dependencies
+ADD ./requirements /tmp
+RUN pip install --upgrade pip && pip install -r /tmp/base.txt
+
+ADD ./containers/patches/magic2.patch /opt/app-root/lib64/python3.8/site-packages/typecode
+RUN cd /opt/app-root/lib64/python3.8/site-packages/typecode && patch < magic2.patch
 
 # To avoid docker cache invaild , put these code in the last part
 ARG quay_expiration
@@ -44,7 +45,6 @@ RUN chmod a+x -R ${HOME}/containers/docker-pelc/bin/*
 
 # Ordinary users
 USER 1001
-
 
 # Set the default command for the resulting image
 CMD exec gunicorn "pelc.wsgi"

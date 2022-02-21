@@ -1,7 +1,7 @@
 # How to update CI docker image
 
 ## Copy Dockerfile
-Ｃopy the latest Dockerfile to docker environment.
+Copy the latest Dockerfile to docker environment.
 
 ## Create local CI docker image
 ```shell

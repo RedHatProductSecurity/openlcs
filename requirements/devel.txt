@@ -7,4 +7,5 @@ pytest==6.2.5
 tox==3.24.4
 libmagic==1.0
 coverage==6.2
-tox-current-env==0.0.6 # To avoid duplicate install dependencies
+# To avoid duplicate install dependencies
+tox-current-env==0.0.6

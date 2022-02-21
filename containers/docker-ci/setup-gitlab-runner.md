@@ -1,6 +1,6 @@
 ## Gitlab runner service
 
-### Currently, PELC have two gitlab runner services
+### Currently, PELC has two gitlab runner services
 Create fedora instances in openstack, recommend size is 8core 16G ram 100G disk 
 1) 10.0.209.60  gitlab shell runner which is used for build image jobs
 2) 10.0.209.220 gitlab docker runner which is used for run jobs
@@ -144,4 +144,4 @@ echo "* * */15 * * docker image prune -a -f" >> /etc/crontab
 ```
 
 ### Hint:
-Use different " Docker setting" and "Gitlab runner setting" when using different system with different gitlab runner.
+Use different "Docker setting" and "Gitlab runner setting" on different systems with different gitlab runners.
