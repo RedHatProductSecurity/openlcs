@@ -503,7 +503,6 @@ flow_default = [
     get_build,
     download_source,
     unpack_source,
-    deduplicate_source,
     # If add the split large archive function
     # please check task PVLEGAL-1840
     # split_source,
@@ -512,6 +511,7 @@ flow_default = [
     # consuming, we don't have an agreement yet whether they should
     # be run one after another or in parallel.
     upload_archive_to_deposit,
+    deduplicate_source,
     send_package_data,
     IF(
         lambda o, e: o.get('license_scan'),
