@@ -11,9 +11,12 @@ stages:
   # Deploy master branch to pelc-dev
   - tests-it-promote
 
-#  - deploy-to-dev
+  - build-dev-image
+
+  - deploy-to-dev
 
 variables:
+  TOWER_HOST: https://tower.engineering.redhat.com
   PELC_DATABASE_USER: postgres
   PELC_DATABASE_PASSWORD: test
   POSTGRESQL_ADMIN_PASSWORD: $DATABASE_PASSWORD
@@ -90,20 +93,32 @@ unit-tests:
       fi
     - tox -e unit --current-env
 
-# ======== deploy-to-dev ========
-#deploy-dev-instance:
-#  tags:
-#    - pelc-shell-runner
-#  only:
-#    refs:
-#      - main
-#  stage: deploy-to-dev
-#  script:
-#    - docker build --cache-from $PELC_IMAGE:dev
-#      --build-arg quay_expiration='90d'
-#      -t $PELC_IMAGE:dev
-#      -f containers/docker-pelc/Dockerfile . ;
-#    - docker login -u="$PELC_CI_USER" -p=$PELC_CI_PASSWORD quay.io
-#    - docker push $PELC_IMAGE:dev
-#    # FIXME placeholder for future
-#    - echo 'trigger ansible tower job'
+# ======== build-dev-image ========
+build-dev-image:
+ tags:
+   - pelc-shell-runner
+ only:
+   refs:
+     - main
+ stage: build-dev-image
+ script:
+   - docker build -t $PELC_IMAGE:dev -f containers/docker-pelc/Dockerfile .;
+   - docker login -u="$PELC_CI_USER" -p=$PELC_CI_PASSWORD quay.io
+   - docker push $PELC_IMAGE:dev
+
+deploy-to-dev:
+  image:
+    # Copy from perrit/ansible-tower-cli-container
+    name: quay.io/pelc/ansible-tower-cli
+  tags:
+    - pelc-docker-runner
+  only:
+   refs:
+     - main
+  stage: deploy-to-dev
+  script:
+   - tower-cli config verify_ssl false
+   - >
+      tower-cli job launch -J "PELC2 deploy dev" --monitor --no-input --insecure
+      -e "pelc_image_tag: dev"
+      -h "$TOWER_HOST" -t "$TOWER_TOKEN"
