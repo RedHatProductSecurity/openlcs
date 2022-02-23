@@ -153,6 +153,13 @@ CELERY_RESULT_BACKEND = 'db+postgresql://{USER}:{PASSWORD}@{HOST}/{NAME}'.format
 CELERY_TASK_TRACK_STARTED = True
 LOGGER_DIR = '/var/log/pelc/'
 
+LICENSE_SCANNER = 'scancode-toolkit 30.1.0'
+# Scancode settings
+SCANCODE_LICENSE_SCORE = 20
+SCANCODE_PROCESSES = 1
+SCANCODE_TIMEOUT = 300
+SCANCODE_CLI = '/bin/scancode'
+
 EXTRACTCODE_CLI = '/bin/extractcode'
 
 # Brew settings

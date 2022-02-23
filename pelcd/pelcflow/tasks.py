@@ -13,6 +13,7 @@ from pelcd.pelcflow.task_wrapper import WorkflowWrapperTask
 from pelcd.celery import app
 from pelc.libs.brewconn import BrewConnector
 from pelc.libs.deposit import UploadToDeposit
+from pelc.libs.scanner import LicenseScanner
 from pelc.libs.driver import PelcClient
 from pelc.libs.logging import get_task_logger
 from pelc.libs.parsers import sha256sum
@@ -110,8 +111,7 @@ def download_source(context, engine):
 
     engine.logger.info('Start to download package source from Brew...')
     try:
-        source_url = brew_conn.download_build_source(build_id,
-                                                     dest_dir=tmp_dir)
+        brew_conn.download_build_source(build_id, dest_dir=tmp_dir)
     except RuntimeError as err:
         nvr = build.get('nvr')
         err_msg = f'Failed to download source for {nvr} in Brew. Reason: {err}'
@@ -139,7 +139,6 @@ def download_source(context, engine):
         "source": {
             "checksum": sha256sum(tmp_src_filepath),
             "name": os.path.basename(tmp_src_filepath),
-            "url": source_url,
             "archive_type": list(context['build_type'].keys())[0]
         },
         "package": {
@@ -167,6 +166,7 @@ def prepare_dest_dir(context, engine):
         # TODO: Currently we don't store product and release data. so the
         #  import should not contain "product_release" or add it manually
         #  in database.
+
         if release:
             if isinstance(release, dict):
                 short_name = release.get('short_name')
@@ -264,8 +264,7 @@ def get_data_using_post(client, url, data):
 
 def deduplicate_source(context, engine):
     """
-    Exclude files that were already in db,
-    and returns a subset of source
+    Exclude files that were already in db, and returns a subset of source
     directory with only files unseen before.
 
     Note: this requires to traverse the whole source directory, get
@@ -282,6 +281,13 @@ def deduplicate_source(context, engine):
         path_list = get_source_files_paths(src_dest_dir)
         if path_list:
             path_swhid_list = get_swhids_with_paths(path_list)
+            # Remove source root directory in path
+            paths = [
+                os.path.relpath(item[0], src_dest_dir)
+                for item in path_swhid_list
+            ]
+            path_swhids = list(zip(*path_swhid_list))[1]
+            context['path_with_swhids'] = list(zip(paths, path_swhids))
             swhids = [path_swhid[1] for path_swhid in path_swhid_list]
 
             try:
@@ -293,7 +299,7 @@ def deduplicate_source(context, engine):
                 if existing_swhids:
                     swhids = list(set(swhids).difference(set(existing_swhids)))
                     for path, swhid in path_swhid_list:
-                        if swhid not in swhids:
+                        if swhid in existing_swhids:
                             os.remove(path)
                 else:
                     swhids = list(set(swhids))
@@ -305,8 +311,8 @@ def deduplicate_source(context, engine):
                 # that's not mean the path object exist.
                 # They are many-one relationship.
                 context['source_info']['paths'] = [{
-                    "file": swhid,
-                    "path": path
+                    "path": path,
+                    "file": swhid
                 } for (path, swhid) in path_swhid_list]
             except RuntimeError as err:
                 err_msg = f"Failed to check duplicate files. Reason: {err}"
@@ -336,8 +342,8 @@ def check_duplicate_source(context, engine):
 
 def repack_source(context, engine):
     """
-    Repack the directories into archives so that each
-    archive could be deposited successfully into swh.
+    Repack the unpacked source into archives so that each archive could be
+    deposited successfully into swh.
 
     @requires: `src_dest_dir`,the archive unpack directory
     @requires: `archive_name`, archive original name which will be saved in swh
@@ -367,8 +373,8 @@ def upload_archive_to_deposit(context, engine):
     using the deposit api.
 
     @requires: `config`, configuration from hub server
-    @requires: `archive_name`, archive original name which will saved in swh
-    @requires: `tmp_repack_archive_path`, temporary repacked archived path
+    @requires: `archive_name`, original archive name which will be saved in swh
+    @requires: `tmp_repack_archive_path`, temporary repacked archive path
     @feeds: Upload archive to deposit, and save archive metadata in pelc and
             delete temporary archive
     """
@@ -418,7 +424,7 @@ def upload_archive_to_deposit(context, engine):
 def retrieve_source_from_swh(context, engine):
     """
     Accept a build or package nvr, retrieve the source directory tree
-    from swh. The source may corresponds to various archives(splitted)
+    from swh. The source may correspond to various archives(splitted)
     in swh, we need to make sure the source directory retrieved(from
     multiple archives) is consistent with the original source tree(the
     directory we get after `unpack_source`).
@@ -475,7 +481,30 @@ def send_package_data(context, engine):
 
 
 def license_scan(context, engine):
-    pass
+    """
+    Scan license under a given directory.
+
+    @requires: `src_dest_dir`, source directory.
+    @requires: `config`, configuration from hub.
+    @feeds: `scan_result`, scan result updated with license scan data.
+    """
+    src_dir = context.get('src_dest_dir')
+    config = context.get('config')
+    # Scanner could be provided when multiple scanners supported in future.
+    engine.logger.info("Start to scan source licenses with Scancode...")
+    scanner = LicenseScanner(
+            src_dir=src_dir, config=config, logger=engine.logger)
+    (licenses, errors, has_exception) = scanner.scan()
+    engine.logger.info("Done")
+    context['scan_result'] = {
+        "path_with_swhids": context.get('path_with_swhids'),
+        "license_scan": context.get('license_scan'),
+        "licenses": {
+            "data": licenses,
+            "errors": errors,
+            "has_exception": has_exception
+        }
+    }
 
 
 def copyright_scan(context, engine):
@@ -487,6 +516,36 @@ def send_scan_result(context, engine):
     Equivalent of the former "post"/"post_adhoc", which sends/posts
     scan results to hub.
     """
+    if 'scan_result' not in context:
+        return
+    url = 'savescanresult'
+    cli = context.pop('client')
+    package_nvr = context.get('package_nvr')
+    engine.logger.info(f"Start to send {package_nvr} scan result to hub for "
+                       f"further processing...")
+
+    fd, tmp_file_path = tempfile.mkstemp(prefix='scan_result_',
+                                         dir=context.get('post_dir'))
+    with os.fdopen(fd, 'w') as destination:
+        json.dump(context.get("scan_result"), destination, cls=DateEncoder)
+    resp = cli.post(url, data={"file_path": tmp_file_path})
+    context['client'] = cli
+    failure = False
+    try:
+        resp.raise_for_status()
+    except HTTPError:
+        err_msg = f"Failed to save scan result to database: {resp.text}"
+        engine.logger.error(err_msg)
+        failure = True
+        raise RuntimeError(err_msg) from None
+    finally:
+        # Remove temporarily created files/directories under /tmp.
+        tmp_src_filepath = context.get('tmp_src_filepath')
+        if tmp_src_filepath:
+            tmp_dir = os.path.dirname(tmp_src_filepath)
+            if os.path.exists(tmp_dir) and not failure:
+                shutil.rmtree(tmp_dir, ignore_errors=True)
+    engine.logger.info("Finished saving scan result to database.")
 
 
 def clean_up(context, engine):
@@ -503,8 +562,7 @@ flow_default = [
     get_build,
     download_source,
     unpack_source,
-    # If add the split large archive function
-    # please check task PVLEGAL-1840
+    # PVLEGAL-1840 is to support splitting a large archive
     # split_source,
     repack_source,
     # FIXME: upload_to_deposit/license_scan/copyright_scan are time

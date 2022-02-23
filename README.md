@@ -77,7 +77,7 @@ pelc/manage.py createsuperuser
 sudo cp containers/repos/pelc.repo /etc/yum.repos.d/
 sudo dnf install atool
 
-# Install extractcode patch
+# Install typecode patch
 cd $VIRTUAL_ENV/lib/python3.8/site-packages/typecode
 patch < /pelc_project_path/containers/patches/magic2.patch
 ```

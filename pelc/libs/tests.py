@@ -8,6 +8,7 @@ from unittest import TestCase
 from kobo.shortcuts import run
 from django.conf import settings
 from libs.unpack import UnpackArchive
+from libs.scanner import LicenseScanner
 from libs.download import BrewBuild
 from libs.parsers import parse_manifest_file
 
@@ -186,3 +187,35 @@ class TestParseManifestFile(TestCase):
         result = parse_manifest_file(StringIO(self.valid_json))
         self.assertIn('productname', result)
         self.assertIn('version', result)
+
+
+class TestLicenseScan(TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.config = {
+            # Update below path to your virtualenv path in local
+            'SCANCODE_CLI': '/opt/app-root/bin/scancode',
+        }
+
+    def test_scan(self):
+        src_dir = tempfile.mkdtemp(prefix='scan_')
+        # Prepare a text file for license scanning
+        license_file = os.path.join(src_dir, 'license_file')
+        with open(license_file, "w", encoding="utf-8") as license_file:
+            license_file.write("http://www.gzip.org/zlib/zlib_license.html")
+        scanner = LicenseScanner(
+            src_dir=src_dir,
+            config=TestLicenseScan.config)
+        (licenses, errors, has_exception) = scanner.scan(scanner='scancode')
+
+        self.assertEqual(licenses[0][0], 'license_file')
+        self.assertEqual(licenses[0][1], 'zlib')
+        self.assertEqual(licenses[0][2], 100.0)
+        self.assertEqual(licenses[0][3], 1)
+        self.assertEqual(licenses[0][4], 1)
+        self.assertEqual(errors, [])
+        self.assertFalse(has_exception)
+
+        shutil.rmtree(src_dir, ignore_errors=True)

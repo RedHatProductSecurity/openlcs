@@ -25,6 +25,7 @@ from packages.serializers import PathSerializer
 from packages.serializers import SourceSerializer
 from packages.serializers import NVRImportSerializer
 from packages.mixins import PackageImportTransactionMixin
+from packages.mixins import SaveScanResultMixin
 
 
 # Create your views here.
@@ -805,6 +806,30 @@ class PackageImportTransactionView(APIView, PackageImportTransactionMixin):
             return Response(
                 data={'message': err.args},
                 status=status.HTTP_400_BAD_REQUEST)
+
+
+class SaveScanResultView(APIView, SaveScanResultMixin):
+    """
+    Save package scan result
+    """
+    def post(self, request, *args, **kwargs):
+        try:
+            file_path = request.data.get("file_path")
+            with open(file_path, encoding='utf-8') as f:
+                data = json.load(f)
+        except Exception as e:
+            return Response(
+                data={'message': e.args},
+                status=status.HTTP_400_BAD_REQUEST)
+        try:
+            self.save_scan_result(**data)
+            msg = 'Save scan result successfully.'
+            return Response(data={'message': msg}, status=status.HTTP_200_OK)
+
+        except (RuntimeError, ProcedureException) as err:
+            return Response(
+                    data={'message': err.args},
+                    status=status.HTTP_400_BAD_REQUEST)
 
 
 class CheckDuplicateFiles(APIView):
