@@ -13,7 +13,6 @@ class LicenseDetection(models.Model):
     # This should be a reference to licenses table in future.
     license_key = models.CharField(
         max_length=128,
-        null=True, blank=True,
         verbose_name='license identifier'
     )
     score = models.FloatField(
@@ -44,10 +43,10 @@ class LicenseDetection(models.Model):
 
     class Meta:
         app_label = 'reports'
-        unique_together = ('file', 'detector')
 
     def __str__(self):
-        return '%s, %s' % (self.file, self.detector)
+        return '%s, %s, %s' % (
+                self.file, self.license_key, self.detector)
 
 
 class CopyrightDetection(models.Model):
