@@ -23,6 +23,7 @@ from rest_framework.authtoken import views as token_views
 
 from authentication import views as auth_views
 from packages import views as package_views
+from reports import views as report_views
 from tasks import views as task_views
 from libs.router import HybridRouter
 
@@ -37,6 +38,8 @@ router.register(r'files', package_views.FileViewSet, basename='files')
 router.register(r'sources', package_views.SourceViewSet, basename='sources')
 router.register(r'paths', package_views.PathViewSet, basename='paths')
 router.register(r'packages', package_views.PackageViewSet, basename='packages')
+router.register(r'licensedetections', report_views.LicenseDetectionViewSet,
+                basename='licensedetections')
 router.register(r'tasks', task_views.TaskViewSet, basename='tasks')
 
 # Router where APIView resides
