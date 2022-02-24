@@ -26,6 +26,13 @@ variables:
   PELC_CI_USER: pelc+pelc_ci_cd
   PELC_CI_PASSWORD: $pelc_ci_cd_password
 
+  # For pgsql start param
+  POSTGRESQL_DATABASE: pelc2
+  POSTGRESQL_USER: 'pelc2'
+  POSTGRES_HOST_AUTH_METHOD: trust
+  POSTGRESQL_ADMIN_PASSWORD: 'test'
+  POSTGRESQL_PASSWORD: 'test'
+
 .ci-image: &ci-image
   image:
     name: $CI_REGISTRY_IMAGE:latest
@@ -92,6 +99,17 @@ unit-tests:
         exit 0;
       fi
     - tox -e unit --current-env
+
+api-tests:
+  <<: *ci-image
+  services:
+    - name: 'quay.io/pelc/postgresql-12'
+      alias: postgres
+    - name: 'quay.io/pelc/redis'
+      alias: redis
+  stage: tests-it-promote
+  script:
+    - tox -e api --current-env
 
 # ======== build-dev-image ========
 build-dev-image:

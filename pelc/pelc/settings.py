@@ -227,6 +227,6 @@ ORPHAN_CATEGORY = 'orphan'
 
 try:
     # pylint:disable=wildcard-import,unused-wildcard-import
-    from .settings_local import *  # noqa
+    from settings_local import *  # noqa
 except ImportError:
     pass

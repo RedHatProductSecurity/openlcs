@@ -9,3 +9,6 @@ libmagic==1.0
 coverage==6.2
 # To avoid duplicate install dependencies
 tox-current-env==0.0.6
+# pytest dependency
+pytest-django==4.5.2
+pytest-redis==2.4.0
