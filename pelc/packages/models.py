@@ -55,6 +55,13 @@ class Source(models.Model):
     def __str__(self):
         return self.checksum
 
+    def get_license_detections(self):
+        from reports.models import LicenseDetection
+        file_ids = self.file_paths.values_list('file__pk', flat=True)
+        license_detections = LicenseDetection.objects.filter(
+                file__id__in=file_ids, false_positive=False)
+        return license_detections
+
 
 class Path(models.Model):
     """
@@ -63,6 +70,7 @@ class Path(models.Model):
     source = models.ForeignKey(
         Source,
         on_delete=models.CASCADE,
+        related_name="file_paths",
         help_text='Reference to source package'
     )
     file = models.ForeignKey(

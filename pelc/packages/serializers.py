@@ -54,10 +54,16 @@ class SourceSerializer(serializers.ModelSerializer):
     """
     Source serializer.
     """
+    license_detections = serializers.SerializerMethodField()
 
     class Meta:
         model = Source
         fields = "__all__"
+
+    def get_license_detections(self, obj):
+        license_keys = obj.get_license_detections().values_list(
+                'license_key', flat=True)
+        return license_keys.distinct()
 
 
 class PathSerializer(serializers.ModelSerializer):
