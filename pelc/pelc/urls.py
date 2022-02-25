@@ -40,6 +40,8 @@ router.register(r'paths', package_views.PathViewSet, basename='paths')
 router.register(r'packages', package_views.PackageViewSet, basename='packages')
 router.register(r'licensedetections', report_views.LicenseDetectionViewSet,
                 basename='licensedetections')
+router.register(r'copyrightdetections', report_views.CopyrightDetectionViewSet,
+                basename='copyrightdetections')
 router.register(r'tasks', task_views.TaskViewSet, basename='tasks')
 
 # Router where APIView resides

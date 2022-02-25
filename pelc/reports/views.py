@@ -1,7 +1,9 @@
 from rest_framework.viewsets import ModelViewSet
 
 from reports.models import LicenseDetection
+from reports.models import CopyrightDetection
 from reports.serializers import LicenseDetectionSerializer
+from reports.serializers import CopyrightDetectionSerializer
 
 
 class LicenseDetectionViewSet(ModelViewSet):
@@ -79,6 +81,83 @@ class LicenseDetectionViewSet(ModelViewSet):
                 "start_line": 6,
                 "end_line": 17,
                 "false_positive": false,
+                "detector": "scancode-toolkit 30.1.0"
+            }
+        """
+        return super().retrieve(request, *args, **kwargs)
+
+
+class CopyrightDetectionViewSet(ModelViewSet):
+    """
+    API endpoint that allows copyright detected to be viewed.
+    """
+    queryset = CopyrightDetection.objects.all()
+    serializer_class = CopyrightDetectionSerializer
+
+    def list(self, request, *args, **kwargs):
+        """
+        Get a list of copyright detections.
+
+        ####__Request__####
+
+            curl -X GET -H "Content-Type: application/json" \
+-H 'Authorization: Token your_token' \
+%(HOST_NAME)s/%(API_PATH)s/copyrightdetections/
+
+        ####__Response__####
+
+            HTTP 200 OK
+            Content-Type: application/json
+
+            [
+                {
+                    "id": 1,
+                    "file": \
+"swh:1:cnt:39501eb00551a1b1572c7a5bdc7921a5684e602c",
+                    "statement": \
+"Copyright (c) 2005 Jens Axboe <axboe@suse.de>",
+                    "false_positive": false,
+                    "start_line": 4,
+                    "end_line": 4,
+                    "detector": "scancode-toolkit 30.1.0"
+                },
+                {
+                    "id": 2,
+                    "file": \
+"swh:1:cnt:39501eb00551a1b1572c7a5bdc7921a5684e602c",
+                    "statement": \
+"Copyright (c) 2006-2012 Jens Axboe <axboe@kernel.dk>",
+                    "false_positive": false,
+                    "start_line": 5,
+                    "end_line": 5,
+                    "detector": "scancode-toolkit 30.1.0"
+                }
+            ]
+        """
+        return super().list(request, *args, **kwargs)
+
+    def retrieve(self, request, *args, **kwargs):
+        """
+        Get a specific copyright detection.
+
+        ####__Request__####
+
+            curl -X GET -H "Content-Type: application/json" \
+-H 'Authorization: Token your_token' \
+%(HOST_NAME)s/%(API_PATH)s/licensedetections/instance_pk/
+
+        ####__Response__####
+
+            HTTP 200 OK
+            Content-Type: application/json
+
+            {
+                "id": 1,
+                "file": "swh:1:cnt:39501eb00551a1b1572c7a5bdc7921a5684e602c",
+                "statement": "Copyright (c) 2005 Jens Axboe <axboe@suse.de>",
+                "false_positive": false,
+                "start_line": 4,
+                "end_line": 4,
                 "detector": "scancode-toolkit 30.1.0"
             }
         """
