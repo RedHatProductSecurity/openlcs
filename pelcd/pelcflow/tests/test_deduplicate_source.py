@@ -52,7 +52,8 @@ class TestDeduplicateSource(TestCase):
         ]
 
         # paths contain all paths object except soft link.
-        assert self.context['source_info']['paths'] == [
+        context_source_paths = self.context['source_info']['paths']
+        source_paths = [
             {
                 "file": "swh:1:cnt:c0de67c68fac3a78be782a7197f4072d8f2c8668",
                 "path": self.paths[0]
@@ -62,6 +63,7 @@ class TestDeduplicateSource(TestCase):
                 "path": self.paths[1]
             }
         ]
+        self.assertCountEqual(context_source_paths,  source_paths)
 
     def tearDown(self) -> None:
         shutil.rmtree(self.src_dest_dir)
