@@ -253,6 +253,14 @@ class SourceViewSet(ModelViewSet, PackageImportTransactionMixin):
             [
                 {
                     "id": 1,
+                    "license_detections": [
+                        "bsd-simplified",
+                        "gpl-2.0-plus",
+                    ],
+                    "copyright_detections": [
+                        "Copyright (c) 2005 Ben Gardner <bgardner@wabtec.com>",
+                        "Copyright (c) 2013 Fusion-io, Inc.",
+                    ],
                     "checksum": \
 "45f5aacb70f6eddac629375bd4739471ece1a2747123338349df069919e909ac",
                     "name": "ansible-2.4.2.0-2.el7",
@@ -326,6 +334,14 @@ Token your_token'
 
             {
                 "id": 1,
+                "license_detections": [
+                    "bsd-simplified",
+                    "gpl-2.0-plus",
+                ],
+                "copyright_detections": [
+                    "Copyright (c) 2005 Ben Gardner <bgardner@wabtec.com>",
+                    "Copyright (c) 2013 Fusion-io, Inc.",
+                ],
                 "checksum": \
 "45f5aacb70f6eddac629375bd4739471ece1a2747123338349df069919e909ac",
                 "name": "ansible-2.4.2.0-2.el7",
