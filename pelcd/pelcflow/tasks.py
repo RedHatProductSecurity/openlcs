@@ -14,6 +14,7 @@ from pelcd.celery import app
 from pelc.libs.brewconn import BrewConnector
 from pelc.libs.deposit import UploadToDeposit
 from pelc.libs.scanner import LicenseScanner
+from pelc.libs.scanner import CopyrightScanner
 from pelc.libs.driver import PelcClient
 from pelc.libs.logging import get_task_logger
 from pelc.libs.parsers import sha256sum
@@ -496,19 +497,47 @@ def license_scan(context, engine):
             src_dir=src_dir, config=config, logger=engine.logger)
     (licenses, errors, has_exception) = scanner.scan()
     engine.logger.info("Done")
-    context['scan_result'] = {
-        "path_with_swhids": context.get('path_with_swhids'),
+    scan_result = context.get('scan_result', {})
+    scan_result.update({
         "license_scan": context.get('license_scan'),
+        "path_with_swhids": context.get('path_with_swhids'),
         "licenses": {
             "data": licenses,
             "errors": errors,
             "has_exception": has_exception
         }
-    }
+    })
+    context['scan_result'] = scan_result
 
 
 def copyright_scan(context, engine):
-    pass
+    """
+    Scan copyright under a given directory.
+
+    @requires: `src_dest_dir`, destination directory.
+    @requires: `config`, configurations from Hub.
+    @feeds: `copyrights`, raw copyrights findings.
+    @feeds: `copyright_errors`, copyrights errors findings.
+    @feeds: `copyright_exception`, exception during copyright scanning.
+    """
+    src_dir = context.get('src_dest_dir')
+    config = context.get('config')
+    engine.logger.info("Start to scan copyrights with Scancode...")
+    scanner = CopyrightScanner(
+            src_dir=src_dir, config=config, logger=engine.logger)
+    (copyrights, errors, has_exception) = scanner.scan()
+    engine.logger.info("Done")
+    scan_result = context.get('scan_result', {})
+    scan_result.update({
+        "copyright_scan": context.get('copyright_scan'),
+        "path_with_swhids": context.get('path_with_swhids'),
+        "copyrights": {
+            "data": copyrights,
+            "errors": errors,
+            "has_exception": has_exception
+        }
+    })
+    context['scan_result'] = scan_result
 
 
 def send_scan_result(context, engine):

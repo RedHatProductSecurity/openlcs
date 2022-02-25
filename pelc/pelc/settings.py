@@ -154,6 +154,7 @@ CELERY_TASK_TRACK_STARTED = True
 LOGGER_DIR = '/var/log/pelc/'
 
 LICENSE_SCANNER = 'scancode-toolkit 30.1.0'
+COPYRIGHT_SCANNER = 'scancode-toolkit 30.1.0'
 # Scancode settings
 SCANCODE_LICENSE_SCORE = 20
 SCANCODE_PROCESSES = 1

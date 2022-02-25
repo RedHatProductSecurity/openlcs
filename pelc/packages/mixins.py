@@ -8,6 +8,7 @@ from packages.models import Package
 from packages.models import Path
 from packages.models import Source
 from reports.models import LicenseDetection
+from reports.models import CopyrightDetection
 
 from packages.serializers import BulkFileSerializer
 from packages.serializers import BulkPathSerializer
@@ -99,7 +100,29 @@ class SaveScanResultMixin:
                 raise RuntimeError(err_msg) from None
 
     def save_copyright_detections(self, path_file_dict, data):
-        pass
+        raw_data = data.get('detail_copyrights')
+        copyrights = dict(
+                (path_file_dict.get(k), v) for (k, v) in raw_data.items())
+        detector = settings.COPYRIGHT_SCANNER
+        objs = []
+        for k, v in copyrights.items():
+            k_objs = [
+                CopyrightDetection(
+                    file_id=k,
+                    statement=statement["value"],
+                    start_line=statement["start_line"],
+                    end_line=statement["end_line"],
+                    detector=detector)
+                for statement in v
+            ]
+            objs.extend(k_objs)
+
+        if objs:
+            try:
+                CopyrightDetection.objects.bulk_create(objs)
+            except IntegrityError as err:
+                err_msg = f'Error while saving copyrights. Reason: {err}'
+                raise RuntimeError(err_msg) from None
 
     def save_scan_result(self, **kwargs):
         path_with_swhids = kwargs.pop('path_with_swhids')
@@ -108,11 +131,15 @@ class SaveScanResultMixin:
         file_ids = list(File.objects.filter(swhid__in=swhids).values_list(
                 'id', flat=True))
         path_file_dict = dict(zip(paths, file_ids))
+
         if kwargs.get('license_scan'):
             licenses = kwargs.pop('licenses')
             data = licenses.get('data')
-            if not licenses.get('license_exception'):
+            if not licenses.get('has_exception'):
                 self.save_license_detections(path_file_dict, data)
+
         if kwargs.get('copyright_scan'):
-            data = kwargs.pop('copyrights')
-            self.save_copyright_detections(path_file_dict, data)
+            copyrights = kwargs.pop('copyrights')
+            data = copyrights.get('data')
+            if not copyrights.get('has_exception'):
+                self.save_copyright_detections(path_file_dict, data)

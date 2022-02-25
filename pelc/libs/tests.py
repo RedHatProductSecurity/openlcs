@@ -7,10 +7,11 @@ import warnings
 from unittest import TestCase
 from kobo.shortcuts import run
 from django.conf import settings
-from libs.unpack import UnpackArchive
-from libs.scanner import LicenseScanner
 from libs.download import BrewBuild
 from libs.parsers import parse_manifest_file
+from libs.scanner import LicenseScanner
+from libs.scanner import CopyrightScanner
+from libs.unpack import UnpackArchive
 
 
 class TestUnpack(TestCase):
@@ -199,14 +200,16 @@ class TestLicenseScan(TestCase):
             'SCANCODE_CLI': '/opt/app-root/bin/scancode',
         }
 
+    def setUp(self):
+        self.src_dir = tempfile.mkdtemp(prefix='scan_')
+
     def test_scan(self):
-        src_dir = tempfile.mkdtemp(prefix='scan_')
         # Prepare a text file for license scanning
-        license_file = os.path.join(src_dir, 'license_file')
+        license_file = os.path.join(self.src_dir, 'license_file')
         with open(license_file, "w", encoding="utf-8") as license_file:
             license_file.write("http://www.gzip.org/zlib/zlib_license.html")
         scanner = LicenseScanner(
-            src_dir=src_dir,
+            src_dir=self.src_dir,
             config=TestLicenseScan.config)
         (licenses, errors, has_exception) = scanner.scan(scanner='scancode')
 
@@ -218,4 +221,41 @@ class TestLicenseScan(TestCase):
         self.assertEqual(errors, [])
         self.assertFalse(has_exception)
 
-        shutil.rmtree(src_dir, ignore_errors=True)
+    def tearDown(self):
+        shutil.rmtree(self.src_dir, ignore_errors=True)
+
+
+class TestCopyrightScan(TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.config = {
+            # Update below path to your virtualenv path in local
+            'SCANCODE_CLI': '/opt/app-root/bin/scancode',
+        }
+
+    def setUp(self):
+        self.src_dir = tempfile.mkdtemp(prefix='scan_')
+
+    def test_scan(self):
+        # Prepare a text file for copyright scanning
+        copyright_file = os.path.join(self.src_dir, 'copyright_file')
+        statement = "Copyright (c) 2022 Qingmin Duanmu <qduanmu@test.com>"
+        with open(copyright_file, "w", encoding="utf-8") as copyright_file:
+            copyright_file.write(statement)
+        scanner = CopyrightScanner(
+            src_dir=self.src_dir,
+            config=TestCopyrightScan.config)
+        (copyrights, errors, has_exception) = scanner.scan(scanner='scancode')
+        detail = copyrights.get('detail_copyrights')
+        detail_key = next(iter(detail))
+        self.assertEqual(detail_key, 'copyright_file')
+        self.assertEqual(detail[detail_key][0], {
+            'value': statement, 'start_line': 1, 'end_line': 1}
+        )
+        self.assertEqual(errors, [])
+        self.assertFalse(has_exception)
+
+    def tearDown(self):
+        shutil.rmtree(self.src_dir, ignore_errors=True)
