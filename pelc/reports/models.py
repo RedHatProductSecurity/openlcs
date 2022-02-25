@@ -78,7 +78,6 @@ class CopyrightDetection(models.Model):
 
     class Meta:
         app_label = 'reports'
-        unique_together = ('file', 'detector')
 
     def __str__(self):
         return '%s, %s' % (self.file, self.detector)
