@@ -128,8 +128,9 @@ class SaveScanResultMixin:
         path_with_swhids = kwargs.pop('path_with_swhids')
         path_with_swhids = list(zip(*path_with_swhids))
         paths, swhids = path_with_swhids[0], path_with_swhids[1]
-        file_ids = list(File.objects.filter(swhid__in=swhids).values_list(
-                'id', flat=True))
+        swhid_file_dict = dict(File.objects.filter(
+            swhid__in=swhids).values_list('swhid', 'id'))
+        file_ids = [swhid_file_dict.get(swhid) for swhid in swhids]
         path_file_dict = dict(zip(paths, file_ids))
 
         if kwargs.get('license_scan'):
