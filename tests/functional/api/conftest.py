@@ -65,7 +65,7 @@ class PelcTestClient:
     def api_call(self, endpoint, method='GET', headers=None, return_json=True,
                  expected_code=200, fake_browser=False, **kwargs):
         # List of methods can be updated if methods is missing
-        assert method in ['GET', 'POST', 'PATCH'], \
+        assert method in ['GET', 'POST', 'PATCH', 'PUT'], \
             "Unknown request method '{}'".format(method)
 
         if not urlparse(endpoint).netloc:
