@@ -19,7 +19,7 @@ def pytest_configure():
     settings_path = join(PELCDIR, 'pelc', 'settings.py')
 
     # Override settings_local from the pel repo with ours
-    conf_vars = {'__file__': settings_path}
+    conf_vars = {'__file__': ''}
     with open(settings_path) as settings_file:
         old_path = sys.path
         sys.path = [TESTDIR]
@@ -34,6 +34,8 @@ def pytest_configure():
     del conf_vars['__doc__']
     del conf_vars['os']
     del conf_vars['Path']
+    del conf_vars['sys']
+    del conf_vars['parent_dir']
     settings.configure(**conf_vars)
 
 

@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/3.2/ref/settings/
 """
 import os
+import sys
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -228,6 +229,9 @@ ORPHAN_CATEGORY = 'orphan'
 
 try:
     # pylint:disable=wildcard-import,unused-wildcard-import
+    parent_dir = os.path.abspath(os.path.dirname(__file__))
+    if parent_dir not in sys.path:
+        sys.path.append(parent_dir)
     from settings_local import *  # noqa
 except ImportError:
     pass
