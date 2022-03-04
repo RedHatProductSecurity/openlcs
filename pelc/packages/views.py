@@ -235,6 +235,7 @@ class SourceViewSet(ModelViewSet, PackageImportTransactionMixin):
     queryset = Source.objects.all()
     serializer_class = SourceSerializer
     nvr_import_serializer = NVRImportSerializer
+    parser_classes = [FileUploadParser]
 
     def list(self, request, *args, **kwargs):
         """
@@ -372,7 +373,7 @@ Token your_token'
         """
         return super().update(request, *args, **kwargs)
 
-    @action(methods=['post'], detail=False, url_path='import')
+    @action(methods=['post', 'put'], detail=False, url_path='import')
     def import_package(self, request, *args, **kwargs):
         """
         ####__Import a package(multiple packages) from command line.__####
@@ -381,7 +382,8 @@ Token your_token'
         package imports, this can be changed by setting respective option to
         'false'.
 
-        ####__Bulk import with product release and package NVRs__####
+        ####__Request form 1: Bulk import with product release and package \
+NVRs__####
 
         ``product_release``: product release name, **OPTIONAL**
 
@@ -405,9 +407,55 @@ Token your_token'
 
             {"ansible-2.4.2.0-2.el7":{"task_id":21},"fio-3.1-2.el7":\
 {"task_id":22}}
-        """
 
-        serializer = self.nvr_import_serializer(data=request.data)
+
+        ####__Request form 2: Bulk import with productname, version and \
+package NVRs in product manifest file.__####
+
+        **Note**: using "manifest parser" API to validate product manifest \
+file first, it should contain the following parameters:
+
+        ``prouductname``: product name, **REQUIRED**
+
+        ``version``: version name, **REQUIRED**
+
+        ``src_packages`` list of package nvr, **REQUIRED**
+
+        ####__Request__####
+
+            curl -X PUT -H "Authorization: Token your_token" \
+-H 'Content-Disposition: attachment; filename=data.json' \
+-d @data.json %(HOST_NAME)s/%(API_PATH)s/sources/import/
+
+        ####__Response__####
+            HTTP 200 OK
+
+            {"ansible-2.4.2.0-2.el7":{"task_id":21},"fio-3.1-2.el7":\
+{"task_id":22}}
+        """
+        manifest_file = request.data.get('file')
+        manifest_data = None
+        if manifest_file:
+            try:
+                data = parse_manifest_file(manifest_file)
+                prouductname = data.get("productname")
+                version = data.get("version")
+                src_packages = data.get("src_packages")
+                if prouductname and version:
+                    product_release = "-".join([prouductname, version])
+                else:
+                    product_release = None
+                manifest_data = {
+                    "product_release": product_release,
+                    "package_nvrs": src_packages
+                }
+            except RuntimeError as e:
+                return Response(
+                    data={"message": f"Runtime error: {e.args[0]}"},
+                    status=status.HTTP_400_BAD_REQUEST)
+
+        data = manifest_data if manifest_data else request.data
+        serializer = self.nvr_import_serializer(data=data)
         user_id = request.data.get('owner_id') or request.user.id
         if serializer.is_valid():
             resp = serializer.fork_import_tasks(user_id)
@@ -883,10 +931,10 @@ class ManifestFileParserView(APIView):
         The API endpoint is used to upload/parse manifest file.
 
         ####__Request__####
-        curl -X PUT -H "Authorization: Token your_token"
-            -H 'Content-Disposition: attachment; filename=data.json' \
-            -d @data.json \
-            %(HOST_NAME)s/%(API_PATH)s/manifest_parser/
+
+            curl -X PUT -H "Authorization: Token your_token" \
+-H 'Content-Disposition: attachment; filename=data.json' \
+-d @data.json %(HOST_NAME)s/%(API_PATH)s/manifest_parser/
 
         ####__Response__####
             Success: HTTP 200 with json data with below format:
