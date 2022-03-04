@@ -9,4 +9,4 @@ def test_sources(pelc_client):
                  'name': 'ansible-2.4.2.0-2.el7.src.rpm',
                  'url': 'http://download.eng.bos.redhat.com/brewroot//vol/rhel-7/packages/ansible/2.4.2.0/2.el7/src/ansible-2.4.2.0-2.el7.src.rpm',
                  'state': 0, 'archive_type': 'rpm'}]
-    assert response == expected
+    assert response.get("results") == expected

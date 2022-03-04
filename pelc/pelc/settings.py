@@ -174,7 +174,7 @@ DRF_NAMESPACE = 'rest'
 DRF_API_VERSION = 'v1'
 
 # Update the HOSTNAME to that of the running server
-HOSTNAME = os.environ.get("HOSTNAME", '127.0.0.1:8000')
+HOSTNAME = '127.0.0.1:8000'
 BROWSABLE_DOCUMENT_MACROS = {
     'HOST_NAME': 'http://%s' % (HOSTNAME),
     'API_PATH': '%s/%s' % (DRF_NAMESPACE, DRF_API_VERSION),
@@ -190,6 +190,9 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
     ),
+    'PAGE_SIZE': 20,
+    'DEFAULT_PAGINATION_CLASS':
+        'rest_framework.pagination.LimitOffsetPagination',
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework.authentication.TokenAuthentication',
         'rest_framework.authentication.SessionAuthentication',
