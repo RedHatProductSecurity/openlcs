@@ -109,7 +109,7 @@ class UnpackArchive(object):
         error = ""
         extractcode_cli = self.config.get(
             'EXTRACTCODE_CLI', '/bin/extractcode')
-        archive_name = os.listdir(src_dir)[0]
+        raw_src_list = os.listdir(src_dir)
         try:
             # Running extractcode with '--replace-originals' may crash in some
             # cases, issue:
@@ -120,7 +120,7 @@ class UnpackArchive(object):
                 extractcode_cli, "--replace-originals", "--quiet", src_dir])
         except subprocess.CalledProcessError as e:
             for fn in os.listdir(src_dir):
-                if fn != archive_name:
+                if fn not in raw_src_list:
                     fpath = os.path.join(src_dir, fn)
                     shutil.rmtree(fpath, ignore_errors=False)
             error = "Failed to unpack source archives in {} using " \
