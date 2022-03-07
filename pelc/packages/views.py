@@ -7,6 +7,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
+from rest_framework.parsers import JSONParser
 from rest_framework.parsers import FileUploadParser
 
 from libs.backoff_strategy import ProcedureException
@@ -235,7 +236,7 @@ class SourceViewSet(ModelViewSet, PackageImportTransactionMixin):
     queryset = Source.objects.all()
     serializer_class = SourceSerializer
     nvr_import_serializer = NVRImportSerializer
-    parser_classes = [FileUploadParser]
+    parser_classes = [JSONParser, FileUploadParser]
 
     def list(self, request, *args, **kwargs):
         """
