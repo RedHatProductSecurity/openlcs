@@ -1,17 +1,18 @@
 from django.conf import settings
+from django.db import transaction
 from django.db.utils import IntegrityError
 
 from libs.backoff_strategy import retry
-
 from packages.models import File
 from packages.models import Package
 from packages.models import Path
 from packages.models import Source
-from reports.models import LicenseDetection
-from reports.models import CopyrightDetection
-
 from packages.serializers import BulkFileSerializer
 from packages.serializers import BulkPathSerializer
+from reports.models import CopyrightDetection
+from reports.models import FileCopyrightScan
+from reports.models import FileLicenseScan
+from reports.models import LicenseDetection
 
 
 class PackageImportTransactionMixin:
@@ -77,20 +78,41 @@ class PackageImportTransactionMixin:
 
 
 class SaveScanResultMixin:
+    def __init__(self):
+        self.file_license_scans = None
+        self.file_copyright_scans = None
+
+    def save_file_license_scan(self, file_ids):
+        license_detector = settings.LICENSE_SCANNER
+        objs = [
+            FileLicenseScan(
+                file_id=file_id,
+                detector=license_detector
+            ) for file_id in file_ids]
+
+        if objs:
+            try:
+                self.file_license_scans = FileLicenseScan.objects.bulk_create(
+                    objs)
+            except IntegrityError as err:
+                err_msg = f'Error while saving file license scan. ' \
+                          f'Reason: {err}'
+                raise RuntimeError(err_msg) from None
 
     def save_license_detections(self, path_file_dict, data):
-        licenses = [[path_file_dict.get(x[0])] + x[1:] for x in data]
-        detector = settings.LICENSE_SCANNER
+        id_mapping_dict = {item.file.id: item.id for item in
+                           self.file_license_scans}
+        licenses = [[id_mapping_dict.get(path_file_dict.get(x[0]))] + x[1:] for
+                    x in data]
         objs = [
             LicenseDetection(
-                file_id=lic[0],
+                file_scan_id=lic[0],
                 license_key=lic[1],
                 score=lic[2],
                 start_line=lic[3],
                 end_line=lic[4],
                 rule=lic[6],
-                detector=detector)
-            for lic in licenses
+            ) for lic in licenses
         ]
         if objs:
             try:
@@ -99,21 +121,39 @@ class SaveScanResultMixin:
                 err_msg = f'Error while saving licenses. Reason: {err}'
                 raise RuntimeError(err_msg) from None
 
+    def save_file_copyright_scan(self, file_ids):
+        copyright_detector = settings.COPYRIGHT_SCANNER
+        objs = [
+            FileCopyrightScan(
+                file_id=file_id,
+                detector=copyright_detector
+            ) for file_id in file_ids]
+
+        if objs:
+            try:
+                self.file_copyright_scans = \
+                    FileCopyrightScan.objects.bulk_create(objs)
+            except IntegrityError as err:
+                err_msg = f'Error while saving file copyright scan. ' \
+                          f'Reason: {err}'
+                raise RuntimeError(err_msg) from None
+
     def save_copyright_detections(self, path_file_dict, data):
+        id_mapping_dict = {item.file.id: item.id for item in
+                           self.file_copyright_scans}
         raw_data = data.get('detail_copyrights')
         copyrights = dict(
-                (path_file_dict.get(k), v) for (k, v) in raw_data.items())
-        detector = settings.COPYRIGHT_SCANNER
+            (id_mapping_dict.get(path_file_dict.get(k)), v) for (k, v) in
+            raw_data.items())
         objs = []
         for k, v in copyrights.items():
             k_objs = [
                 CopyrightDetection(
-                    file_id=k,
+                    file_scan_id=k,
                     statement=statement["value"],
                     start_line=statement["start_line"],
-                    end_line=statement["end_line"],
-                    detector=detector)
-                for statement in v
+                    end_line=statement["end_line"]
+                ) for statement in v
             ]
             objs.extend(k_objs)
 
@@ -137,10 +177,14 @@ class SaveScanResultMixin:
             licenses = kwargs.pop('licenses')
             data = licenses.get('data')
             if not licenses.get('has_exception'):
-                self.save_license_detections(path_file_dict, data)
+                with transaction.atomic():
+                    self.save_file_license_scan(file_ids)
+                    self.save_license_detections(path_file_dict, data)
 
         if kwargs.get('copyright_scan'):
             copyrights = kwargs.pop('copyrights')
             data = copyrights.get('data')
             if not copyrights.get('has_exception'):
-                self.save_copyright_detections(path_file_dict, data)
+                with transaction.atomic():
+                    self.save_file_copyright_scan(file_ids)
+                    self.save_copyright_detections(path_file_dict, data)

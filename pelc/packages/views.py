@@ -1,6 +1,8 @@
 import json
 
+from django.conf import settings
 from django.db import transaction
+from django.db.models import Q
 
 from rest_framework import status
 from rest_framework.decorators import action
@@ -29,6 +31,9 @@ from packages.serializers import SourceSerializer
 from packages.serializers import NVRImportSerializer
 from packages.mixins import PackageImportTransactionMixin
 from packages.mixins import SaveScanResultMixin
+
+from reports.models import FileCopyrightScan
+from reports.models import FileLicenseScan
 
 
 # Create your views here.
@@ -929,15 +934,41 @@ class SaveScanResultView(APIView, SaveScanResultMixin):
 class CheckDuplicateFiles(APIView):
     """
     Check duplicate files, so that we can skip scan step for these files.
+    Duplicate files is files that exist in the database, and
+    license/copyright should be scanned if needed.
     """
     def post(self, request, *args, **kwargs):
         swhids = request.data.get('swhids')
+        existing_swhids = []
+
         if swhids:
             existing_swhids = File.objects.in_bulk(id_list=list(swhids),
                                                    field_name='swhid').keys()
+        if not existing_swhids:
             return Response(data={"existing_swhids": existing_swhids})
-        else:
-            return Response(data={"existing_swhids": None})
+
+        # Duplicate files that license scanned.
+        if request.data.get('license_scan'):
+            license_detector = settings.LICENSE_SCANNER
+            license_swhids = FileLicenseScan.objects.filter(
+                Q(file__swhid__in=existing_swhids,
+                  detector=license_detector)).values_list('file__swhid',
+                                                          flat=True)
+            if license_swhids:
+                existing_swhids = list(
+                    set(existing_swhids).intersection(license_swhids))
+
+        # Duplicate files that copyright scanned.
+        if request.data.get('copyright_scan'):
+            copyright_detector = settings.COPYRIGHT_SCANNER
+            copyright_swhids = FileCopyrightScan.objects.filter(
+                Q(file__swhid__in=existing_swhids,
+                  detector=copyright_detector)).values_list('file__swhid',
+                                                            flat=True)
+            if copyright_swhids:
+                existing_swhids = list(
+                    set(existing_swhids).intersection(copyright_swhids))
+        return Response(data={"existing_swhids": existing_swhids})
 
 
 class CheckDuplicateSource(APIView):

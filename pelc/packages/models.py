@@ -59,14 +59,14 @@ class Source(models.Model):
         from reports.models import LicenseDetection
         file_ids = self.file_paths.values_list('file__pk', flat=True)
         license_detections = LicenseDetection.objects.filter(
-                file__id__in=file_ids, false_positive=False)
+            file_scan__file__id__in=file_ids, false_positive=False)
         return license_detections
 
     def get_copyright_detections(self):
         from reports.models import CopyrightDetection
         file_ids = self.file_paths.values_list('file__pk', flat=True)
         copyright_detections = CopyrightDetection.objects.filter(
-                file__id__in=file_ids, false_positive=False)
+            file_scan__file__id__in=file_ids, false_positive=False)
         return copyright_detections
 
 
