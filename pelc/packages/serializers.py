@@ -50,10 +50,26 @@ class BulkCreateFileSerializer(serializers.Serializer):
         return attrs
 
 
+class PackageSerializer(serializers.ModelSerializer):
+    """
+    Package serializer.
+    """
+    source = serializers.SlugRelatedField(
+        queryset=Source.objects.all(),
+        slug_field='checksum',
+        allow_null=False,
+        required=True)
+
+    class Meta:
+        model = Package
+        fields = "__all__"
+
+
 class SourceSerializer(serializers.ModelSerializer):
     """
     Source serializer.
     """
+    packages = PackageSerializer(many=True, read_only=True)
     license_detections = serializers.SerializerMethodField()
     copyright_detections = serializers.SerializerMethodField()
 
@@ -121,21 +137,6 @@ class BulkCreatePathSerializer(serializers.Serializer):
         allow_null=False,
         required=True)
     paths = CreatePathSerializer(many=True)
-
-
-class PackageSerializer(serializers.ModelSerializer):
-    """
-    Package serializer.
-    """
-    source = serializers.SlugRelatedField(
-        queryset=Source.objects.all(),
-        slug_field='checksum',
-        allow_null=False,
-        required=True)
-
-    class Meta:
-        model = Package
-        fields = "__all__"
 
 
 def release_validator(value):

@@ -104,7 +104,7 @@ class Path(models.Model):
 
 class Package(models.Model):
     """
-    Source files for a given archive.
+    Packages for a given source.
     """
     nvr = models.CharField(
         max_length=512,
@@ -114,6 +114,7 @@ class Package(models.Model):
     source = models.ForeignKey(
         Source,
         on_delete=models.CASCADE,
+        related_name="packages",
         help_text='Reference to source package'
     )
     sum_license = models.TextField(
