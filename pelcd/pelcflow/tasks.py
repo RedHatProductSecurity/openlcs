@@ -7,7 +7,10 @@ import socket
 import tarfile
 import tempfile
 from requests.exceptions import HTTPError
+
 from workflow.patterns.controlflow import IF
+from packagedcode.rpm import parse as rpm_parse
+from packagedcode.maven import parse as maven_parse
 
 from pelcd.pelcflow.task_wrapper import WorkflowWrapperTask
 from pelcd.celery import app
@@ -119,7 +122,6 @@ def download_source(context, engine):
         engine.logger.error(err_msg)
         raise RuntimeError(err_msg) from None
 
-    # FIXME: this is migrated from existing code, but UGLY.
     tmp_src_filepath = os.path.join(tmp_dir, os.listdir(tmp_dir)[0])
     context['tmp_src_filepath'] = tmp_src_filepath
 
@@ -136,17 +138,64 @@ def download_source(context, engine):
             if pom_files:
                 context['tmp_pom_filepath'] = pom_files[0]
 
+    engine.logger.info('Finished downloading source.')
+
+
+def get_source_metadata(context, engine):
+    """
+    Get package metadata(upstream url, declared license) after source archive
+    is downloaded.
+
+    @requires: 'tmp_src_filepath' for rpm, 'tmp_pom_filepath' for maven build.
+    @feeds: 'source_url' - string, package upstream source URL.
+    @feeds: 'declared_license' - string, package declared license.
+    """
+
+    engine.logger.info("Start to get source package metadata...")
+    src_filepath = context.get('tmp_src_filepath')
+    pom_filepath = context.get('tmp_pom_filepath', None)
+    build_type = context.get('build_type')
+    package = None
+    try:
+        if 'rpm' in build_type:
+            package = rpm_parse(src_filepath)
+        elif pom_filepath is not None:
+            package = maven_parse(pom_filepath)
+        # TODO: Add support for other package types.
+    except Exception as e:
+        engine.logger.warning(str(e))
+
+    if package is not None:
+        # Package has below urls which could be referenced as source url:
+        # homepage_url --> vcs_url --> code_view_url --> download_url
+        # download_url is version related which is not prefered.
+        # homepage_url: http://cxf.apache.org
+        # vcs_url: git+http://gitbox.apache.org/repos/asf/cxf.git
+        # code_view_url: https://gitbox.apache.org/repos/asf?p=cxf.git;a=summary    # noqa
+        # download_url: https://pkg.freebsd.org/freebsd:10:x86:64/latest/All/dmidecode-2.12.txz    # noqa
+        urls = ['homepage_url', 'vcs_url', 'code_view_url', 'download_url']
+        for url in urls:
+            if getattr(package, url):
+                context['source_url'] = getattr(package, url)
+                break
+        # Use declared_license from packagecode output which could support
+        # more package types instead of rebuilding wheels.
+        context['declared_license'] = package.declared_license
+
     context['source_info'] = {
         "source": {
-            "checksum": sha256sum(tmp_src_filepath),
-            "name": os.path.basename(tmp_src_filepath),
+            "checksum": sha256sum(src_filepath),
+            "name": os.path.basename(src_filepath),
+            "url": context.get("source_url"),
             "archive_type": list(context['build_type'].keys())[0]
         },
         "package": {
-            "nvr": context.get("package_nvr")
+            "nvr": context.get("package_nvr"),
+            "sum_license": context.get("declared_license"),
+            "is_source": True
         }
     }
-    engine.logger.info('Finished downloading source.')
+    engine.logger.info("Done")
 
 
 def prepare_dest_dir(context, engine):
@@ -590,6 +639,7 @@ flow_default = [
     get_config,
     get_build,
     download_source,
+    get_source_metadata,
     unpack_source,
     # PVLEGAL-1840 is to support splitting a large archive
     # split_source,
