@@ -17,6 +17,8 @@ from packages.models import File
 from packages.models import Source
 from packages.models import Package
 from packages.models import Path
+from products.models import Product
+from products.models import Release
 
 from packages.serializers import BulkCreateFileSerializer
 from packages.serializers import BulkCreatePathSerializer
@@ -439,21 +441,47 @@ file first, it should contain the following parameters:
         if manifest_file:
             try:
                 data = parse_manifest_file(manifest_file)
-                prouductname = data.get("productname")
-                version = data.get("version")
-                src_packages = data.get("src_packages")
-                if prouductname and version:
-                    product_release = "-".join([prouductname, version])
-                else:
-                    product_release = None
-                manifest_data = {
-                    "product_release": product_release,
-                    "package_nvrs": src_packages
-                }
             except RuntimeError as e:
                 return Response(
                     data={"message": f"Runtime error: {e.args[0]}"},
                     status=status.HTTP_400_BAD_REQUEST)
+            else:
+                product_name = data.get("productname")
+                version = data.get("version")
+                src_packages = data.get("src_packages")
+                if product_name and version:
+                    release_name = "-".join([product_name, version])
+                    product, _ = Product.objects.get_or_create(
+                            name=product_name)
+                    releases = Release.objects.filter(
+                            product=product, version=version)
+                    if releases.exists():
+                        release = releases[0]
+                    else:
+                        release = Release.objects.create(
+                                product=product, version=version,
+                                name=release_name, notes=data.get("notes"))
+                    # Populate release packages with manifest content
+                    if src_packages:
+                        release.update_packages(src_packages)
+                else:
+                    release_name = None
+                manifest_data = {
+                    "product_release": release_name,
+                    "package_nvrs": src_packages
+                }
+        else:
+            release_name = request.data.get('product_release')
+            if release_name:
+                package_nvrs = request.data.get('package_nvrs')
+                releases = Release.objects.filter(name=release_name)
+                if releases.exists() and package_nvrs:
+                    releases[0].update_packages(package_nvrs)
+                else:
+                    # Release could be created once schema is locked down
+                    err_msg = f"Product does Not exist: {release_name}."
+                    return Response(data={'message': err_msg},
+                                    status=status.HTTP_400_BAD_REQUEST)
 
         data = manifest_data if manifest_data else request.data
         serializer = self.nvr_import_serializer(data=data)
@@ -922,43 +950,3 @@ class CheckDuplicateSource(APIView):
             if Source.objects.filter(checksum=checksum).exists():
                 return Response(data={"source_exist": True})
         return Response(data={"source_exist": False})
-
-
-class ManifestFileParserView(APIView):
-
-    parser_classes = [FileUploadParser]
-
-    def put(self, request, format=None):
-        """
-        The API endpoint is used to upload/parse manifest file.
-
-        ####__Request__####
-
-            curl -X PUT -H "Authorization: Token your_token" \
--H 'Content-Disposition: attachment; filename=data.json' \
--d @data.json %(HOST_NAME)s/%(API_PATH)s/manifest_parser/
-
-        ####__Response__####
-            Success: HTTP 200 with json data with below format:
-            {
-                "productname": "satellite",
-                "version": "6.9.0",
-                "notes": "Notes goes here",
-                "containers": [],
-                "src_packages": ["ansible-2.4.2.0-2.el7",
-                                 "ansiblerole-foreman_scap_client-0.1.0-1.el7sat",
-                                 ...
-                                ]
-            }
-
-            Error: HTTP 400 BAD REQUEST
-        """
-        manifest_file = request.data['file']
-        try:
-            data = parse_manifest_file(manifest_file)
-        except RuntimeError as e:
-            return Response(
-                f"Runtime error: {e.args[0]}",
-                status=status.HTTP_400_BAD_REQUEST)
-        else:
-            return Response(data=data, status=status.HTTP_200_OK)

@@ -23,6 +23,7 @@ from rest_framework.authtoken import views as token_views
 
 from authentication import views as auth_views
 from packages import views as package_views
+from products import views as product_views
 from reports import views as report_views
 from tasks import views as task_views
 from libs.router import HybridRouter
@@ -48,7 +49,7 @@ router.register(r'tasks', task_views.TaskViewSet, basename='tasks')
 additional_router = HybridRouter()
 additional_router.add_api_view(r'manifest parser', path(
     'manifest_parser/',
-    package_views.ManifestFileParserView.as_view(),
+    product_views.ManifestFileParserView.as_view(),
     name='manifest_parser_view'))
 
 main_router = HybridRouter()
