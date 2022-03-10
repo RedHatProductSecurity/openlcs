@@ -856,11 +856,12 @@ class PackageImportTransactionView(APIView, PackageImportTransactionMixin):
             with transaction.atomic():
                 if swhids:
                     self.create_files(swhids)
-                _, created = Source.objects.get_or_create(**source)
-                # If source not exist in database, that's mean the paths
-                # is not exist, bulk created them directly.
-                if created:
-                    source_checksum = source.get('checksum')
+                source_checksum = source.get('checksum')
+                qs = Source.objects.filter(checksum=source_checksum)
+                if not qs.exists():
+                    # If source not exist in database, that's mean the paths
+                    # is not exist, bulk created them directly.
+                    Source.objects.create(**source)
                     self.create_paths(source_checksum, paths)
                     self.create_package(source_checksum, package)
             msg = f'Build {package.get("nvr")} imported successfully.'
