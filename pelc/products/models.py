@@ -74,6 +74,13 @@ class Release(models.Model):
     def __str__(self):
         return self.name
 
+    def update_packages(self, nvr_list, is_source=True):
+        existed_nvrs = self.packages.values_list('package_nvr', flat=True)
+        nvrs = list(set(nvr_list) - set(existed_nvrs))
+        objs = [ReleasePackage(release=self, package_nvr=nvr,
+                is_source=is_source) for nvr in nvrs]
+        ReleasePackage.objects.bulk_create(objs)
+
 
 class ReleaseContainer(models.Model):
     """containers as part of a release"""
@@ -102,10 +109,14 @@ class ReleasePackage(models.Model):
     """packages within each release"""
     release = models.ForeignKey(
         Release,
+        related_name="packages",
         on_delete=models.CASCADE
     )
     package_nvr = models.TextField()
-    source = models.SmallIntegerField()
+    is_source = models.BooleanField(
+        default=True,
+        help_text='True if the package is for source package'
+    )
 
     class Meta:
         app_label = 'products'

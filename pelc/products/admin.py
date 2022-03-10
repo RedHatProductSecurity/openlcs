@@ -35,4 +35,5 @@ class ReleaseContainerAdmin(admin.ModelAdmin):
 
 @admin.register(ReleasePackage)
 class ReleasePackageAdmin(admin.ModelAdmin):
-    pass
+    list_display = ('release', 'package_nvr', 'is_source')
+    search_fields = ['release__name', 'package_nvr']
