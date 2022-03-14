@@ -39,7 +39,8 @@ class ReadOnlyBrowsableAPIRenderer(BrowsableAPIRenderer):
         'partial_update',
         'import_package',
         'bulk_create_files',
-        'bulk_create_paths'
+        'bulk_create_paths',
+        'report'
     )
 
     def get_raw_data_form(self, data, view, method, request):

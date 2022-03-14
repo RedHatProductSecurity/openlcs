@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import Q
 from django.core.validators import URLValidator
 
 
@@ -55,19 +56,33 @@ class Source(models.Model):
     def __str__(self):
         return self.checksum
 
+    def get_license_scans(self, detector=None):
+        from reports.models import FileLicenseScan
+        file_ids = self.file_paths.values_list('file__pk', flat=True)
+        filters = [Q(file__in=file_ids)]
+        if detector:
+            filters.append(Q(detector=detector))
+        return FileLicenseScan.objects.filter(*filters)
+
     def get_license_detections(self):
         from reports.models import LicenseDetection
+        license_scans = self.get_license_scans()
+        return LicenseDetection.objects.filter(
+                file_scan__in=license_scans, false_positive=False)
+
+    def get_copyright_scans(self, detector=None):
+        from reports.models import FileCopyrightScan
         file_ids = self.file_paths.values_list('file__pk', flat=True)
-        license_detections = LicenseDetection.objects.filter(
-            file_scan__file__id__in=file_ids, false_positive=False)
-        return license_detections
+        filters = [Q(file__in=file_ids)]
+        if detector:
+            filters.append(Q(detector=detector))
+        return FileCopyrightScan.objects.filter(*filters)
 
     def get_copyright_detections(self):
         from reports.models import CopyrightDetection
-        file_ids = self.file_paths.values_list('file__pk', flat=True)
-        copyright_detections = CopyrightDetection.objects.filter(
-            file_scan__file__id__in=file_ids, false_positive=False)
-        return copyright_detections
+        copyright_scans = self.get_copyright_scans()
+        return CopyrightDetection.objects.filter(
+                file_scan__in=copyright_scans, false_positive=False)
 
 
 class Path(models.Model):

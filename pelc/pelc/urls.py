@@ -39,6 +39,7 @@ router.register(r'files', package_views.FileViewSet, basename='files')
 router.register(r'sources', package_views.SourceViewSet, basename='sources')
 router.register(r'paths', package_views.PathViewSet, basename='paths')
 router.register(r'packages', package_views.PackageViewSet, basename='packages')
+router.register(r'releases', product_views.ReleaseViewSet, basename='releases')
 router.register(r'licensedetections', report_views.LicenseDetectionViewSet,
                 basename='licensedetections')
 router.register(r'copyrightdetections', report_views.CopyrightDetectionViewSet,
