@@ -31,27 +31,23 @@ class LicenseDetectionViewSet(ModelViewSet):
             [
                 {
                     "id": 72,
-                    "file": \
-"swh:1:cnt:5c1abe91817dc7c3ba62fab0108fbac041f3c032",
                     "license_key": "gpl-2.0",
                     "score": 100.0,
                     "rule": "gpl-2.0_34.RULE",
                     "start_line": 6,
                     "end_line": 17,
                     "false_positive": false,
-                    "detector": "scancode-toolkit 30.1.0"
+                    "file_scan": 1
                 },
                 {
                     "id": 73,
-                    "file": \
-"swh:1:cnt:682a11c95f1ccb91df421e424923dbd2c9703761",
                     "license_key": "bsd-simplified",
                     "score": 100.0,
                     "rule": "bsd-simplified_97.RULE",
                     "start_line": 4,
                     "end_line": 4,
                     "false_positive": false,
-                    "detector": "scancode-toolkit 30.1.0"
+                    "file_scan": 2
                 }
             ]
         """
@@ -74,14 +70,13 @@ class LicenseDetectionViewSet(ModelViewSet):
 
             {
                 "id": 72,
-                "file": "swh:1:cnt:5c1abe91817dc7c3ba62fab0108fbac041f3c032",
                 "license_key": "gpl-2.0",
                 "score": 100.0,
                 "rule": "gpl-2.0_34.RULE",
                 "start_line": 6,
                 "end_line": 17,
                 "false_positive": false,
-                "detector": "scancode-toolkit 30.1.0"
+                "file_scan": 1
             }
         """
         return super().retrieve(request, *args, **kwargs)
@@ -112,25 +107,21 @@ class CopyrightDetectionViewSet(ModelViewSet):
             [
                 {
                     "id": 1,
-                    "file": \
-"swh:1:cnt:39501eb00551a1b1572c7a5bdc7921a5684e602c",
                     "statement": \
 "Copyright (c) 2005 Jens Axboe <axboe@suse.de>",
                     "false_positive": false,
                     "start_line": 4,
                     "end_line": 4,
-                    "detector": "scancode-toolkit 30.1.0"
+                    "file_scan": 1
                 },
                 {
                     "id": 2,
-                    "file": \
-"swh:1:cnt:39501eb00551a1b1572c7a5bdc7921a5684e602c",
                     "statement": \
 "Copyright (c) 2006-2012 Jens Axboe <axboe@kernel.dk>",
                     "false_positive": false,
                     "start_line": 5,
                     "end_line": 5,
-                    "detector": "scancode-toolkit 30.1.0"
+                    "file_scan": 2
                 }
             ]
         """
@@ -153,12 +144,11 @@ class CopyrightDetectionViewSet(ModelViewSet):
 
             {
                 "id": 1,
-                "file": "swh:1:cnt:39501eb00551a1b1572c7a5bdc7921a5684e602c",
                 "statement": "Copyright (c) 2005 Jens Axboe <axboe@suse.de>",
                 "false_positive": false,
                 "start_line": 4,
                 "end_line": 4,
-                "detector": "scancode-toolkit 30.1.0"
+                "file_scan": 1
             }
         """
         return super().retrieve(request, *args, **kwargs)
