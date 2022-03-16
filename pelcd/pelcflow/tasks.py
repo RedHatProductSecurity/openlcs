@@ -337,7 +337,8 @@ def deduplicate_source(context, engine):
                 for item in path_swhid_list
             ]
             path_swhids = list(zip(*path_swhid_list))[1]
-            context['path_with_swhids'] = list(zip(paths, path_swhids))
+            rel_path_swhids = list(zip(paths, path_swhids))
+            context['path_with_swhids'] = rel_path_swhids
             swhids = [path_swhid[1] for path_swhid in path_swhid_list]
 
             try:
@@ -366,7 +367,7 @@ def deduplicate_source(context, engine):
                 context['source_info']['paths'] = [{
                     "path": path,
                     "file": swhid
-                } for (path, swhid) in path_swhid_list]
+                } for (path, swhid) in rel_path_swhids]
             except RuntimeError as err:
                 err_msg = f"Failed to check duplicate files. Reason: {err}"
                 engine.logger.error(err_msg)

@@ -32,8 +32,7 @@ class TestDeduplicateSource(TestCase):
                     f.write(f"This is a test content {i} for duplicate")
                 if i == 1:
                     src_file = tmp_file
-                paths.append(
-                    os.path.join(self.src_dest_dir, tmp_file))
+                paths.append(os.path.relpath(tmp_file, self.src_dest_dir))
             else:
                 tmp_file = tempfile.mktemp(dir=self.src_dest_dir)
                 os.symlink(src_file, tmp_file)
