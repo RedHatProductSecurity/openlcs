@@ -198,6 +198,81 @@ def get_source_metadata(context, engine):
     engine.logger.info("Done")
 
 
+def check_source_status(context, engine):
+    """
+    Check if the source exist in database, if existed, get the scan_flag
+
+    @requires: `source_info`, dict, source information.
+    @feeds: `source_api_url`, string, the restful API url of the source.
+    @feeds: `source_scan_flag`, string, source scan license and copyright flag.
+    """
+    checksum = context['source_info']['source']['checksum']
+    try:
+        response = get_data_using_post(context.get('client'),
+                                       '/check_source_status/',
+                                       {"checksum": checksum})
+    except RuntimeError as err:
+        engine.logger.error(err)
+        raise RuntimeError(err) from None
+    context['source_api_url'] = response.get('source_api_url')
+    context['source_scan_flag'] = response.get('source_scan_flag')
+
+
+def check_source_scan_status(context, engine):
+    """
+    Check if the source have been scanned.
+    If the source not exist, according scan tag to check if it needs to scan.
+    If the source exist, according scan tag and currently scan status to
+    check if it needs to scan.
+
+    @requires: `source_api_url`, string, the restful API url of the source.
+    @requires: `config`, configuration from hub server.
+    @feeds: `license_scan_req`, bool, if the source need scan license,
+             it will be True.
+    @feeds: `copyright_scan_req`,  bool, if the source need scan copyright,
+             it will be True.
+    @feeds: `source_scanned`,  bool, if the source not need to scan,
+             it will be True.
+    """
+    check_source_status(context, engine)
+    license_scan_req = False
+    copyright_scan_req = False
+    source_scanned = False
+    license_scan_tag = context.get('license_scan')
+    copyright_scan_tag = context.get('copyright_scan')
+
+    # If the source exist, check if it needs to scan.
+    if context.get('source_api_url'):
+        config = context.get('config')
+        license_flag = "license(" + config.get('LICENSE_SCANNER') + ")"
+        copyright_flag = "copyright(" + config.get('COPYRIGHT_SCANNER') + ")"
+        source_scan_flag = context['source_scan_flag']
+        if source_scan_flag:
+            if license_scan_tag and license_flag not in source_scan_flag:
+                license_scan_req = True
+            elif copyright_scan_tag and copyright_flag not in source_scan_flag:
+                copyright_scan_req = True
+        else:
+            license_scan_req = True if license_scan_tag else False
+            copyright_scan_req = True if copyright_scan_tag else False
+
+        # If source exist, and have been scanned or not need to scan
+        if not license_scan_req and not copyright_scan_req:
+            source_scanned = True
+            msg = f"Found a source" \
+                  f"({context['source_info']['source']['name']}) " \
+                  f"meeting the requirements already imported. " \
+                  f"The REST API link is: {context['source_api_url']}"
+            engine.logger.info(msg)
+    # If the source not exist, check if it needs to scan.
+    else:
+        license_scan_req = True if license_scan_tag else False
+        copyright_scan_req = True if copyright_scan_tag else False
+    context['license_scan_req'] = license_scan_req
+    context['copyright_scan_req'] = copyright_scan_req
+    context['source_scanned'] = source_scanned
+
+
 def prepare_dest_dir(context, engine):
     """
     Create destination directory based on config.
@@ -379,33 +454,18 @@ def deduplicate_source(context, engine):
     engine.logger.info("Finished deduplicating source.")
 
 
-def check_duplicate_source(context, engine):
-    """
-    Check if the source exist in database.
-    """
-    checksum = context['source_info']['source']['checksum']
-    try:
-        response = get_data_using_post(context.get('client'),
-                                       '/check_duplicate_source/',
-                                       {"checksum": checksum})
-    except RuntimeError as err:
-        engine.logger.error(err)
-        raise RuntimeError(err) from None
-    context['source_exist'] = response.get('source_exist')
-
-
 def repack_source(context, engine):
     """
     Repack the unpacked source into archives so that each archive could be
     deposited successfully into swh.
 
-    @requires: `src_dest_dir`,the archive unpack directory
+    @requires: `source_api_url`, string, the restful API url of the source.
+    @requires: `src_dest_dir`,the archive unpack directory.
     @requires: `archive_name`, archive original name which will be saved in swh
-    @feeds: `tmp_repack_archive_path`, temporary repack directory
+    @feeds: `tmp_repack_archive_path`, temporary repack directory.
     """
     # Skip repack source if source exist.
-    check_duplicate_source(context, engine)
-    if context.get('source_exist'):
+    if context.get('source_api_url'):
         return
 
     engine.logger.info('Start to repack source...')
@@ -426,14 +486,15 @@ def upload_archive_to_deposit(context, engine):
     Accept a directory path of unpack archives, upload the archives into swh
     using the deposit api.
 
-    @requires: `config`, configuration from hub server
+    @requires: `source_api_url`, string, the restful API url of the source.
+    @requires: `config`, configuration from hub server.
     @requires: `archive_name`, original archive name which will be saved in swh
-    @requires: `tmp_repack_archive_path`, temporary repacked archive path
+    @requires: `tmp_repack_archive_path`, temporary repacked archive path.
     @feeds: Upload archive to deposit, and save archive metadata in pelc and
-            delete temporary archive
+            delete temporary archive.
     """
     # Skip update archive to deposit if source exist.
-    if context.get('source_exist'):
+    if context.get('source_api_url'):
         return
 
     tmp_repack_archive_path = context.get('tmp_repack_archive_path')
@@ -561,13 +622,15 @@ def license_scan(context, engine):
     """
     src_dir = context.get('src_dest_dir')
     config = context.get('config')
-    # Scanner could be provided when multiple scanners supported in future.
+    # Scanner could be provided when multiple scanners supported in the future.
     engine.logger.info("Start to scan source licenses with Scancode...")
     scanner = LicenseScanner(
             src_dir=src_dir, config=config, logger=engine.logger)
     (licenses, errors, has_exception) = scanner.scan()
     engine.logger.info("Done")
-    scan_result = context.get('scan_result', {})
+    scan_result = {
+        "source_checksum": context.get("source_info").get("source").get(
+            "checksum")}
     scan_result.update({
         "license_scan": context.get('license_scan'),
         "path_with_swhids": context.get('path_with_swhids'),
@@ -598,6 +661,9 @@ def copyright_scan(context, engine):
     (copyrights, errors, has_exception) = scanner.scan()
     engine.logger.info("Done")
     scan_result = context.get('scan_result', {})
+    if "source_checksum" not in scan_result:
+        scan_result["source_checksum"] = context.get("source_info").get(
+            "source").get("checksum")
     scan_result.update({
         "copyright_scan": context.get('copyright_scan'),
         "path_with_swhids": context.get('path_with_swhids'),
@@ -661,26 +727,32 @@ flow_default = [
     get_build,
     download_source,
     get_source_metadata,
-    unpack_source,
-    # PVLEGAL-1840 is to support splitting a large archive
-    # split_source,
-    repack_source,
-    # FIXME: upload_to_deposit/license_scan/copyright_scan are time
-    # consuming, we don't have an agreement yet whether they should
-    # be run one after another or in parallel.
-    upload_archive_to_deposit,
-    deduplicate_source,
-    send_package_data,
+    check_source_scan_status,
     IF(
-        lambda o, e: o.get('license_scan'),
-        license_scan,
-    ),
-    IF(
-        lambda o, e: o.get('copyright_scan'),
-        copyright_scan,
-    ),
-    send_scan_result,
-    clean_up,
+        lambda o, e: not o.get("source_scanned"),
+        [
+            unpack_source,
+            # PVLEGAL-1840 is to support splitting a large archive
+            # split_source,
+            repack_source,
+            # FIXME: upload_to_deposit/license_scan/copyright_scan are time
+            # consuming, we don't have an agreement yet whether they should
+            # be run one after another or in parallel.
+            upload_archive_to_deposit,
+            deduplicate_source,
+            send_package_data,
+            IF(
+                lambda o, e: o.get('license_scan_req'),
+                license_scan,
+            ),
+            IF(
+                lambda o, e: o.get('copyright_scan_req'),
+                copyright_scan,
+            ),
+            send_scan_result,
+            clean_up
+        ]
+    )
 ]
 
 flow_retry = [

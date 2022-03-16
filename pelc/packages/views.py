@@ -276,6 +276,8 @@ class SourceViewSet(ModelViewSet, PackageImportTransactionMixin):
                     "url": "http://ansible.com",
                     "state": 0,
                     "archive_type": "rpm"
+                    "scan_flag": \
+"license(scancode-toolkit 30.1.0),copyright(scancode-toolkit 30.1.0)"
                 }
             ]
 
@@ -981,13 +983,20 @@ class CheckDuplicateFiles(APIView):
         return Response(data={"duplicate_swhids": duplicate_swhids})
 
 
-class CheckDuplicateSource(APIView):
+class CheckSourceStatus(APIView):
     """
-    Check duplicate source, so that we can skip "upload_archive_to_deposit".
+    Check the source status.
+    If source exist, we can skip "upload_archive_to_deposit", if licenses and
+    copyrights of source scanned, we can skip reimport same source.
     """
     def post(self, request, *args, **kwargs):
         checksum = request.data.get('checksum')
-        if checksum:
-            if Source.objects.filter(checksum=checksum).exists():
-                return Response(data={"source_exist": True})
-        return Response(data={"source_exist": False})
+        qs = Source.objects.filter(checksum=checksum)
+        if qs.exists():
+            source = qs[0]
+            return Response(data={
+                "source_api_url":
+                    f'{settings.REST_API_PATH}/sources/{source.pk}',
+                "source_scan_flag": source.scan_flag})
+        return Response(data={"source_api_url": None,
+                              "source_scan_flag": None})

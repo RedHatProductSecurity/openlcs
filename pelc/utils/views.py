@@ -31,7 +31,9 @@ class ObtainConfigView(generics.RetrieveAPIView):
             'ORPHAN_CATEGORY',
             'DEPOSIT_URL',
             'DEPOSIT_USER',
-            'DEPOSIT_PASSWORD'
+            'DEPOSIT_PASSWORD',
+            'LICENSE_SCANNER',
+            'COPYRIGHT_SCANNER'
         ]
         for attr_name in allowable_attrs:
             attr = getattr(settings, attr_name, None)

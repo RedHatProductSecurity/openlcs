@@ -73,9 +73,9 @@ urlpatterns = [
     path(f'{DRF_ROOT}/check_duplicate_files/',
          package_views.CheckDuplicateFiles.as_view(),
          name='check_duplicate_files'),
-    path(f'{DRF_ROOT}/check_duplicate_source/',
-         package_views.CheckDuplicateSource.as_view(),
-         name='check_duplicate_source'),
+    path(f'{DRF_ROOT}/check_source_status/',
+         package_views.CheckSourceStatus.as_view(),
+         name='check_source_status'),
     path(f'{DRF_ROOT}/obtain_config/',
          ObtainConfigView.as_view(), name='obtain_config'),
 ]

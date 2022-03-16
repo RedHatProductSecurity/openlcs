@@ -175,6 +175,7 @@ DRF_API_VERSION = 'v1'
 
 # Update the HOSTNAME to that of the running server
 HOSTNAME = '127.0.0.1:8000'
+REST_API_PATH = f'http://{HOSTNAME}/{DRF_NAMESPACE}/{DRF_API_VERSION}'
 BROWSABLE_DOCUMENT_MACROS = {
     'HOST_NAME': 'http://%s' % (HOSTNAME),
     'API_PATH': '%s/%s' % (DRF_NAMESPACE, DRF_API_VERSION),

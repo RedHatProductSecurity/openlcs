@@ -49,6 +49,10 @@ class Source(models.Model):
         max_length=8,
         help_text='Type of archive'
     )
+    scan_flag = models.TextField(
+        null=True, blank=True,
+        help_text='A comma separated "scan_type(detector)"'
+    )
 
     class Meta:
         app_label = 'packages'
