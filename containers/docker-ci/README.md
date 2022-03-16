@@ -1,11 +1,14 @@
 # How to update CI docker image
 
-## Copy Dockerfile
-Copy the latest Dockerfile to docker environment.
-
+## Prepare
+```shell
+docker login quay.io
+docker image rm -f `docker image ls quay.io/pelc/pelc2-ci:latest -q`
+cd pelc2
+```
 ## Create local CI docker image
 ```shell
-docker build --tag quay.io/pelc/pelc2-ci:latest .
+docker build --tag quay.io/pelc/pelc2-ci:latest -f containers/docker-ci/Dockerfile .
 ```
 
 ## Push the CI docker image to quay.io
@@ -14,10 +17,11 @@ docker push quay.io/pelc/pelc2-ci
 ```
 
 ## Test the CI docker image 
+```text
 Rerun pipeline to test it.
-
+```
 
 ### Hint:
+```text
 It is better to create local CI docker in Openstack environment.
-
-If you need to add new library to requirements, merge it first, then update CI docker image.
+```
