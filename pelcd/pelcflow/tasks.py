@@ -342,14 +342,17 @@ def deduplicate_source(context, engine):
 
             try:
                 # Deduplicate files.
+                data = {'swhids': swhids,
+                        'license_scan': context.get('license_scan'),
+                        'copyright_scan': context.get('copyright_scan')}
                 response = get_data_using_post(context.get('client'),
-                                               '/check_duplicate_files/',
-                                               {'swhids': swhids})
-                existing_swhids = response.get('existing_swhids')
-                if existing_swhids:
-                    swhids = list(set(swhids).difference(set(existing_swhids)))
+                                               '/check_duplicate_files/', data)
+                duplicate_swhids = response.get('duplicate_swhids')
+                if duplicate_swhids:
+                    swhids = list(
+                        set(swhids).difference(set(duplicate_swhids)))
                     for path, swhid in path_swhid_list:
-                        if swhid in existing_swhids:
+                        if swhid in duplicate_swhids:
                             os.remove(path)
                 else:
                     swhids = list(set(swhids))

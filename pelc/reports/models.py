@@ -18,6 +18,12 @@ class FileLicenseScan(models.Model):
 
     class Meta:
         app_label = 'reports'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['file', 'detector'],
+                name='unique_file_license_scan'
+            ),
+        ]
 
     def __str__(self):
         return f'{self.file}, {self.detector}'
@@ -37,6 +43,12 @@ class FileCopyrightScan(models.Model):
 
     class Meta:
         app_label = 'reports'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['file', 'detector'],
+                name='unique_file_copyright_scan'
+            ),
+        ]
 
     def __str__(self):
         return f'{self.file}, {self.detector}'

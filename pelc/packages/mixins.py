@@ -178,7 +178,8 @@ class SaveScanResultMixin:
             data = licenses.get('data')
             if not licenses.get('has_exception'):
                 with transaction.atomic():
-                    self.save_file_license_scan(file_ids)
+                    # Exist same files in different paths.
+                    self.save_file_license_scan(list(set(file_ids)))
                     self.save_license_detections(path_file_dict, data)
 
         if kwargs.get('copyright_scan'):
@@ -186,5 +187,5 @@ class SaveScanResultMixin:
             data = copyrights.get('data')
             if not copyrights.get('has_exception'):
                 with transaction.atomic():
-                    self.save_file_copyright_scan(file_ids)
+                    self.save_file_copyright_scan(list(set(file_ids)))
                     self.save_copyright_detections(path_file_dict, data)

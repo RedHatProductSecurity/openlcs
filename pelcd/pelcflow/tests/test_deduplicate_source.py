@@ -41,7 +41,7 @@ class TestDeduplicateSource(TestCase):
 
     @mock.patch.object(tasks, 'get_data_using_post')
     def test_deduplicate_source(self, mock_get_data_using_post):
-        swhid_dict = {"existing_swhids": [
+        swhid_dict = {"duplicate_swhids": [
             "swh:1:cnt:c0de67c68fac3a78be782a7197f4072d8f2c8668"]}
         mock_get_data_using_post.return_value = swhid_dict
         tasks.deduplicate_source(self.context, self.engine)

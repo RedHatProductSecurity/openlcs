@@ -939,36 +939,46 @@ class CheckDuplicateFiles(APIView):
     """
     def post(self, request, *args, **kwargs):
         swhids = request.data.get('swhids')
+        license_scan = request.data.get('license_scan')
+        copyright_scan = request.data.get('copyright_scan')
         existing_swhids = []
+        license_swhids = []
+        copyright_swhids = []
 
         if swhids:
             existing_swhids = File.objects.in_bulk(id_list=list(swhids),
                                                    field_name='swhid').keys()
         if not existing_swhids:
-            return Response(data={"existing_swhids": existing_swhids})
+            return Response(data={"duplicate_swhids": existing_swhids})
 
         # Duplicate files that license scanned.
-        if request.data.get('license_scan'):
+        if license_scan:
             license_detector = settings.LICENSE_SCANNER
             license_swhids = FileLicenseScan.objects.filter(
                 Q(file__swhid__in=existing_swhids,
                   detector=license_detector)).values_list('file__swhid',
                                                           flat=True)
-            if license_swhids:
-                existing_swhids = list(
-                    set(existing_swhids).intersection(license_swhids))
-
         # Duplicate files that copyright scanned.
-        if request.data.get('copyright_scan'):
+        if copyright_scan:
             copyright_detector = settings.COPYRIGHT_SCANNER
             copyright_swhids = FileCopyrightScan.objects.filter(
                 Q(file__swhid__in=existing_swhids,
                   detector=copyright_detector)).values_list('file__swhid',
                                                             flat=True)
-            if copyright_swhids:
-                existing_swhids = list(
-                    set(existing_swhids).intersection(copyright_swhids))
-        return Response(data={"existing_swhids": existing_swhids})
+        # Deduplicate files.
+        if license_scan and copyright_scan:
+            duplicate_swhids = list(
+                set(existing_swhids).intersection(license_swhids,
+                                                  copyright_swhids))
+        elif license_scan:
+            duplicate_swhids = list(
+                set(existing_swhids).intersection(license_swhids))
+        elif copyright_scan:
+            duplicate_swhids = list(
+                set(existing_swhids).intersection(copyright_swhids))
+        else:
+            duplicate_swhids = existing_swhids
+        return Response(data={"duplicate_swhids": duplicate_swhids})
 
 
 class CheckDuplicateSource(APIView):
