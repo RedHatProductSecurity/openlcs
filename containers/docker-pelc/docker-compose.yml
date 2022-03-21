@@ -74,7 +74,7 @@ services:
     ports:
       - "8001:8001"
     healthcheck:
-      test: [ "CMD-SHELL", "curl http://localhost > /dev/null || exit 1" ]
+      test: [ "CMD-SHELL", "curl http://localhost:8001 > /dev/null || exit 1" ]
       interval: 5s
       timeout: 5s
       retries: 5

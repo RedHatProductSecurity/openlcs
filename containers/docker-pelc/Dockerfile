@@ -1,9 +1,8 @@
 # https://catalog.redhat.com/software/containers/ubi8/python-38/5dde9cacbed8bd164a0af24a?container-tabs=overview
 # FROM registry.access.redhat.com/ubi8/python-38:1-75
 # This image is copied from the first image, to prevent upstream image changed
-FROM quay.io/pelc/python-38:latest
+FROM quay.io/pelc/python-38:3.8.8
 
-MAINTAINER prodsec-dev-pelc <prodsec-dev-pelc@redhat.com>
 LABEL name="pelc2" \
       maintainer="prodsec-dev-pelc@redhat.com" \
       summary="PELC2" \
@@ -11,24 +10,9 @@ LABEL name="pelc2" \
 
 USER 0
 
-RUN cd /etc/pki/ca-trust/source/anchors/ && \
-    curl -skO https://password.corp.redhat.com/RH-IT-Root-CA.crt && \
-    curl -skO https://engineering.redhat.com/Eng-CA.crt && \
-    update-ca-trust
-
-RUN dnf config-manager --add-repo http://tito.eng.nay.redhat.com/yum/redhat/pelc/qe/rhel8/noarch \
-    --add-repo http://download.eng.bos.redhat.com/brewroot/repos/brew-rhel-8/latest/x86_64/ && \
-    dnf install --nogpgcheck --nodoc -y  \
-    cpio  \
-    atool && \
-    dnf clean all
-
-# To make docker cache pip package, copy requirement and install dependencies
-ADD ./requirements /tmp
-RUN pip install --upgrade pip && pip install -r /tmp/base.txt
-
-ADD ./containers/patches/magic2.patch /opt/app-root/lib64/python3.8/site-packages/typecode
-RUN cd /opt/app-root/lib64/python3.8/site-packages/typecode && patch < magic2.patch
+# Copy sources from context
+COPY ./requirements /tmp
+COPY . /opt/app-root/src
 
 # To avoid docker cache invaild , put these code in the last part
 ARG quay_expiration
@@ -37,14 +21,26 @@ ENV REQUESTS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt
 ENV HOME=/opt/app-root/src
 ENV PYTHONUNBUFFERED 1
 
-COPY . /opt/app-root/src
-RUN mkdir -p /var/pelc/static /var/log/pelc/ /var/cache/ && \
-    chmod a+rwX -R /var/log/pelc/ /var/cache/ /var/pelc/static  ${HOME}  /etc/passwd
+RUN curl -sSk https://password.corp.redhat.com/RH-IT-Root-CA.crt \
+        -o /etc/pki/ca-trust/source/anchors/Red_Hat_IT_Root_CA.crt && \
+    curl -sSk https://engineering.redhat.com/Eng-CA.crt \
+        -o /etc/pki/ca-trust/source/anchors/Eng-CA.crt && \
+    update-ca-trust && \
+    dnf config-manager --add-repo http://tito.eng.nay.redhat.com/yum/redhat/pelc/qe/rhel8/noarch \
+        --add-repo http://download.eng.bos.redhat.com/brewroot/repos/brew-rhel-8/latest/x86_64/ && \
+    dnf install --nogpgcheck --nodoc -y cpio-2.12 atool-0.39.0 && \
+    dnf clean all && \
+    # To make docker cache pip package, install dependencies
+    pip install --upgrade pip && pip install -r /tmp/devel.txt && \
+    # Add permissions for pelc
+    mkdir -p /var/pelc/static /var/log/pelc/ /var/cache/ && \
+    chmod a+rwX -R /var/log/pelc/ /var/cache/ /var/pelc/static "${HOME}" /etc/passwd && \
+    chmod a+x -R "${HOME}"/containers/docker-pelc/bin/*
 
-RUN chmod a+x -R ${HOME}/containers/docker-pelc/bin/*
+# Install the patch
+COPY ./containers/patches/magic2.patch /opt/app-root/lib64/python3.8/site-packages/typecode
+WORKDIR /opt/app-root/lib64/python3.8/site-packages/typecode
+RUN patch < magic2.patch
 
-# Ordinary users
+WORKDIR "${HOME}"
 USER 1001
-
-# Set the default command for the resulting image
-CMD exec gunicorn "pelc.wsgi"

@@ -52,6 +52,7 @@ build-ci-image:
   stage: build-ci-image
   script:
     - docker login -u="$PELC_CI_USER" -p=$PELC_CI_PASSWORD quay.io
+    - cp containers/docker-ci/.dockerignore .
     # https://docs.gitlab.com/ee/ci/docker/using_docker_build.html#docker-caching-example
     # build and get local image sha id
     - LOCAL_IMAGE_SHA=`docker build  -q -f containers/docker-ci/Dockerfile .`;
@@ -66,6 +67,7 @@ build-ci-image:
           docker tag $LOCAL_IMAGE_SHA $CI_REGISTRY_IMAGE:latest;
           docker push $CI_REGISTRY_IMAGE:latest;
         fi
+    - rm -f .dockerignore
 
 # ======== static-analysis-build========
 flake8:
