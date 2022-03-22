@@ -443,6 +443,7 @@ def upload_archive_to_deposit(context, engine):
     _deposit = UploadToDeposit(_settings)
 
     engine.logger.info(f"Start to upload archive {archive_name} to deposit...")
+    # Start to deposit.
     try:
         ret_output = _deposit.deposit_archive(tmp_repack_archive_path,
                                               archive_name)
@@ -455,20 +456,36 @@ def upload_archive_to_deposit(context, engine):
         logger.error(err_msg)
         raise RuntimeError(err_msg) from None
 
-    # Check deposit status
-    deposit_id = _deposit.get_deposit_id(ret_output)
+    # Parse deposit result to get deposit id.
+    try:
+        deposit_id = _deposit.get_deposit_id(ret_output)
+        if not deposit_id:
+            err_msg = f'Failed to get deposit id from the deposit result: ' \
+                      f'{ret_output}'
+            logger.error(err_msg)
+            raise RuntimeError(err_msg)
+        else:
+            info_msg = f'Successfully parsed deposit result to get ' \
+                       f'deposit id: {deposit_id}'
+            logger.info(info_msg)
+    except RuntimeError as err:
+        err_msg = f"Failed to get deposit id, Reason: {err}"
+        logger.error(err_msg)
+        raise RuntimeError(err_msg) from None
+
+    # Check deposit status.
     try:
         upload_status = _deposit.check_deposit_archive_status(deposit_id)
+        if upload_status == "done":
+            logger.info(
+                f"Successfully uploaded archive {archive_name} to deposit.")
+        else:
+            logger.error(
+                f"Failed to upload archive {archive_name} to deposit.")
     except TimeoutError as err:
         err_msg = f"Check deposit archive timeout, Reason: {err}"
         logger.error(err_msg)
         raise TimeoutError(err_msg) from None
-
-    if upload_status == "done":
-        logger.info(
-            f"Successfully uploaded archive {archive_name} to deposit.")
-    else:
-        logger.error(f"Failed to upload archive {archive_name} to deposit.")
 
     # After upload to deposit success , delete repack archive
     shutil.rmtree(tmp_repack_archive_path, ignore_errors=True)
