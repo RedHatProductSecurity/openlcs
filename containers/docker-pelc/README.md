@@ -12,10 +12,15 @@ cd pelc2
 
 ## Create services, and start services
 ```shell
+# If you want to configure it later, you can use docker-compose.
 docker-compose -f containers/docker-pelc/docker-compose.yml up
 
 # If need running on backend, use this command
 docker-compose -f containers/docker-pelc/docker-compose.yml up -d
+
+# If you want to get environment with configured services, you can use this command
+# it will remove existed images and containers about PELC2.
+bash containers/docker-pelc/start-services.sh
 ```
 
 ## Debug
@@ -31,8 +36,8 @@ docker logs container_name
 # "docker-pelc_postgresql_1", "docker-pelc_redis_1"
 
 # rebuild services
-docker rm -f `docker ps -a -q`
-docker image rm -f `docker image ls -q`
+docker rm -f $(docker ps -f "name=docker-pelc" -q)
+docker rmi -f $(docker images -f reference='quay.io/pelc/*:latest' -f reference='local/pelc2:latest' -q)
 docker-compose -f containers/docker-pelc/docker-compose.yml up -d
 
 # Update database
