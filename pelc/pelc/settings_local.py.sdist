@@ -32,6 +32,20 @@ SECRET_KEY = 'django-insecure-8c4w#_a7k&1^!#+af%unwddrcc0=og^j7k@n*gjxm$^8b#tzdm
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
+# Used to identify namespace for restful api endpoints.
+DRF_NAMESPACE = 'rest'
+DRF_API_VERSION = 'v1'
+
+# Change hostname to actual hostname.
+HOSTNAME = '127.0.0.1:8000'
+REST_API_PATH = f'http://{HOSTNAME}/{DRF_NAMESPACE}/{DRF_API_VERSION}'
+BROWSABLE_DOCUMENT_MACROS = {
+    # need to be rewritten with the real host name when deploy.
+    'HOST_NAME': f'http://{HOSTNAME}',
+    # make consistent with rest api root.
+    'API_PATH': f'{DRF_NAMESPACE}/{DRF_API_VERSION}',
+}
+
 # Database
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
 
@@ -87,3 +101,7 @@ if not os.path.exists(SRC_ROOT_DIR):
 RETRY_DIR = os.path.join(SRC_ROOT_DIR, 'retry')
 TMP_ROOT_DIR = os.path.join(SRC_ROOT_DIR, 'tmp')
 POST_DIR = os.path.join(SRC_ROOT_DIR, 'post')
+
+# Set paths to scancode. Assumes virtualenv
+SCANCODE_CLI = os.path.expandvars('$VIRTUAL_ENV/bin/scancode')
+EXTRACTCODE_CLI = os.path.expandvars('$VIRTUAL_ENV/bin/extractcode')

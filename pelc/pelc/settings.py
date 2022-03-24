@@ -177,8 +177,10 @@ DRF_API_VERSION = 'v1'
 HOSTNAME = '127.0.0.1:8000'
 REST_API_PATH = f'http://{HOSTNAME}/{DRF_NAMESPACE}/{DRF_API_VERSION}'
 BROWSABLE_DOCUMENT_MACROS = {
-    'HOST_NAME': 'http://%s' % (HOSTNAME),
-    'API_PATH': '%s/%s' % (DRF_NAMESPACE, DRF_API_VERSION),
+    # need to be rewritten with the real host name when deploy.
+    'HOST_NAME': f'http://{HOSTNAME}',
+    # make consistent with rest api root.
+    'API_PATH': f'{DRF_NAMESPACE}/{DRF_API_VERSION}',
 }
 
 # SWH settings
