@@ -43,7 +43,9 @@ sudo systemctl enable --now redis
 ### Setting up PELC2
 ```shell
 # Install rpm dependencies
-sudo dnf install python38 python38-devel virtualenvwrapper gcc
+sudo dnf install python38 python38-devel virtualenvwrapper gcc krb5-devel patch
+# If cannot install virtualenvwrapper, use pip to install it
+
 # Setup virtualenv
 echo "
 # Set virtualenv
@@ -54,15 +56,17 @@ exec bash
 # Create a new virtualenv named pelc2
 mkvirtualenv pelc2 --python /usr/bin/python3.8
 # Set $VIRTUAL_ENV
-VIRTUAL_ENV=~/.virtualenvs/$ENV_NAME
-
+VIRTUAL_ENV=~/.virtualenvs/pelc2
 # Set CA for requests library in the virtualenv
 echo "export REQUESTS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt" \
     > $VIRTUAL_ENV/bin/postactivate
 source $VIRTUAL_ENV/bin/postactivate
+workon pelc2
 
-# Install Python dependencies
+# Install project dependencies
 pip install -r requirements/devel.txt
+# If cannot install psycopg2, install psycopg2-binary instead
+# using "pip install psycopg2-binary==2.9.2"
 
 # Create soft links under $(PYTHON_SITELIB)
 cd $VIRTUAL_ENV/lib/python3.8/site-packages
@@ -90,11 +94,14 @@ PELC2 web interface can be started for local development (built-in server with
 auto reloading) using the following under pelc_project_path:
 ```shell
 gunicorn pelc.wsgi
+# or
+pelc/manage.py runserver 0:8000
 ```
-
-It can be accessed on http://localhost:8000/. You can log in by going to
-http://127.0.0.1:8000/admin/login/ and using the account you set up in 
-the previous section (user `admin`, password `test`).
+```text
+It can be accessed on http://localhost:8000/ or http://host_server_ip:8000/.
+You can log in by going to http://127.0.0.1:8000/admin/login/,
+and using the account you set up in the previous section (user `admin`, password `test`).
+```
 
 ### Running PELC2 worker
 PELC2 worker can be started using the following (from the top directory of 
