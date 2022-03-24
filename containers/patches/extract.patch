@@ -1,0 +1,16 @@
+--- extract.py	2022-03-24 21:42:00.778077190 +0800
++++ extract_mod.py	2022-03-24 21:42:00.778077190 +0800
+@@ -127,6 +127,13 @@
+     processed_events_append = processed_events.append
+     for event in extract_events:
+         yield event
++        if event.warnings or event.errors:
++            if TRACE:
++                logger.debug(
++                    f'extract:replace_originals: {event} has errors. '
++                    'not replacing originals'
++                )
++            continue
+         if replace_originals:
+             processed_events_append(event)
+ 
