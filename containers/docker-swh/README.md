@@ -36,10 +36,31 @@ https://forge.softwareheritage.org/source/puppet-swh-site/
 ### How to run swh from scratch:
 ```text
 Install docker and docker-compose service
-git clone https://forge.softwareheritage.org/source/swh-environment.git
-docker-compose up -d
-install swh patch according containers/patches/README.md
 ```
+
+```shell
+# Clone repository
+git clone https://forge.softwareheritage.org/source/swh-environment.git
+```
+
+```shell
+# Install swh config patches
+cd swh-environmen/docker
+wget https://gitlab.cee.redhat.com/pelc/pelc2/-/raw/main/containers/docker-swh/conf-patches-install.sh --no-check-certificate
+bash conf-patches-install.sh
+```
+
+```shell
+# Start swh services
+docker-compose up -d
+```
+
+```shell
+# Install swh.swh.loader.package.utils.py patch
+wget https://gitlab.cee.redhat.com/pelc/pelc2/-/raw/main/containers/docker-swh/swh-loader-package-utils-patch-install.sh --no-check-certificate
+bash swh-loader-package-utils-patch-install.sh
+```
+
 
 ### Run and restart swh
 ```text
