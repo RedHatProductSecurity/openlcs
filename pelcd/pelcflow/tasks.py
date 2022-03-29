@@ -547,6 +547,10 @@ def upload_archive_to_deposit(context, engine):
         err_msg = f"Check deposit archive timeout, Reason: {err}"
         logger.error(err_msg)
         raise TimeoutError(err_msg) from None
+    except RuntimeError as err:
+        err_msg = f"Check deposit archive failed, Reason: {err}"
+        logger.error(err_msg)
+        raise TimeoutError(err_msg) from None
 
     # After upload to deposit success , delete repack archive
     shutil.rmtree(tmp_repack_archive_path, ignore_errors=True)
