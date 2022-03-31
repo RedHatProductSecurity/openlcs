@@ -95,8 +95,7 @@ class UploadToDeposit:
                 "sd:deposit_status")[0].childNodes[0].data
             if deposit_status == "done":
                 return deposit_status
-            elif deposit_status == "failed" or deposit_status == "rejected" \
-                    or deposit_status == "null":
+            elif deposit_status in ["failed", "rejected", "null"]:
                 deposit_status_detail = collection.getElementsByTagName(
                     "sd:deposit_status_detail")[0].childNodes[0].data
                 err_msg = f"Failed to deposit: {deposit_status_detail}"
