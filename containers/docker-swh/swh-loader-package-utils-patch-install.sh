@@ -11,6 +11,7 @@ SetWorkDir() {
 
 InstallSWHLoaderPackageUtilsPatch() {
     docker exec docker_swh-loader_1 bash -c "sed -ri \"/^[^#]/s/(^\s+timeout\s+=).*/\1 ${TIMEOUT}/\" /srv/softwareheritage/venv/lib/python3.7/site-packages/swh/loader/package/utils.py"
+    docker exec docker_swh-loader-deposit_1 bash -c "sed -ri \"/^[^#]/s/(^\s+timeout\s+=).*/\1 ${TIMEOUT}/\" /srv/softwareheritage/venv/lib/python3.7/site-packages/swh/loader/package/utils.py"
     docker-compose restart
 }
 
@@ -26,6 +27,9 @@ Help() {
     echo "                  default is ${HOME}/swh-environment/docker"
     echo "  -t, --timeout   Set loader timeout, default is 60s"
     echo ""
+    echo "Example:"
+    echo "bash swh-loader-package-utils-patch-install.sh -w /home/ubuntu/swh-environment/docker -t 600"
+    echo ""
 }
 
 main() {
@@ -38,7 +42,7 @@ main() {
 
 if [[ $# != 0 ]]; then
     for arg in "$@"; do
-        if [[ "${arg}" =~ "-h" || "${arg}" =~ "--help" ]]; then
+        if [[ "${arg}" = "-h" || "${arg}" = "--help" ]]; then
             Help
             exit 0
         fi

@@ -8,19 +8,28 @@ SetWorkDir() {
     cd "${WORKDIR}" || exit
 }
 
+# Set max_upload_size to 20000000000
 InstallSWHConfDepositPatch() {
-    if grep "^max_upload_size" ./conf/deposit.yml > /dev/null 2>&1; then
-        if grep "^max_upload_size: 20G" ./conf/deposit.yml > /dev/null 2>&1;then
-            sed -ri '/^[^#]/s/(^max_upload_size:\s).*/\120G/' ./conf/deposit.yml
+    if grep -q "^max_upload_size" ./conf/deposit.yml; then
+        if ! grep -q "^max_upload_size: 20000000000" ./conf/deposit.yml;then
+            sed -ri '/^[^#]/s/(^max_upload_size:\s).*/\120000000000/' conf/deposit.yml
         fi
     else
-        echo "max_upload_size: 20G;" >> ./conf/deposit.yml
+        echo "max_upload_size: 20000000000" >> conf/deposit.yml
     fi
 }
 
 InstallSWHConfNginxPatch() {
-    if ! grep "^\s+client_max_body_size\s+20G" ./conf/nginx.conf > /dev/null 2>&1; then
-        sed -ri '/^[^#]/s/(^\s+client_max_body_size\s+).*/\120G;/' ./conf/nginx.conf
+    # http://nginx.org/en/docs/http/ngx_http_core_module.html
+    HTTP_SETTINGS=$(sed -n '/http {/,/server {/p' conf/nginx.conf)
+
+    # Set client_max_body_size to 20G
+    if echo "$HTTP_SETTINGS"|grep -E -q "client_max_body_size"; then
+        if ! echo "$HTTP_SETTINGS"|grep -E -q "^\s+client_max_body_size\s+20G"; then
+            sed  -ri '/^http\s+\{/,/^\s+server\s+\{/s/(^\s+client_max_body_size\s+).*/\120G;/' conf/nginx.conf
+        fi
+    else
+        sed  -ri '/^\s+server\s+\{/i\  proxy_connect_timeout 20G;' conf/nginx.conf
     fi
 }
 
@@ -36,6 +45,9 @@ Help() {
     echo "  -h, --help      Display help text"
     echo "  -w, --work-dir  Set work directory that contain docker-compose.yml,"
     echo "                  default is ${HOME}/swh-environment/docker"
+    echo ""
+    echo "Example:"
+    echo "bash conf-patches-install.sh -w /home/ubuntu/swh-environment/docker"
     echo ""
 }
 
