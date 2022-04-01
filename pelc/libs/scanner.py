@@ -32,9 +32,9 @@ class LicenseScanner(object):
             proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,
                                     stderr=subprocess.PIPE)
             output, error = proc.communicate()
-        except Exception as e:
+        except Exception:
             has_exception = True
-            license_errors.append(traceback.format_exc(e))
+            license_errors.append(traceback.format_exc())
         else:
             try:
                 scan_result = json.loads(output)
@@ -106,9 +106,9 @@ class CopyrightScanner(object):
             proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,
                                     stderr=subprocess.PIPE)
             output, error = proc.communicate()
-        except Exception as e:
+        except Exception:
             has_exception = True
-            copyright_errors.append(traceback.format_exc(e))
+            copyright_errors.append(traceback.format_exc())
         else:
             try:
                 scan_result = json.loads(output)
