@@ -37,15 +37,12 @@ RUN curl -sSk https://password.corp.redhat.com/RH-IT-Root-CA.crt \
     chmod a+rwX -R /var/log/pelc/ /var/cache/ /var/pelc/static "${HOME}" /etc/passwd && \
     chmod a+x -R "${HOME}"/containers/docker-pelc/bin/*
 
-# Apply patch for typecode
-COPY ./containers/patches/magic2.patch /opt/app-root/lib64/python3.8/site-packages/typecode
-WORKDIR /opt/app-root/lib64/python3.8/site-packages/typecode
-RUN patch < magic2.patch
-
-# Apply patch for extractcode
-COPY ./containers/patches/extract.patch /opt/app-root/lib64/python3.8/site-packages/extractcode
-WORKDIR /opt/app-root/lib64/python3.8/site-packages/extractcode
-RUN patch < extract.patch
+# Apply patch for typecode, extractcode, packagedcode
+COPY ./containers/patches/* /opt/app-root/lib64/python3.8/site-packages/
+WORKDIR /opt/app-root/lib64/python3.8/site-packages/
+RUN patch -p0 < magic2.patch && \
+    patch -p0 < extract.patch && \
+    patch -p0 < rpm.patch
 
 WORKDIR "${HOME}"
 USER 1001

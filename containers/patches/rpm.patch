@@ -1,0 +1,20 @@
+--- packagedcode/rpm.py	2022-04-01 12:38:24.375524865 +0800
++++ packagedcode/rpm.py.mod	2022-04-01 16:29:21.394860116 +0800
+@@ -94,7 +94,7 @@
+     # note: the order of the named tuple is the sort order.
+     # But for creation we put the rarely used epoch last
+     def __new__(self, version, release=None, epoch=None):
+-        if epoch and epoch.strip() and not epoch.isdigit():
++        if epoch and not isinstance(epoch, int):
+             raise ValueError('Invalid epoch: must be a number or empty.')
+         if not version:
+             raise ValueError('Version is required: {}'.format(repr(version)))
+@@ -111,7 +111,7 @@
+             vr = self.version
+ 
+         if self.epoch:
+-            vr = ':'.join([self.epoch, vr])
++            vr = ':'.join([str(self.epoch), vr])
+         return vr
+ 
+ 
