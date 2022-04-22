@@ -3,19 +3,19 @@
 ## Prepare
 ```shell
 docker login quay.io
-docker image rm -f `docker image ls quay.io/pelc/pelc2-ci:latest -q`
-cd pelc2
+docker image rm -f `docker image ls quay.io/pelc/openlcs-ci:latest -q`
+cd openlcs 
 cp containers/docker-ci/.dockerignore .
 ```
 
 ## Create local CI docker image
 ```shell
-docker build --tag quay.io/pelc/pelc2-ci:latest -f containers/docker-ci/Dockerfile .
+docker build --tag quay.io/pelc/openlcs-ci:latest -f containers/docker-ci/Dockerfile .
 ```
 
 ## Push the CI docker image to quay.io
 ```shell
-docker push quay.io/pelc/pelc2-ci
+docker push quay.io/pelc/openlcs-ci
 ```
 
 ## Remove .dockerignore

@@ -1,9 +1,9 @@
-def test_sources(pelc_client):
+def test_sources(openlcs_client):
     """
     Test for retrieving sources
     """
     url = '/sources/'
-    response = pelc_client.api_call(url, 'GET')
+    response = openlcs_client.api_call(url, 'GET')
     expected = [{
                     'id': 1,
                     'license_detections': [],

@@ -57,7 +57,7 @@ usermod -aG docker gitlab-runner
 sudo systemctl restart gitlab-runner
 
 # Register Shell runner https://docs.gitlab.com/runner/register/index.html#linux
-# "URL" and "PROJECT_REGISTRATION_TOKEN" come from "Runners" in https://gitlab.cee.redhat.com/pelc/pelc2/-/settings/ci_cd
+# "URL" and "PROJECT_REGISTRATION_TOKEN" come from "Runners" in https://gitlab.cee.redhat.com/pelc/openlcs/-/settings/ci_cd
 sudo gitlab-runner register \
   --non-interactive \
   --url "URL" \
@@ -121,7 +121,7 @@ yum localinstall gitlab-runner_amd64.rpm -y
 systemctl enable gitlab-runner --now
 
 # Register Docker runner https://docs.gitlab.com/runner/register/index.html#linux
-# "URL" and "PROJECT_REGISTRATION_TOKEN" come from "Runners" in https://gitlab.cee.redhat.com/pelc/pelc2/-/settings/ci_cd
+# "URL" and "PROJECT_REGISTRATION_TOKEN" come from "Runners" in https://gitlab.cee.redhat.com/pelc/openlcs/-/settings/ci_cd
 sudo gitlab-runner register \
   --non-interactive \
   --url "URL" \

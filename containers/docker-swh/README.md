@@ -2,7 +2,7 @@
 ```text
 SWH provides a way to duplicate and store scanned software, but unfortunately 
 this function in swh is not the main feature, Until now this function is still 
-in internal testing status which is a potential risk for pelc2.
+in internal testing status which is a potential risk for OpenLCS.
 
 We should focus on bulk importing many archives to verify its stability, from 
 my testing it seems some swh service will be dead or out of memory.
@@ -58,7 +58,7 @@ git clone https://forge.softwareheritage.org/source/swh-environment.git
 ```shell
 # Install SWH config patches
 cd swh-environment/docker
-wget https://gitlab.cee.redhat.com/pelc/pelc2/-/raw/main/containers/docker-swh/conf-patches-install.sh --no-check-certificate
+wget https://gitlab.cee.redhat.com/pelc/openlcs/-/raw/main/containers/docker-swh/conf-patches-install.sh --no-check-certificate
 bash conf-patches-install.sh -w /home/ubuntu/swh-environment/docker
 ```
 
@@ -69,7 +69,7 @@ docker-compose up -d
 
 ```shell
 # Install swh-loader-core.swh.loader.package.utils.py patch
-wget https://gitlab.cee.redhat.com/pelc/pelc2/-/raw/main/containers/docker-swh/swh-loader-package-utils-patch-install.sh --no-check-certificate
+wget https://gitlab.cee.redhat.com/pelc/openlcs/-/raw/main/containers/docker-swh/swh-loader-package-utils-patch-install.sh --no-check-certificate
 bash swh-loader-package-utils-patch-install.sh
 ```
 

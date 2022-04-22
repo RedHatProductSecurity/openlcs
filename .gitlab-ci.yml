@@ -3,12 +3,12 @@ stages:
   - build-ci-image
 
   # Run static analysis tools
-  # build PELC2 image
+  # build OpenLCS image
   - static-analysis-build
 
-  # Run unit and functional tests that do not require fully deployed PELC
+  # Run unit and functional tests that do not require fully deployed OpenLCS 
   # Run integration tests
-  # Deploy master branch to pelc-dev
+  # Deploy master branch to openlcs-dev
   - tests-it-promote
 
   - build-dev-image
@@ -17,18 +17,18 @@ stages:
 
 variables:
   TOWER_HOST: https://tower.engineering.redhat.com
-  PELC_DATABASE_USER: postgres
-  PELC_DATABASE_PASSWORD: test
+  OPENLCS_DATABASE_USER: postgres
+  OPENLCS_DATABASE_PASSWORD: test
   POSTGRESQL_ADMIN_PASSWORD: $DATABASE_PASSWORD
   OCP_ADDRESS: https://api.ocp-c1.prod.psi.redhat.com:6443
-  CI_REGISTRY_IMAGE: quay.io/pelc/pelc2-ci
-  PELC_IMAGE: quay.io/pelc/pelc2
+  CI_REGISTRY_IMAGE: quay.io/pelc/openlcs-ci
+  OPENLCS_IMAGE: quay.io/pelc/openlcs
   PELC_CI_USER: pelc+pelc_ci_cd
   PELC_CI_PASSWORD: $pelc_ci_cd_password
 
   # For pgsql start param
-  POSTGRESQL_DATABASE: pelc2
-  POSTGRESQL_USER: 'pelc2'
+  POSTGRESQL_DATABASE: openlcs
+  POSTGRESQL_USER: 'openlcs'
   POSTGRES_HOST_AUTH_METHOD: trust
   POSTGRESQL_ADMIN_PASSWORD: 'test'
   POSTGRESQL_PASSWORD: 'test'
@@ -36,7 +36,7 @@ variables:
 .ci-image: &ci-image
   image:
     name: $CI_REGISTRY_IMAGE:latest
-  # the tags come from the labels of shared runner in 'gitlab.cee.redhat.com/pelc/pelc2/-/settings/ci_cd'
+  # the tags come from the labels of shared runner in 'gitlab.cee.redhat.com/pelc/openlcs/-/settings/ci_cd'
   tags:
     - pelc-docker-runner
 
@@ -122,9 +122,9 @@ build-dev-image:
      - main
  stage: build-dev-image
  script:
-   - docker build -t $PELC_IMAGE:dev -f containers/docker-pelc/Dockerfile .;
+   - docker build -t $OPENLCS_IMAGE:dev -f containers/docker-openlcs/Dockerfile .;
    - docker login -u="$PELC_CI_USER" -p=$PELC_CI_PASSWORD quay.io
-   - docker push $PELC_IMAGE:dev
+   - docker push $OPENLCS_IMAGE:dev
 
 deploy-to-dev:
   image:
@@ -139,6 +139,6 @@ deploy-to-dev:
   script:
    - tower-cli config verify_ssl false
    - >
-      tower-cli job launch -J "PELC2 deploy dev" --monitor --no-input --insecure
-      -e "pelc_image_tag: dev"
+      tower-cli job launch -J "OpenLCS deploy dev" --monitor --no-input --insecure
+      -e "openlcs_image_tag: dev"
       -h "$TOWER_HOST" -t "$TOWER_TOKEN"

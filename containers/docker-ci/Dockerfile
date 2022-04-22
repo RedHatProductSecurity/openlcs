@@ -2,10 +2,10 @@
 # This image is copied from the first image, to prevent upstream image changed
 FROM quay.io/pelc/python-38:3.8.8
 
-LABEL name="pelc2-ci" \
+LABEL name="openlcs-ci" \
       maintainer="prodsec-dev-pelc@redhat.com" \
-      summary="PELC2 CI/CD" \
-      description="PELC2 ci-cd service in a container, will be auto deleted after 1 day"
+      summary="OpenLCS CI/CD" \
+      description="OpenLCS ci-cd service in a container, will be auto deleted after 1 day"
 
 USER 0
 

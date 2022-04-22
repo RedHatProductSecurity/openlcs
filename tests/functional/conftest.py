@@ -8,15 +8,15 @@ from django.db import connection
 
 TESTDIR = dirname(__file__)
 TOPDIR = normpath(join(TESTDIR, pardir, pardir))
-PELCDIR = join(TOPDIR, 'pelc')
+OPENLCSDIR = join(TOPDIR, 'openlcs')
 
 TEST_USER = 'admin'
 TEST_PASS = 'test'
 
 
 def pytest_configure():
-    sys.path = [PELCDIR, TOPDIR] + sys.path
-    settings_path = join(PELCDIR, 'pelc', 'settings.py')
+    sys.path = [OPENLCSDIR, TOPDIR] + sys.path
+    settings_path = join(OPENLCSDIR, 'openlcs', 'settings.py')
 
     # Override settings_local from the pel repo with ours
     conf_vars = {'__file__': ''}
@@ -40,7 +40,7 @@ def pytest_configure():
 
 
 @pytest.fixture(scope='session')
-def pelc_setup(redis_nooproc):
+def openlcs_setup(redis_nooproc):
     settings.CELERY_BROKER_URL = \
         'redis://{r.host}:{r.port}/0'.format(r=redis_nooproc)
     db_params = connection.settings_dict

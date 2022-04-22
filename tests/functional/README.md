@@ -5,7 +5,7 @@ Test cases are using tox and pytest for running the tests.
 
 ## Run the tests
 There are a few methods how you can run test cases. Always run the commands from
-PELC root directory.
+openlcs root directory.
 
 1. Run all tests using `tox`
 2. Run just test all API cases: `tox -e api -- -v --reuse-db`
@@ -28,7 +28,7 @@ will pause the test after the failure, when you can access the server and
 database.
 You can run the printed curl commands without modifications.
 You can access the server via the URL printed in curl commands.
-You can access the database using: `psql test_pelc`.
+You can access the database using: `psql test_openlcs`.
 To exit the paused test, use Ctrl+C.
 
 
@@ -42,7 +42,7 @@ More info: https://docs.djangoproject.com/en/dev/topics/serialization/#natural-k
 
 Use this command to dump the DB:
 ```
-python pelc/manage.py dumpdata \
+python openlcs/manage.py dumpdata \
     packages auth.user auth.group adhoc comments history notifications \
     orgchart packages products reviews tasks utils authentications \
     --natural-foreign  -o database_data.json

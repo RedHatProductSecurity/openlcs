@@ -3,7 +3,7 @@
 # This configuration is for development
 
 bind = '0.0.0.0:8000'
-chdir = 'pelc'
+chdir = 'openlcs'
 # Auto-detect cpu number is invalid in container mode
 # Need manually configure
 # workers = multiprocessing.cpu_count() * 2 + 1

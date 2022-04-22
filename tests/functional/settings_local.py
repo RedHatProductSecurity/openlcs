@@ -27,7 +27,7 @@ LOGGER_DIR = 'logs'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'pelc2',
+        'NAME': 'openlcs',
         'USER': 'postgres',
         'PASSWORD': 'test',
         'HOST': 'postgres',

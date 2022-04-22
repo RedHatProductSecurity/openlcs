@@ -7,10 +7,10 @@ from django.core.management import call_command
 
 TESTDIR = dirname(__file__)
 TOPDIR = normpath(join(TESTDIR, pardir, pardir, pardir))
-PELCDIR = join(TOPDIR, 'pelc')
+OPENLCSDIR = join(TOPDIR, 'openlcs')
 
 
-class PelcTestClient:
+class OpenlcsTestClient:
 
     # test user and password must be the same as defined in database_data.json
     # which is used for populating database
@@ -111,16 +111,16 @@ class PelcTestClient:
 
 
 @pytest.fixture
-def pelc_client(live_server, pelc_setup):
-    pelc_client = PelcTestClient(live_server.url)
-    pelc_client.login()
-    return pelc_client
+def openlcs_client(live_server, openlcs_setup):
+    openlcs_client = OpenlcsTestClient(live_server.url)
+    openlcs_client.login()
+    return openlcs_client
 
 
 @pytest.fixture
-def pelc_client_unprivileged(django_db_setup, live_server, pelc_setup):
-    pelc_client = PelcTestClient(
+def openlcs_client_unprivileged(django_db_setup, live_server, openlcs_setup):
+    openlcs_client = OpenlcsTestClient(
         live_server.url, 'test_privileges', 'privileges')
-    pelc_client.login()
-    return pelc_client
+    openlcs_client.login()
+    return openlcs_client
 
