@@ -14,9 +14,11 @@ extractcode-libarchive==3.5.1.210531
 workflow==2.1.6
 koji==1.27.0
 djangorestframework==3.13.1
-django_filter==21.1
+django-filter==21.1
 Markdown==3.3.6
 swh.model==3.2.0
 jsonschema==4.3.3
 swh.deposit==0.16.1
 gunicorn==20.1.0
+krbcontext==0.10
+python-ldap==3.4.0

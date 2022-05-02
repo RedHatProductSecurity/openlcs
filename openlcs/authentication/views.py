@@ -1,8 +1,13 @@
+import django_filters
+from django.contrib.auth import get_user_model
 from rest_framework.authtoken.models import Token
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.viewsets import ModelViewSet
+
+from authentication.serializers import UserSerializer
+User = get_user_model()
 
 
 class TokenViewSet(ModelViewSet):
@@ -138,3 +143,58 @@ class TokenViewSet(ModelViewSet):
         else:
             reason = {"Refresh Token Error": "Authenticate Failed."}
             return Response(reason, status=401)
+
+
+class UserFilter(django_filters.FilterSet):
+    # https://django-filter.readthedocs.io/en/stable/guide/migration.html?highlight=MethodFilter#methodfilter-and-filter-action-replaced-by-filter-method-382  # noqa
+    manager = django_filters.CharFilter(method='filter_manager')
+
+    class Meta:
+        model = User
+        fields = {'username': ['exact', 'contains']}
+
+    def filter_manager(self, queryset, value):
+        return queryset.filter(profile__manager__username=value)
+
+
+class UserViewSet(ModelViewSet):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    filter_class = UserFilter
+
+    def list(self, request, *args, **kwargs):
+        """
+        ####__Request__####
+
+            curl -X GET -H "Content-Type: application/json" \
+%(HOST_NAME)s/%(API_PATH)s/users/
+
+        ####__Supported query params__####
+
+        ``username``: String, kerberos username of the user.
+
+        ``username__contains``: String, kerberos username substring to search.
+
+        ``manager``: String, kerberos username of the manager.
+
+        ####__Response__####
+
+            HTTP 200 OK
+            Content-Type: application/json
+
+            {
+                "count": 11021,
+                "next": "%(HOST_NAME)s/%(API_PATH)s/users/?page=2",
+                "previous": null,
+                "results": [
+                    {
+                        "username": "lmandvek",
+                        "email": "lmandvek@redhat.com",
+                        "realname": "Lokesh Mandvekar",
+                        "manager": "pthomas",
+                    },
+                    ...
+                ]
+            }
+        """
+        return super(UserViewSet, self).list(request, *args, **kwargs)

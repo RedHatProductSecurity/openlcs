@@ -58,6 +58,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'authentication.middleware.RemoteUserMiddleware',
 ]
 
 ROOT_URLCONF = 'openlcs.urls'
@@ -160,9 +161,9 @@ COPYRIGHT_SCANNER = 'scancode-toolkit 30.1.0'
 SCANCODE_LICENSE_SCORE = 20
 SCANCODE_PROCESSES = 1
 SCANCODE_TIMEOUT = 300
-SCANCODE_CLI = '/bin/scancode'
-
-EXTRACTCODE_CLI = '/bin/extractcode'
+# Update below path to your virtualenv path in local
+SCANCODE_CLI = '/opt/app-root/bin/scancode'
+EXTRACTCODE_CLI = '/opt/app-root/bin/extractcode'
 
 # Brew settings
 BREW_DOWNLOAD = 'http://download.eng.bos.redhat.com/brewroot'
@@ -232,6 +233,21 @@ POST_DIR = os.path.join(SRC_ROOT_DIR, 'post')
 
 # 'orphan' category will be used if product release is not specified
 ORPHAN_CATEGORY = 'orphan'
+
+# Ldap settings
+LDAP_URI = "ldap://ldap.corp.redhat.com:389"
+LDAP_USERS_DN = "ou=users,dc=redhat,dc=com"
+
+# Email REALM
+EMAIL_REALM = 'REDHAT.COM'
+
+# Give superuser permission to these users.
+OPENLCS_ADMIN_LIST = ['jzhao', 'yuwang', 'huiwang', 'qduanmu', 'yulwang',
+                      'chhan', 'ywan']
+
+# CSRF setting
+# https://docs.djangoproject.com/zh-hans/3.2/ref/settings/#csrf-cookie-domain
+CSRF_COOKIE_DOMAIN = ['.redhat.com', '127.0.0.1']
 
 try:
     # pylint:disable=wildcard-import,unused-wildcard-import

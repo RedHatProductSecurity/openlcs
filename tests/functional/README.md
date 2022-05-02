@@ -44,7 +44,7 @@ Use this command to dump the DB:
 ```
 python openlcs/manage.py dumpdata \
     packages auth.user auth.group adhoc comments history notifications \
-    orgchart packages products reviews tasks utils authentications \
+    packages products reviews tasks utils authentications \
     --natural-foreign  -o database_data.json
 ```
 Note: Do not forget to fill other tables (models) that you need

@@ -105,3 +105,16 @@ POST_DIR = os.path.join(SRC_ROOT_DIR, 'post')
 # Set paths to scancode. Assumes virtualenv
 SCANCODE_CLI = os.path.expandvars('$VIRTUAL_ENV/bin/scancode')
 EXTRACTCODE_CLI = os.path.expandvars('$VIRTUAL_ENV/bin/extractcode')
+
+
+# Appropriate permissions will be granted for below nodes.
+# Ideally the list should be hostnames of worker nodes.
+WORKER_NODES = [
+    # 'openlcs-dev-worker01',
+]
+
+# Use backend for database password-based auth
+# Production uses 'utils.backends.ModAuthKerbBackend'
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+]

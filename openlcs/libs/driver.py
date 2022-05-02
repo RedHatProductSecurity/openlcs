@@ -4,7 +4,7 @@ import requests
 import configparser
 import subprocess
 import ast
-
+from krbcontext import krbcontext
 
 if os.path.isfile('/etc/openlcs/openlcslib.conf'):
     config_file = '/etc/openlcs/openlcslib.conf'
@@ -20,7 +20,7 @@ class OpenlcsClient(object):
     """
 
     def __init__(self, task_id=None):
-        config = configparser.ConfigParser(allow_no_value=True)
+        config = configparser.ConfigParser(os.environ, allow_no_value=True)
         try:
             with open(config_file, encoding='utf8') as configfile:
                 config.read_file(configfile)
@@ -28,9 +28,12 @@ class OpenlcsClient(object):
             err_msg = f'Failed to read configure file. Reason: {err}'
             raise RuntimeError(err_msg) from None
         hub_server = config.get('general', 'hub_server')
+        keytab_file = config.get('general', 'keytab_file')
+        svc_principal_hostname = config.get('general',
+                                            'service_principal_hostname')
+        principal = f"{svc_principal_hostname}@IPA.REDHAT.COM"
 
         # Construct api_url_prefix and cmd
-        output = None
         if hub_server == 'local':
             self.api_url_prefix = "http://{}:{}{}".format(
                 config.get(hub_server, 'hostname'),
@@ -44,6 +47,22 @@ class OpenlcsClient(object):
                 self.api_url_prefix+token_obtain_url
                 )
             output = subprocess.check_output(cmd, shell=True).decode('utf-8')
+        else:
+            # self.config['hostname'] = conf.get(hub_server, 'hostname')
+            self.api_url_prefix = "https://{}{}".format(
+                config.get(hub_server, 'hostname'),
+                config.get('general', 'api_path'),
+            )
+            token_obtain_url = 'auth/obtain_token/'
+            with krbcontext(using_keytab=True,
+                            principal=principal,
+                            ccache_file='/tmp/openlcs_ccache',
+                            keytab_file=keytab_file):
+                cmd = [
+                    'curl', '-sS', '--negotiate', '-u', ':',
+                    self.api_url_prefix + token_obtain_url,
+                ]
+                output = subprocess.check_output(cmd).decode('utf-8')
         try:
             token_key = ast.literal_eval(output).get('token')
         except AttributeError as err:

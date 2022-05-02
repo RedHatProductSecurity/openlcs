@@ -10,7 +10,15 @@ cd openlcs
 # change docker-compose.yml file and nginx.conf.
 ```
 
-## Create services, and start services
+## Create openlcs docker image
+```shell
+docker login quay.io
+docker image rm -f `docker image ls quay.io/pelc/openlcs:latest -q`
+docker build --tag quay.io/pelc/openlcs:latest -f containers/docker-openlcs/Dockerfile .
+docker push quay.io/pelc/openlcs:latest
+```
+
+## Create openlcs services, and start services
 ```shell
 # If you want to configure it later, you can use docker-compose.
 docker-compose -f containers/docker-openlcs/docker-compose.yml up
