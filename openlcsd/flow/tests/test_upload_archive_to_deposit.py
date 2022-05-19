@@ -1,11 +1,13 @@
 import tempfile
 from unittest import mock
+from unittest import skip
 from unittest import TestCase
 
 from openlcsd.flow import tasks
 from openlcs.libs.deposit import UploadToDeposit
 
 
+@skip("Skip due to the suspended SWH")
 class TestUploadArchiveToDeposit(TestCase):
 
     def setUp(self):

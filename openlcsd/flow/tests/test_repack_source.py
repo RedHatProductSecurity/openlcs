@@ -2,11 +2,13 @@ import os
 import shutil
 import tempfile
 from unittest import mock
+from unittest import skip
 from unittest import TestCase
 
 from openlcsd.flow import tasks
 
 
+@skip("Skip due to the suspended SWH")
 class TestRepackSource(TestCase):
 
     def setUp(self):

@@ -4,7 +4,7 @@ import json
 import os
 import shutil
 import socket
-import tarfile
+# import tarfile
 import tempfile
 from requests.exceptions import HTTPError
 
@@ -15,7 +15,7 @@ from packagedcode.maven import parse as maven_parse
 from openlcsd.flow.task_wrapper import WorkflowWrapperTask
 from openlcsd.celery import app
 from openlcs.libs.brewconn import BrewConnector
-from openlcs.libs.deposit import UploadToDeposit
+# from openlcs.libs.deposit import UploadToDeposit
 from openlcs.libs.scanner import LicenseScanner
 from openlcs.libs.scanner import CopyrightScanner
 from openlcs.libs.driver import OpenlcsClient
@@ -454,118 +454,119 @@ def deduplicate_source(context, engine):
     engine.logger.info("Finished deduplicating source.")
 
 
-def repack_source(context, engine):
-    """
-    Repack the unpacked source into archives so that each archive could be
-    deposited successfully into swh.
-
-    @requires: `source_api_url`, string, the restful API url of the source.
-    @requires: `src_dest_dir`,the archive unpack directory.
-    @requires: `archive_name`, archive original name which will be saved in swh
-    @feeds: `tmp_repack_archive_path`, temporary repack directory.
-    """
-    # Skip repack source if source exist.
-    if context.get('source_api_url'):
-        return
-
-    engine.logger.info('Start to repack source...')
-    src_dest_dir = context.get("src_dest_dir")
-    archive_name = context.get('package_nvr') + ".tar.gz"
-    context['archive_name'] = archive_name
-    tmp_repack_archive_path = os.path.join(tempfile.mkdtemp(prefix='repack_'),
-                                           archive_name)
-    # https://docs.python.org/3/library/tarfile.html
-    with tarfile.open(tmp_repack_archive_path, mode='w:gz') as tar:
-        tar.add(src_dest_dir, arcname=os.path.basename(src_dest_dir))
-    context['tmp_repack_archive_path'] = tmp_repack_archive_path
-    engine.logger.info("Finished repacking source.")
-
-
-def upload_archive_to_deposit(context, engine):
-    """
-    Accept a directory path of unpack archives, upload the archives into swh
-    using the deposit api.
-
-    @requires: `source_api_url`, string, the restful API url of the source.
-    @requires: `config`, configuration from hub server.
-    @requires: `archive_name`, original archive name which will be saved in swh
-    @requires: `tmp_repack_archive_path`, temporary repacked archive path.
-    @feeds: Upload archive to deposit, and save archive metadata in openlcs and
-            delete temporary archive.
-    """
-    # Skip update archive to deposit if source exist.
-    if context.get('source_api_url'):
-        return
-
-    tmp_repack_archive_path = context.get('tmp_repack_archive_path')
-    archive_name = context.get('archive_name')
-    logger = engine.logger
-    _settings = context.get('config')
-    _deposit = UploadToDeposit(_settings)
-
-    engine.logger.info(f"Start to upload archive {archive_name} to deposit...")
-    # Start to deposit.
-    try:
-        ret_output = _deposit.deposit_archive(tmp_repack_archive_path,
-                                              archive_name)
-        if not ret_output:
-            err_msg = "Failed to upload archive to deposit. " \
-                      "Cannot find the deposit result."
-            raise RuntimeError(err_msg)
-    except RuntimeError as err:
-        err_msg = f"Failed to upload archive to deposit, Reason: {err}"
-        logger.error(err_msg)
-        raise RuntimeError(err_msg) from None
-
-    # Parse deposit result to get deposit id.
-    try:
-        deposit_id = _deposit.get_deposit_id(ret_output)
-        if deposit_id:
-            info_msg = f'Successfully parsed deposit result to get ' \
-                       f'deposit id: {deposit_id}'
-            logger.info(info_msg)
-        else:
-            err_msg = f'Failed to get deposit id from the deposit result: ' \
-                      f'{ret_output}'
-            logger.error(err_msg)
-            raise RuntimeError(err_msg)
-    except RuntimeError as err:
-        err_msg = f"Failed to get deposit id, Reason: {err}"
-        logger.error(err_msg)
-        raise RuntimeError(err_msg) from None
-
-    # Check deposit status.
-    try:
-        upload_status = _deposit.check_deposit_archive_status(deposit_id)
-        if upload_status == "done":
-            logger.info(
-                f"Successfully uploaded archive {archive_name} to deposit.")
-        else:
-            logger.error(
-                f"Failed to upload archive {archive_name} to deposit.")
-    except TimeoutError as err:
-        err_msg = f"Check deposit archive timeout, Reason: {err}"
-        logger.error(err_msg)
-        raise TimeoutError(err_msg) from None
-    except RuntimeError as err:
-        err_msg = f"Check deposit archive failed, Reason: {err}"
-        logger.error(err_msg)
-        raise RuntimeError(err_msg) from None
-
-    # After upload to deposit success , delete repack archive
-    shutil.rmtree(tmp_repack_archive_path, ignore_errors=True)
-    logger.info(f"Finished uploading archive {archive_name} to deposit.")
-
-
-def retrieve_source_from_swh(context, engine):
-    """
-    Accept a build or package nvr, retrieve the source directory tree
-    from swh. The source may correspond to various archives(splitted)
-    in swh, we need to make sure the source directory retrieved(from
-    multiple archives) is consistent with the original source tree(the
-    directory we get after `unpack_source`).
-    """
-    raise NotImplementedError
+# def repack_source(context, engine):
+#     """
+#     Repack the unpacked source into archives so that each archive could be
+#     deposited successfully into swh.
+#
+#     @requires: `source_api_url`, string, the restful API url of the source.
+#     @requires: `src_dest_dir`,the archive unpack directory.
+#     @requires: `archive_name`, archive original name which will be saved in
+#                SWH.
+#     @feeds: `tmp_repack_archive_path`, temporary repack directory.
+#     """
+#     # Skip repack source if source exist.
+#     if context.get('source_api_url'):
+#         return
+#
+#     engine.logger.info('Start to repack source...')
+#     src_dest_dir = context.get("src_dest_dir")
+#     archive_name = context.get('package_nvr') + ".tar.gz"
+#     context['archive_name'] = archive_name
+#     tmp_repack_archive_path = os.path.join(
+#             tempfile.mkdtemp(prefix='repack_'), archive_name)
+#     # https://docs.python.org/3/library/tarfile.html
+#     with tarfile.open(tmp_repack_archive_path, mode='w:gz') as tar:
+#         tar.add(src_dest_dir, arcname=os.path.basename(src_dest_dir))
+#     context['tmp_repack_archive_path'] = tmp_repack_archive_path
+#     engine.logger.info("Finished repacking source.")
+#
+#
+# def upload_archive_to_deposit(context, engine):
+#     """
+#     Accept a directory path of unpack archives, upload the archives into swh
+#     using the deposit api.
+#
+#     @requires: `source_api_url`, string, the restful API url of the source.
+#     @requires: `config`, configuration from hub server.
+#     @requires: `archive_name`, original archive name which will be saved in
+#                SWH.
+#     @requires: `tmp_repack_archive_path`, temporary repacked archive path.
+#     @feeds: Upload archive to deposit, and save archive metadata in openlcs
+#             and delete temporary archive.
+#     """
+#     # Skip update archive to deposit if source exist.
+#     if context.get('source_api_url'):
+#         return
+#
+#     tmp_repack_archive_path = context.get('tmp_repack_archive_path')
+#     archive_name = context.get('archive_name')
+#     logger = engine.logger
+#     _settings = context.get('config')
+#     _deposit = UploadToDeposit(_settings)
+#
+#     engine.logger.info(f"Start to upload {archive_name} to deposit...")
+#     try:
+#         ret_output = _deposit.deposit_archive(tmp_repack_archive_path,
+#                                               archive_name)
+#         if not ret_output:
+#             err_msg = "Failed to upload archive to deposit. " \
+#                       "Cannot find the deposit result."
+#             raise RuntimeError(err_msg)
+#     except RuntimeError as err:
+#         err_msg = f"Failed to upload archive to deposit, Reason: {err}"
+#         logger.error(err_msg)
+#         raise RuntimeError(err_msg) from None
+#
+#     # Parse deposit result to get deposit id.
+#     try:
+#         deposit_id = _deposit.get_deposit_id(ret_output)
+#         if deposit_id:
+#             info_msg = f'Successfully parsed deposit result to get ' \
+#                        f'deposit id: {deposit_id}'
+#             logger.info(info_msg)
+#         else:
+#             err_msg = f'Failed to get deposit id from the deposit result: ' \
+#                       f'{ret_output}'
+#             logger.error(err_msg)
+#             raise RuntimeError(err_msg)
+#     except RuntimeError as err:
+#         err_msg = f"Failed to get deposit id, Reason: {err}"
+#         logger.error(err_msg)
+#         raise RuntimeError(err_msg) from None
+#
+#     # Check deposit status.
+#     try:
+#         upload_status = _deposit.check_deposit_archive_status(deposit_id)
+#         if upload_status == "done":
+#             logger.info(
+#                 f"Successfully uploaded archive {archive_name} to deposit.")
+#         else:
+#             logger.error(
+#                 f"Failed to upload archive {archive_name} to deposit.")
+#     except TimeoutError as err:
+#         err_msg = f"Check deposit archive timeout, Reason: {err}"
+#         logger.error(err_msg)
+#         raise TimeoutError(err_msg) from None
+#     except RuntimeError as err:
+#         err_msg = f"Check deposit archive failed, Reason: {err}"
+#         logger.error(err_msg)
+#         raise RuntimeError(err_msg) from None
+#
+#     # After upload to deposit success , delete repack archive
+#     shutil.rmtree(tmp_repack_archive_path, ignore_errors=True)
+#     logger.info(f"Finished uploading archive {archive_name} to deposit.")
+#
+#
+# def retrieve_source_from_swh(context, engine):
+#     """
+#     Accept a build or package nvr, retrieve the source directory tree
+#     from swh. The source may correspond to various archives(splitted)
+#     in swh, we need to make sure the source directory retrieved(from
+#     multiple archives) is consistent with the original source tree(the
+#     directory we get after `unpack_source`).
+#     """
+#     raise NotImplementedError
 
 
 class DateEncoder(json.JSONEncoder):
@@ -736,13 +737,11 @@ flow_default = [
         lambda o, e: not o.get("source_scanned"),
         [
             unpack_source,
-            # PVLEGAL-1840 is to support splitting a large archive
+            # SWH is suspended, comment related codes out.
+            # OLCS-75 is for splitting a large archive, no implementation yet
             # split_source,
-            repack_source,
-            # FIXME: upload_to_deposit/license_scan/copyright_scan are time
-            # consuming, we don't have an agreement yet whether they should
-            # be run one after another or in parallel.
-            upload_archive_to_deposit,
+            # repack_source,
+            # upload_archive_to_deposit,
             deduplicate_source,
             send_package_data,
             IF(
@@ -761,7 +760,8 @@ flow_default = [
 
 flow_retry = [
     get_config,
-    retrieve_source_from_swh,
+    # TODO: need a source policy for retry scanning
+    # retrieve_source_from_swh,
     IF(
         lambda o, e: o.get('license_scan'),
         license_scan,
