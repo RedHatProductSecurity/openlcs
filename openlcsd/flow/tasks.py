@@ -52,7 +52,7 @@ def get_config(context, engine):
         raise RuntimeError(err_msg) from None
     # One-time file based logger configuration for each task.
     logger_dir = config.get("LOGGER_DIR")
-    engine.logger = engine.log = get_task_logger(logger_dir, task_id)
+    engine.logger = get_task_logger(logger_dir, task_id)
 
     # Temporary package source tarball will be stored in a separate
     # directory under "SRC_ROOT_DIR", see also PVLEGAL-1044
