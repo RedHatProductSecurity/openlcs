@@ -40,7 +40,7 @@ sudo systemctl enable --now redis
 ### Setting up OpenLCS
 ```shell
 # Install rpm dependencies
-sudo dnf install python38 python38-devel virtualenvwrapper gcc krb5-devel patch
+sudo dnf install python38 python38-devel postgresql-devel virtualenvwrapper gcc krb5-devel patch
 # If cannot install virtualenvwrapper, use pip to install it
 
 # Setup virtualenv
