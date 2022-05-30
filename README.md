@@ -119,3 +119,7 @@ For lib in Django, add test cases in tests.py.
 For workflow in openlcsd/flow/tasks.py, write test files in tests,
 and add test file in suite defined in __init__.py
 ```
+
+## User guide
+For the user guide, please check the confluence page:
+https://docs.engineering.redhat.com/display/PVLEGAL/OpenLCS+User+Guide
