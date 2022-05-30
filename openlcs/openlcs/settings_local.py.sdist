@@ -118,3 +118,7 @@ WORKER_NODES = [
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
 ]
+
+# Reset CSRF_COOKIE_DOMAIN to None as default for local deployment,
+# so that not exist CSRF issue.
+CSRF_COOKIE_DOMAIN = None
