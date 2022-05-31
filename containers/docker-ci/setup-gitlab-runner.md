@@ -79,7 +79,7 @@ echo "* * */15 * * docker image prune -a -f" >> /etc/crontab
 ```
 
 ```shell
-# 4) gitlab pipeline setting
+# 4) Gitlab pipeline setting
 # Install skopeo
 yum -y install skopeo
 ```

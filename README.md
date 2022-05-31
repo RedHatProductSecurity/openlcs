@@ -40,8 +40,11 @@ sudo systemctl enable --now redis
 ### Setting up OpenLCS
 ```shell
 # Install rpm dependencies
-sudo dnf install python38 python38-devel postgresql-devel virtualenvwrapper gcc krb5-devel patch
+# postgresql-devel used by install psycopg2
+# openldap-devel used by install python-ldap,
+# https://www.python-ldap.org/en/python-ldap-3.3.0/installing.html#installing-from-source
 # If cannot install virtualenvwrapper, use pip to install it
+sudo dnf install python38 python38-devel postgresql-devel openldap-devel virtualenvwrapper gcc krb5-devel patch
 
 # Setup virtualenv
 echo "
