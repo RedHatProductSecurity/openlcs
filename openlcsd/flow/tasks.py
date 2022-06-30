@@ -1,4 +1,3 @@
-import datetime
 import glob
 import json
 import os
@@ -23,6 +22,7 @@ from openlcs.libs.logging import get_task_logger
 from openlcs.libs.parsers import sha256sum
 from openlcs.libs.swh_tools import get_swhids_with_paths
 from openlcs.libs.unpack import UnpackArchive
+from openlcs.utils.common import DateEncoder
 
 
 def get_config(context, engine):
@@ -569,16 +569,6 @@ def deduplicate_source(context, engine):
 #     raise NotImplementedError
 
 
-class DateEncoder(json.JSONEncoder):
-    def default(self, o):    # pylint: disable=E0202
-        if isinstance(o, datetime.datetime):
-            return o.strftime('%Y-%m-%d %H:%M:%S')
-        elif isinstance(o, datetime.date):
-            return o.strftime("%Y-%m-%d")
-        else:
-            return json.JSONEncoder.default(self, o)
-
-
 def send_package_data(context, engine):
     """
     Equivalent of the former "post"/"post_adhoc", which sends/posts
@@ -597,7 +587,6 @@ def send_package_data(context, engine):
         json.dump(context.get("source_info"), destination, cls=DateEncoder)
     resp = cli.post(url, data={"file_path": tmp_file_path})
     context['client'] = cli
-    failure = False
     try:
         # Raise it in case we made a bad request:
         # http://docs.python-requests.org/en/master/user/quickstart/#response-status-codes  # noqa
@@ -605,15 +594,9 @@ def send_package_data(context, engine):
     except HTTPError:
         err_msg = f"Failed to save {package_nvr} data to db: {resp.text}"
         engine.logger.error(err_msg)
-        failure = True
         raise RuntimeError(err_msg) from None
     finally:
-        # Remove temporarily created files/directories under /tmp.
-        tmp_src_filepath = context.get('tmp_src_filepath')
-        if tmp_src_filepath:
-            tmp_dir = os.path.dirname(tmp_src_filepath)
-            if os.path.exists(tmp_dir) and not failure:
-                shutil.rmtree(tmp_dir, ignore_errors=True)
+        os.remove(tmp_file_path)
     engine.logger.info(f"Finished saving {package_nvr} data to database.")
 
 
@@ -700,31 +683,15 @@ def send_scan_result(context, engine):
         json.dump(context.get("scan_result"), destination, cls=DateEncoder)
     resp = cli.post(url, data={"file_path": tmp_file_path})
     context['client'] = cli
-    failure = False
     try:
         resp.raise_for_status()
     except HTTPError:
         err_msg = f"Failed to save scan result to database: {resp.text}"
         engine.logger.error(err_msg)
-        failure = True
         raise RuntimeError(err_msg) from None
     finally:
-        # Remove temporarily created files/directories under /tmp.
-        tmp_src_filepath = context.get('tmp_src_filepath')
-        if tmp_src_filepath:
-            tmp_dir = os.path.dirname(tmp_src_filepath)
-            if os.path.exists(tmp_dir) and not failure:
-                shutil.rmtree(tmp_dir, ignore_errors=True)
+        os.remove(tmp_file_path)
     engine.logger.info("Finished saving scan result to database.")
-
-
-def clean_up(context, engine):
-    """
-    Remove obsolete directories, garbages generated during the flow.
-
-    This could also be done in the task success/failure callback,
-    once we implement it there, we should remove this function.
-    """
 
 
 flow_default = [
@@ -753,7 +720,6 @@ flow_default = [
                 copyright_scan,
             ),
             send_scan_result,
-            clean_up
         ]
     )
 ]
@@ -771,7 +737,6 @@ flow_retry = [
         copyright_scan,
     ),
     send_scan_result,
-    clean_up,
 ]
 
 
