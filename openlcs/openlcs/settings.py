@@ -249,6 +249,10 @@ OPENLCS_ADMIN_LIST = ['jzhao', 'yuwang', 'huiwang', 'qduanmu', 'yulwang',
 # https://docs.djangoproject.com/zh-hans/3.2/ref/settings/#csrf-cookie-domain
 CSRF_COOKIE_DOMAIN = ['.redhat.com', '127.0.0.1']
 
+
+# Corgi setting
+CORGI_API_ROOT = 'https://corgi.prodsec.redhat.com/api/v1'
+
 try:
     # pylint:disable=wildcard-import,unused-wildcard-import
     parent_dir = os.path.abspath(os.path.dirname(__file__))

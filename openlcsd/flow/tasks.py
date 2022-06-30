@@ -15,11 +15,12 @@ from packagedcode.maven import parse as maven_parse
 from openlcsd.flow.task_wrapper import WorkflowWrapperTask
 from openlcsd.celery import app
 from openlcs.libs.brewconn import BrewConnector
+from openlcs.libs.components import ContainerComponents
 # from openlcs.libs.deposit import UploadToDeposit
 from openlcs.libs.scanner import LicenseScanner
 from openlcs.libs.scanner import CopyrightScanner
 from openlcs.libs.driver import OpenlcsClient
-from openlcs.libs.logging import get_task_logger
+from openlcs.libs.logger import get_task_logger
 from openlcs.libs.parsers import sha256sum
 from openlcs.libs.swh_tools import get_swhids_with_paths
 from openlcs.libs.unpack import UnpackArchive
@@ -779,7 +780,18 @@ def send_scan_result(context, engine):
 
 
 def get_components_from_corgi(context, engine):
-    raise NotImplementedError
+    """
+    Get components information from Corgi.
+    @requires: `nvr`, string, the container nvr.
+    @requires: `components`, list of dictionary,
+                components information of the container.
+    """
+    engine.logger.info('Start to get components data from Corgi...')
+    config = context.get('config')
+    base_url = os.path.join(config.get('CORGI_API_ROOT'), "components")
+    cc = ContainerComponents(base_url)
+    context['components'] = cc.get_components_data(context.get('package_nvr'))
+    engine.logger.info('Finished getting components data from Corgi.')
 
 
 def unpack_container_source_archive(context, engine):

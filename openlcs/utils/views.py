@@ -33,7 +33,8 @@ class ObtainConfigView(generics.RetrieveAPIView):
             'DEPOSIT_USER',
             'DEPOSIT_PASSWORD',
             'LICENSE_SCANNER',
-            'COPYRIGHT_SCANNER'
+            'COPYRIGHT_SCANNER',
+            'CORGI_API_ROOT'
         ]
         for attr_name in allowable_attrs:
             attr = getattr(settings, attr_name, None)
