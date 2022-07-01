@@ -694,6 +694,26 @@ def send_scan_result(context, engine):
     engine.logger.info("Finished saving scan result to database.")
 
 
+def get_components_from_corgi(context, engine):
+    raise NotImplementedError
+
+
+def download_container_source_archive(context, engine):
+    raise NotImplementedError
+
+
+def unpack_container_source_archive(context, engine):
+    raise NotImplementedError
+
+
+def get_component_source_path(context, engine):
+    raise NotImplementedError
+
+
+def fork_component_imports(context, engine):
+    raise NotImplementedError
+
+
 flow_default = [
     get_config,
     get_build,
@@ -740,6 +760,24 @@ flow_retry = [
 ]
 
 
+flow_container = [
+    get_config,
+    # Collect container components from Corgi
+    get_components_from_corgi,
+    get_build,
+    # Download the container source from Brew
+    download_container_source_archive,
+    # Unpack the source image
+    unpack_container_source_archive,
+    # Get the source path for each component from contaner source
+    # For components failed to get a source path, exception warning
+    # should be logged.
+    get_component_source_path,
+    # Fork the import task for each component
+    fork_component_imports
+]
+
+
 def register_task_flow(name, flow, **kwargs):
     @app.task(name=name, bind=True, base=WorkflowWrapperTask, **kwargs)
     def task(self, *args):
@@ -758,3 +796,4 @@ def register_task_flow(name, flow, **kwargs):
 
 register_task_flow('flow.tasks.flow_default', flow_default)
 register_task_flow('flow.tasks.flow_retry', flow_retry)
+register_task_flow('flow.tasks.flow_container', flow_container)
