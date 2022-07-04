@@ -3,6 +3,7 @@ from packages.models import File
 from packages.models import Path
 from packages.models import Source
 from packages.models import Package
+from packages.models import Component
 
 
 # Register your models here.
@@ -30,3 +31,8 @@ class PackageAdmin(admin.ModelAdmin):
     raw_id_fields = ('source',)
     list_display = ('id', 'nvr', 'source', 'sum_license', 'is_source')
     search_fields = ['nvr', 'source__name', 'sum_license']
+
+
+@admin.register(Component)
+class ComponentAdmin(admin.ModelAdmin):
+    search_fields = ['purl', 'type', 'name']

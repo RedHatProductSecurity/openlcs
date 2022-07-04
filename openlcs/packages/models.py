@@ -156,3 +156,70 @@ class Package(models.Model):
 
     def __str__(self):
         return f'{self.nvr}, {self.source}'
+
+
+class CorgiComponentMixin(models.Model):
+    """Model mixin for corgi component attributes
+
+    Fields here are synced from corgi, and should not be overwritten.
+    If more corgi readonly fields are needed in future, put it here.
+    """
+
+    # uuid uniquely identifies a corgi component.
+    uuid = models.UUIDField(
+        unique=True,
+        help_text='Corgi component uuid',
+    )
+    type = models.CharField(
+        max_length=50,
+        help_text='Corgi component type',
+    )
+    name = models.TextField()
+    version = models.CharField(max_length=1024)
+    release = models.CharField(max_length=1024, default="")
+    arch = models.CharField(max_length=1024, default="")
+    purl = models.CharField(
+        max_length=1024,
+        blank=True,
+        default="",
+        help_text='Corgi component purl',
+    )
+
+    class Meta:
+        abstract = True
+
+
+class Component(CorgiComponentMixin):
+    source = models.ForeignKey(
+        Source,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        help_text='Reference to component source'
+    )
+    # Note: license field is also available in corgi, value should be
+    # populated from there if possible. If corgi license is empty,
+    # OpenLCS scans/populate it and possibly pushes back to corgi.
+    summary_license = models.TextField(
+        blank=True,
+        help_text='Declared summary license expression'
+    )
+    # FIXME: migrated from existing "models.Package". This is probably
+    # no longer needed since we already have "arch"
+    is_source = models.BooleanField(
+        default=False,
+        help_text="True if this component corresponds to the entire "
+                  "source, rather than an actual binary package",
+    )
+
+    class Meta:
+        # Ensure constraints to be consistent with corgi component
+        constraints = [
+            models.UniqueConstraint(
+                name="unique_components",
+                fields=("name", "version", "release", "arch", "type"),
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.name}-{self.version}, {self.type}'
