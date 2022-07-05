@@ -1,10 +1,13 @@
 from django.contrib import admin
+from mptt.admin import MPTTModelAdmin
+
 from products.models import Container
 from products.models import ContainerPackage
 from products.models import Product
 from products.models import Release
 from products.models import ReleaseContainer
 from products.models import ReleasePackage
+from products.models import ContainerNode
 
 
 # Register your models here.
@@ -37,3 +40,8 @@ class ReleaseContainerAdmin(admin.ModelAdmin):
 class ReleasePackageAdmin(admin.ModelAdmin):
     list_display = ('release', 'package_nvr', 'is_source')
     search_fields = ['release__name', 'package_nvr']
+
+
+admin.site.register(ContainerNode, MPTTModelAdmin)
+class ContainerNodeAdmin(admin.ModelAdmin):
+    pass

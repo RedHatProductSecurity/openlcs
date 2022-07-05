@@ -47,7 +47,8 @@ INSTALLED_APPS = [
     'products',
     'reports',
     'tasks',
-    'utils'
+    'utils',
+    'mptt',
 ]
 
 MIDDLEWARE = [
