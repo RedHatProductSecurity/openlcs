@@ -8,6 +8,7 @@ import tempfile
 from requests.exceptions import HTTPError
 
 from workflow.patterns.controlflow import IF
+from workflow.patterns.controlflow import IF_ELSE
 from packagedcode.rpm import parse as rpm_parse
 from packagedcode.maven import parse as maven_parse
 
@@ -717,29 +718,52 @@ def fork_component_imports(context, engine):
 flow_default = [
     get_config,
     get_build,
-    download_source,
-    get_source_metadata,
-    check_source_scan_status,
-    IF(
-        lambda o, e: not o.get("source_scanned"),
+    # Different workflows could be used for different build types
+    IF_ELSE(
+        lambda o, e: 'image' in o.get('build_type'),
+        # Task flow for image build
         [
-            unpack_source,
-            # SWH is suspended, comment related codes out.
-            # OLCS-75 is for splitting a large archive, no implementation yet
-            # split_source,
-            # repack_source,
-            # upload_archive_to_deposit,
-            deduplicate_source,
-            send_package_data,
+            # Collect container components from Corgi
+            get_components_from_corgi,
+            # Download the container source from Brew
+            download_container_source_archive,
+            # Unpack the source image
+            unpack_container_source_archive,
+            # Get the source path for each component from contaner source
+            # For components failed to get a source path, exception warning
+            # should be logged.
+            get_component_source_path,
+            # Fork the import task for each component
+            fork_component_imports
+        ],
+
+        # Task flow for other build types
+        [
+            download_source,
+            get_source_metadata,
+            check_source_scan_status,
             IF(
-                lambda o, e: o.get('license_scan_req'),
-                license_scan,
-            ),
-            IF(
-                lambda o, e: o.get('copyright_scan_req'),
-                copyright_scan,
-            ),
-            send_scan_result,
+                lambda o, e: not o.get("source_scanned"),
+                [
+                    unpack_source,
+                    # SWH is suspended, comment related codes out.
+                    # TODO: OLCS-75 is for splitting a large archive
+                    # split_source,
+                    # repack_source,
+                    # upload_archive_to_deposit,
+                    deduplicate_source,
+                    send_package_data,
+                    IF(
+                        lambda o, e: o.get('license_scan_req'),
+                        license_scan,
+                    ),
+                    IF(
+                        lambda o, e: o.get('copyright_scan_req'),
+                        copyright_scan,
+                    ),
+                    send_scan_result,
+                ]
+            )
         ]
     )
 ]
@@ -757,24 +781,6 @@ flow_retry = [
         copyright_scan,
     ),
     send_scan_result,
-]
-
-
-flow_container = [
-    get_config,
-    # Collect container components from Corgi
-    get_components_from_corgi,
-    get_build,
-    # Download the container source from Brew
-    download_container_source_archive,
-    # Unpack the source image
-    unpack_container_source_archive,
-    # Get the source path for each component from contaner source
-    # For components failed to get a source path, exception warning
-    # should be logged.
-    get_component_source_path,
-    # Fork the import task for each component
-    fork_component_imports
 ]
 
 
@@ -796,4 +802,3 @@ def register_task_flow(name, flow, **kwargs):
 
 register_task_flow('flow.tasks.flow_default', flow_default)
 register_task_flow('flow.tasks.flow_retry', flow_retry)
-register_task_flow('flow.tasks.flow_container', flow_container)
