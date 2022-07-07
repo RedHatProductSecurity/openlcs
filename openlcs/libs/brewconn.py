@@ -40,55 +40,6 @@ class BrewConnector:
         """
         return self._service.getMavenBuild(build_info, strict)
 
-    def download_build_source(self, build_id, dest_dir):
-        """
-        Download srpm/source archive for build to destination.
-        """
-        url = ""
-        source = self.get_build_source(build_id)
-        scm = source.get('scm')
-        if scm and scm == 'git':
-            tmp_clone = tempfile.mkdtemp(
-                    prefix='openlcs_clone_', dir='/var/tmp')
-            try:
-                # Full clone is needed to match koji's behavior.
-                # git archive --remote won't work, as it doesn't accept
-                # commit SHAs
-                try:
-                    cmd = ['git', 'clone', '-n', source['url'], tmp_clone]
-                    subprocess.check_call(cmd, shell=False)
-                except subprocess.CalledProcessError as err:
-                    err_msg = f'Failed to clone git repository. Reason: {err}'
-                    raise RuntimeError(err_msg) from None
-                git_src_file = os.path.join(dest_dir, 'git-src.tar')
-                with open(git_src_file, 'w', encoding='utf8') as out:
-                    module = source.get('module')
-                    cmd = ['git', 'archive', source['rev']]
-                    if module:
-                        cmd.append(module)
-                    try:
-                        subprocess.check_call(cmd, shell=False, stdout=out,
-                                              cwd=tmp_clone)
-                    except subprocess.CalledProcessError as err:
-                        err_msg = f'Failed to create source archive from ' \
-                                  f'git. Reason: {err}'
-                        raise RuntimeError(err_msg) from None
-            finally:
-                shutil.rmtree(tmp_clone, ignore_errors=True)
-            return source.get('url')
-        elif 'src' in source:
-            source_path = self._get_pathinfo(build_id, source)
-            url = self._format_url(source_path)
-            cmd = ['wget', url]
-            try:
-                subprocess.check_call(cmd, shell=False, cwd=dest_dir)
-            except subprocess.CalledProcessError as err:
-                err_msg = f'Failed to download build source. Reason: {err}'
-                raise RuntimeError(err_msg) from None
-            return url
-        else:
-            raise RuntimeError('Failed to find build source.')
-
     def _format_url(self, pathinfo):
         """
         Formats URL for file download.
@@ -162,6 +113,24 @@ class BrewConnector:
             else:
                 raise ValueError("pom file %s not found." % pom_filename)
 
+    def get_build_type(self, build_info):
+        """
+        Return build for package-nvr.
+        """
+        if build_info.get('build_type') == 'rpm':
+            return 'rpm'
+        else:
+            return self._service.getBuildType(build_info)
+
+    def get_build(self, build_info):
+        """
+        Return information about a build.
+
+        build_info may be either a int ID, a string NVR, or a map containing
+        'name', 'version' and 'release.
+        """
+        return self._service.getBuild(build_info)
+
     def get_build_source(self, build_id):
         """
         Return srpm/source archive for build.
@@ -217,23 +186,54 @@ class BrewConnector:
                     source['module'] = source_url.query
         return source
 
-    def get_build_type(self, build_info):
+    def download_build_source(self, build_id, dest_dir):
         """
-        Return build for package-nvr.
+        Download Brew build source to destination.
         """
-        if build_info.get('build_type') == 'rpm':
-            return 'rpm'
+        url = ""
+        source = self.get_build_source(build_id)
+        scm = source.get('scm')
+        if scm and scm == 'git':
+            tmp_clone = tempfile.mkdtemp(
+                    prefix='openlcs_clone_', dir='/var/tmp')
+            try:
+                # Full clone is needed to match koji's behavior.
+                # git archive --remote won't work, as it doesn't accept
+                # commit SHAs
+                try:
+                    cmd = ['git', 'clone', '-n', source['url'], tmp_clone]
+                    subprocess.check_call(cmd, shell=False)
+                except subprocess.CalledProcessError as err:
+                    err_msg = f'Failed to clone git repository. Reason: {err}'
+                    raise RuntimeError(err_msg) from None
+                git_src_file = os.path.join(dest_dir, 'git-src.tar')
+                with open(git_src_file, 'w', encoding='utf8') as out:
+                    module = source.get('module')
+                    cmd = ['git', 'archive', source['rev']]
+                    if module:
+                        cmd.append(module)
+                    try:
+                        subprocess.check_call(cmd, shell=False, stdout=out,
+                                              cwd=tmp_clone)
+                    except subprocess.CalledProcessError as err:
+                        err_msg = f'Failed to create source archive from ' \
+                                  f'git. Reason: {err}'
+                        raise RuntimeError(err_msg) from None
+            finally:
+                shutil.rmtree(tmp_clone, ignore_errors=True)
+            return source.get('url')
+        elif 'src' in source:
+            source_path = self._get_pathinfo(build_id, source)
+            url = self._format_url(source_path)
+            cmd = ['wget', url]
+            try:
+                subprocess.check_call(cmd, shell=False, cwd=dest_dir)
+            except subprocess.CalledProcessError as err:
+                err_msg = f'Failed to download build source. Reason: {err}'
+                raise RuntimeError(err_msg) from None
+            return url
         else:
-            return self._service.getBuildType(build_info)
-
-    def get_build(self, build_info):
-        """
-        Return information about a build.
-
-        build_info may be either a int ID, a string NVR, or a map containing
-        'name', 'version' and 'release.
-        """
-        return self._service.getBuild(build_info)
+            raise RuntimeError('Failed to find build source.')
 
     def download_pom(self, file_path, dest_dir):
         """
@@ -242,3 +242,52 @@ class BrewConnector:
         url = self._format_url(file_path)
         rc, output = run('wget %s' % url, can_fail=True, workdir=dest_dir)
         return rc, output
+
+    def download_archive(self, build, type_path, archive, dest_dir):
+        """
+        Download build archive from Brew.
+        """
+        package_name = build.get('package_name')
+        version = build.get('version')
+        release = build.get('release')
+        archive_name = archive.get('filename')
+
+        archive_file_path = os.path.join(
+            'packages', package_name, version,
+            release, type_path, archive_name)
+        image_url = self._format_url(archive_file_path)
+        cmd = ['wget', image_url]
+        try:
+            subprocess.check_call(cmd, cwd=dest_dir)
+        except Exception as e:
+            raise ValueError("Failed to download archive: %s " % e) from None
+
+    def download_container_image_archives(self, build, dest_dir, arch=None):
+        """
+        Find the source image and Download from Brew.
+        """
+        build_id = build.get('build_id')
+        all_archives = self._service.listArchives(build_id)
+        if not all_archives:
+            err_msg = "No build archives found."
+            raise ValueError(err_msg)
+
+        type_path = 'images'
+        if arch:
+            archive = [archive for archive in all_archives
+                       if archive.get('btype') == 'image' and
+                       arch in archive.get('filename')]
+            if archive:
+                self.download_archive(build, type_path, archive[0], dest_dir)
+            else:
+                err_msg = "No image found for arch %s." % arch
+                raise ValueError(err_msg) from None
+        else:
+            archives = [archive for archive in all_archives
+                        if archive.get('btype') == 'image']
+            if archives:
+                for archive in archives:
+                    self.download_archive(build, type_path, archive, dest_dir)
+            else:
+                err_msg = "No images found."
+                raise ValueError(err_msg)

@@ -96,7 +96,90 @@ def get_build(context, engine):
     context['build'] = build
 
 
-def download_source(context, engine):
+def get_osbs_build_kind(build):
+    """
+    Get the osbs build type from build extra.
+    """
+    extra = build.get('extra', None)
+    osbs_build = extra.get('osbs_build') if extra else None
+    return osbs_build.get('kind') if osbs_build else None
+
+
+def is_source_container_build(build):
+    """
+    Check whether the build is a source container build.
+    @requires: `build`, dictionary, the build got via brew API.
+    @feeds: True, False
+    """
+    container_type = get_osbs_build_kind(build)
+    return container_type == 'source_container_build'
+
+
+def get_source_container_build(context, engine):
+    """
+    Get Source container build with brew API.
+    @requires: `config`, configuration from hub server.
+    @requires: `build`, dictionary, including meta info with the brew build.
+    @feeds: `build`, dictionary, including meta info with the brew build of
+            source image.
+    @feeds: `build_type`, dict, with keys as build type names and values as
+            type info corresponding to that build.
+    """
+    from libs.download import BrewBuild
+    config = context.get('config')
+    brew_build = BrewBuild(config)
+    build = context.get('build')
+    sc_build = None
+    package_nvr = context.get('package_nvr')
+    # Use the build directly if the build is for source container.
+    if package_nvr and 'container-source' in package_nvr:
+        if is_source_container_build(build):
+            sc_build = build
+    # Get the source container build if the input is a binary container.
+    elif package_nvr and 'container' in package_nvr:
+        # TODO: try to find the source container for binary container
+        pass
+
+    if sc_build:
+        if package_nvr != sc_build.get('nvr'):
+            msg = 'Found source container build %s for %s in Brew'
+            engine.logger.info(msg % (sc_build.get('nvr'), package_nvr))
+        if "id" not in sc_build:
+            sc_build["id"] = sc_build.get("build_id")
+        build_type = brew_build.get_build_type(sc_build)
+        context['build'] = sc_build
+        context['build_type'] = build_type
+
+
+def download_source_image(context, engine):
+    """
+    Download the container source image.
+    With normalized parameters, returning an absolute path \
+    to which the image is being downloaded.
+
+    @requires: `config`, configuration from hub server. It's not always
+                required.
+    @requires: `client`, to communicate with hub server. It's not always
+                required.
+    @feeds: `tmp_src_filepath`, absolute path to the downloaded image.
+    """
+    tmp_dir = tempfile.mkdtemp(prefix='download_sc_',
+                               dir=context.get('tmp_root_dir'))
+    config = context.get('config')
+    build = context.get('build')
+
+    brew_conn = BrewConnector(config)
+    arch = 'x86_64'
+    msg = "Start to download container source image build from Brew, "
+    msg += "please wait for the task log update..."
+    engine.logger.info(msg)
+    brew_conn.download_container_image_archives(build, tmp_dir, arch)
+    engine.logger.info('Done')
+    tmp_src_filepath = os.path.join(tmp_dir, os.listdir(tmp_dir)[0])
+    context['tmp_src_filepath'] = tmp_src_filepath
+
+
+def download_package_archive(context, engine):
     """
     Download source of given build/archive.
     With normalized parameters, returning an absolute path \
@@ -699,10 +782,6 @@ def get_components_from_corgi(context, engine):
     raise NotImplementedError
 
 
-def download_container_source_archive(context, engine):
-    raise NotImplementedError
-
-
 def unpack_container_source_archive(context, engine):
     raise NotImplementedError
 
@@ -725,8 +804,10 @@ flow_default = [
         [
             # Collect container components from Corgi
             get_components_from_corgi,
-            # Download the container source from Brew
-            download_container_source_archive,
+            # Get the container source build
+            get_source_container_build,
+            # Download the source image from Brew
+            download_source_image,
             # Unpack the source image
             unpack_container_source_archive,
             # Get the source path for each component from contaner source
@@ -739,7 +820,7 @@ flow_default = [
 
         # Task flow for other build types
         [
-            download_source,
+            download_package_archive,
             get_source_metadata,
             check_source_scan_status,
             IF(
