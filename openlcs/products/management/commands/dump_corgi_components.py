@@ -8,73 +8,26 @@ import json
 import requests
 
 
+CORGI_API_ENDPIONTS = {
+    "stage": "https://corgi-stage.prodsec.redhat.com/api/v1/",
+    "prod": "https://corgi.prodsec.redhat.com/api/v1/",
+}
+
+CORGI_COMPONENT_TYPES = [
+    "CONTAINER_IMAGE",
+    "GOLANG",
+    "MAVEN",
+    "NPM",
+    "RPM",
+    "SRPM",
+    "PYPI",
+    "UNKNOWN",
+    "UPSTREAM",
+]
+
+
 def load_json_from_url(session, url, params={}):
     return session.get(url, params=params).json()
-
-
-def get_components(page: dict) -> dict:
-    """
-    Accepts a raw page result json, and returns nested container components
-    if there is, along with needed component attributes.
-    Returned value follows below form:
-
-        {
-            'containers': [{'uuid': 'xxx', 'purl': 'xxx', 'provides': []}],
-            'others': [{'uuid': 'xxx, 'purl': 'xxx'}],
-            'errors': [],
-        }
-    """
-    retval = {
-        "containers": [],
-        "others": [],
-        "errors": [],
-    }
-    for result in page["results"]:
-        component_type = result.get("type")
-        if component_type == "CONTAINER_IMAGE":
-            container_data = get_component_flat(result)
-            # deal with container images
-            provides = []
-            container_provides = result.get("provides")
-            links = [c.get("link") for c in container_provides]
-            session = requests.Session()
-            # too many workers cause corgi api to fail with 500 error
-            with concurrent.futures.ThreadPoolExecutor(
-                max_workers=5
-            ) as executor:
-                # Start the load operations and mark each future with its URL
-                future_to_url = {
-                    executor.submit(load_json_from_url, session, url, {}): url
-                    for url in links
-                }
-                for future in concurrent.futures.as_completed(future_to_url):
-                    url = future_to_url[future]
-                    try:
-                        provides.append(get_component_flat(future.result()))
-                    except Exception as exc:
-                        retval["errors"].append(url)
-                        # print('%r generated an exception: %s' % (url, exc))
-                        continue
-            container_data["provides"] = provides
-            retval["containers"].append(container_data)
-        else:
-            retval["others"].append(get_component_flat(result))
-
-    return retval
-
-
-def get_component_flat(data: dict) -> dict:
-
-    return {
-        "uuid": data.get("uuid"),
-        "type": data.get("type"),
-        "purl": data.get("purl", ""),
-        "name": data.get("name"),
-        "version": data.get("version"),
-        "release": data.get("release", ""),
-        "arch": data.get("arch", ""),
-        "license": data.get("license", ""),
-    }
 
 
 class Command(BaseCommand):
@@ -82,9 +35,14 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            "--corgi-component-url",
-            dest="url",
-            default="https://corgi-stage.prodsec.redhat.com/api/v1/components",
+            "-e",
+            "--env",
+            dest="env",
+            choices=[
+                "stage",
+                "prod",
+            ],
+            default="stage",
             help="corgi-stage will be used if unspecified.",
         )
         parser.add_argument(
@@ -99,17 +57,7 @@ class Command(BaseCommand):
             "-t",
             "--component-type",
             dest="component_type",
-            choices=[
-                "CONTAINER_IAMGE",
-                "GOLANG",
-                "MAVEN",
-                "NPM",
-                "RPM",
-                "SRPM",
-                "PYPI",
-                "UNKNOWN",
-                "UPSTREAM",
-            ],
+            choices=CORGI_COMPONENT_TYPES,
             help="Type of component to query.",
         )
         parser.add_argument(
@@ -120,12 +68,107 @@ class Command(BaseCommand):
             help="json filepath to dump the results into.",
         )
 
-    def get_pages(
-        self, url, component_type=None, limit=10, offset=0, num_pages=2
-    ):
+    def get_components(self, page: dict, verbosity=1) -> dict:
+        """
+        Accepts a raw page result json, and returns nested container components
+        if there is, along with needed component attributes.
+        Returned value follows below form:
+
+            {
+                'containers': [{'uuid': 'xxx', 'purl': 'xxx', 'provides': []}],
+                'others': [{'uuid': 'xxx, 'purl': 'xxx'}],
+                'errors': [],
+            }
+        """
+        retval = {
+            "containers": [],
+            "others": [],
+            "errors": [],
+        }
+        for result in page["results"]:
+            component_type = result.get("type")
+            if component_type == "CONTAINER_IMAGE":
+                container_data = self.get_component_flat(result)
+                # deal with container images
+                provides = []
+                container_provides = result.get("provides")
+                links = [c.get("link") for c in container_provides]
+                session = requests.Session()
+                # too many workers cause corgi api to fail with 500 error
+                with concurrent.futures.ThreadPoolExecutor(
+                    max_workers=5
+                ) as executor:
+                    # Start the load operations and mark each future with its URL
+                    future_to_url = {
+                        executor.submit(
+                            load_json_from_url, session, url, {}
+                        ): url
+                        for url in links
+                    }
+                    for future in concurrent.futures.as_completed(
+                        future_to_url
+                    ):
+                        url = future_to_url[future]
+                        try:
+                            provides.append(
+                                self.get_component_flat(future.result())
+                            )
+                            if verbosity > 1:
+                                self.stdout.write(
+                                    self.style.SUCCESS(
+                                        f"-- Retrieved component from {url} "
+                                        f"provided by "
+                                        f"{container_data.get('name')}."
+                                    )
+                                )
+                        except Exception as exc:
+                            retval["errors"].append(
+                                {
+                                    "url": url,
+                                    "provided_by": container_data.get("name"),
+                                }
+                            )
+                            if verbosity > 1:
+                                self.stdout.write(
+                                    self.style.ERROR(
+                                        f"-- Failed to retrieve from {url} for container "
+                                        f"{container_data.get('name')}, "
+                                        f"check 'errors' in output for more details."
+                                    )
+                                )
+                            continue
+                container_data["provides"] = provides
+                retval["containers"].append(container_data)
+            else:
+                component_data = self.get_component_flat(result)
+                retval["others"].append(component_data)
+                if verbosity > 1:
+                    self.stdout.write(
+                        self.style.SUCCESS(
+                            f"Retrieved {component_data['type']} component "
+                            f"{component_data['purl']}"
+                        )
+                    )
+
+        return retval
+
+    def get_component_flat(self, data: dict) -> dict:
+
+        return {
+            "uuid": data.get("uuid"),
+            "type": data.get("type"),
+            "purl": data.get("purl", ""),
+            "name": data.get("name"),
+            "version": data.get("version"),
+            "release": data.get("release", ""),
+            "arch": data.get("arch", ""),
+            "license": data.get("license", ""),
+        }
+
+    def get_pages(self, url, ctype=None, limit=10, offset=0, num_pages=2):
         params = dict()
-        if component_type is not None:
-            params["type"] = component_type
+        if ctype is not None:
+            params["type"] = ctype
         session = requests.Session()
         for p in range(num_pages):
             params.update(
@@ -139,19 +182,17 @@ class Command(BaseCommand):
             offset += limit
 
     def handle(self, *args, **options):
-        url = options["url"]
+        env = options["env"]
+        endpoint = f"{CORGI_API_ENDPIONTS.get(env)}components"
         num_pages = options["num_pages"]
-        # Use temporary filepath if output is unspecified.
         output = options["output"]
-        component_type = options["component_type"]
+        ctype = options["component_type"]
         verbosity = options["verbosity"]
         if verbosity > 1:
             counter = time.perf_counter()
         data = dict()
-        for page in self.get_pages(
-            url, component_type=component_type, num_pages=num_pages
-        ):
-            components = get_components(page)
+        for page in self.get_pages(endpoint, ctype=ctype, num_pages=num_pages):
+            components = self.get_components(page, verbosity=verbosity)
             for k, v in components.items():
                 data.setdefault(k, []).extend(v)
 
@@ -160,10 +201,18 @@ class Command(BaseCommand):
             outfile.write(json_object)
         self.stdout.write(
             self.style.SUCCESS(
-                f"Successfully retrieved {num_pages} page(s) from {url}, "
+                f"Successfully retrieved {num_pages} page(s) from {endpoint}, "
                 f"data saved to {output}!"
             )
         )
+        num_errors = len(data.get("errors"))
+        if num_errors > 0:
+            self.stdout.write(
+                self.style.NOTICE(
+                    f"Failed to retrieve {num_errors} components, check "
+                    f"output file for more details!"
+                )
+            )
         if verbosity > 1:
             time_elapsed = time.perf_counter() - counter
             self.stdout.write(
