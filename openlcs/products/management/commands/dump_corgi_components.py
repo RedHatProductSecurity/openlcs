@@ -75,14 +75,12 @@ class Command(BaseCommand):
         Returned value follows below form:
 
             {
-                'containers': [{'uuid': 'xxx', 'purl': 'xxx', 'provides': []}],
-                'others': [{'uuid': 'xxx, 'purl': 'xxx'}],
+                'components': [{'uuid': 'xxx', 'purl': 'xxx', 'provides': []}],
                 'errors': [],
             }
         """
         retval = {
-            "containers": [],
-            "others": [],
+            "components": [],
             "errors": [],
         }
         for result in page["results"]:
@@ -138,10 +136,10 @@ class Command(BaseCommand):
                                 )
                             continue
                 container_data["provides"] = provides
-                retval["containers"].append(container_data)
+                retval["components"].append(container_data)
             else:
                 component_data = self.get_component_flat(result)
-                retval["others"].append(component_data)
+                retval["components"].append(component_data)
                 if verbosity > 1:
                     self.stdout.write(
                         self.style.SUCCESS(
