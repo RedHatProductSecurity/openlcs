@@ -37,6 +37,7 @@ class Command(BaseCommand):
             name=container_component.name,
             content_type=component_ctype,
             object_id=container_component.id,
+            parent=None,
         )
         for component_data in data.get("provides", []):
             component = self.create_component(component_data)
@@ -49,10 +50,10 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         data_file = options["component_data_file"]
-        data = None
+        components = []
         with open(data_file, encoding="utf-8") as infile:
             data = json.load(infile)
-        components = data["components"]
+            components = data["components"]
         for component in components:
             if component.get("type") == "CONTAINER_IMAGE":
                 self.build_container_node(component)
