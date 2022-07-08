@@ -1,16 +1,13 @@
 import copy
-from rest_framework import serializers
 
-from packages.models import File
-from packages.models import Source
-from packages.models import Package
-from packages.models import Path
+from libs.swh_tools import swhid_check
+from packages.models import Component, File, Package, Path, Source
 from products.models import Release
+from rest_framework import serializers
 from tasks.models import Task
 
 # pylint:disable=no-name-in-module,import-error
 from openlcs.celery import app
-from libs.swh_tools import swhid_check
 
 
 class FileSerializer(serializers.ModelSerializer):
@@ -224,3 +221,14 @@ class NVRImportSerializer(ImportScanOptionsMixin, ReleaseImportMixin):
         package_nvrs = self.validated_data.get('package_nvrs')
         params = self.get_task_params()
         return [(nvr, dict(package_nvr=nvr, **params)) for nvr in package_nvrs]
+
+
+class ComponentSerializer(serializers.ModelSerializer):
+    """
+    Bulk file serializer, use to return validate files after created.
+    """
+    source = SourceSerializer(required=False)
+
+    class Meta:
+        model = Component
+        fields = '__all__'

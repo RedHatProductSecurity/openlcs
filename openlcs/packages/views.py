@@ -3,37 +3,23 @@ import json
 from django.conf import settings
 from django.db import transaction
 from django.db.models import Q
-
+from libs.backoff_strategy import ProcedureException
+from libs.parsers import parse_manifest_file
+from packages.mixins import PackageImportTransactionMixin, SaveScanResultMixin
+from packages.models import Component, File, Package, Path, Source
+from packages.serializers import (BulkCreateFileSerializer,
+                                  BulkCreatePathSerializer,
+                                  ComponentSerializer, FileSerializer,
+                                  NVRImportSerializer, PackageSerializer,
+                                  PathSerializer, SourceSerializer)
+from products.models import Product, Release
+from reports.models import FileCopyrightScan, FileLicenseScan
 from rest_framework import status
 from rest_framework.decorators import action
+from rest_framework.parsers import FileUploadParser, JSONParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
-from rest_framework.parsers import FileUploadParser
-from rest_framework.parsers import JSONParser
-
-from libs.backoff_strategy import ProcedureException
-from libs.parsers import parse_manifest_file
-
-from packages.models import File
-from packages.models import Source
-from packages.models import Package
-from packages.models import Path
-from products.models import Product
-from products.models import Release
-
-from packages.serializers import BulkCreateFileSerializer
-from packages.serializers import BulkCreatePathSerializer
-from packages.serializers import FileSerializer
-from packages.serializers import PackageSerializer
-from packages.serializers import PathSerializer
-from packages.serializers import SourceSerializer
-from packages.serializers import NVRImportSerializer
-from packages.mixins import PackageImportTransactionMixin
-from packages.mixins import SaveScanResultMixin
-
-from reports.models import FileCopyrightScan
-from reports.models import FileLicenseScan
 
 
 # Create your views here.
@@ -1000,3 +986,11 @@ class CheckSourceStatus(APIView):
                 "source_scan_flag": source.scan_flag})
         return Response(data={"source_api_url": None,
                               "source_scan_flag": None})
+
+
+class ComponentViewSet(ModelViewSet, PackageImportTransactionMixin):
+    """
+    API endpoint that allows files to be viewed or edited.
+    """
+    queryset = Component.objects.all()
+    serializer_class = ComponentSerializer

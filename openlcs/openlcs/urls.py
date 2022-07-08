@@ -16,19 +16,17 @@ Including another URLconf
 """
 import os
 
+from authentication import views as auth_views
 from django.conf import settings
 from django.conf.urls import include
 from django.contrib import admin
 from django.urls import path
-from rest_framework.authtoken import views as token_views
-
-from authentication import views as auth_views
+from libs.router import HybridRouter
 from packages import views as package_views
 from products import views as product_views
 from reports import views as report_views
+from rest_framework.authtoken import views as token_views
 from tasks import views as task_views
-from libs.router import HybridRouter
-
 from utils.views import ObtainConfigView
 
 DRF_ROOT = os.path.join(settings.DRF_NAMESPACE, settings.DRF_API_VERSION)
@@ -40,6 +38,8 @@ router.register(r'files', package_views.FileViewSet, basename='files')
 router.register(r'sources', package_views.SourceViewSet, basename='sources')
 router.register(r'paths', package_views.PathViewSet, basename='paths')
 router.register(r'packages', package_views.PackageViewSet, basename='packages')
+router.register(r'components', package_views.ComponentViewSet,
+                basename='components')
 router.register(r'releases', product_views.ReleaseViewSet, basename='releases')
 router.register(r'licensedetections', report_views.LicenseDetectionViewSet,
                 basename='licensedetections')
