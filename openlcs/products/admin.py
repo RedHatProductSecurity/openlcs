@@ -7,7 +7,7 @@ from products.models import Product
 from products.models import Release
 from products.models import ReleaseContainer
 from products.models import ReleasePackage
-from products.models import ContainerNode
+from products.models import ComponentTreeNode
 
 
 # Register your models here.
@@ -42,6 +42,6 @@ class ReleasePackageAdmin(admin.ModelAdmin):
     search_fields = ['release__name', 'package_nvr']
 
 
-admin.site.register(ContainerNode, MPTTModelAdmin)
-class ContainerNodeAdmin(admin.ModelAdmin):
+admin.site.register(ComponentTreeNode, MPTTModelAdmin)
+class ComponentTreeNodeAdmin(admin.ModelAdmin):
     pass

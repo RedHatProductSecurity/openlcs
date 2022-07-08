@@ -154,7 +154,7 @@ class ReleasePackage(models.Model):
         return data
 
 
-class MpttBaseModelMixin(MPTTModel):
+class MpttTreeNodeMixin(MPTTModel):
     name = models.TextField()
     parent = TreeForeignKey(
         "self",
@@ -171,14 +171,14 @@ class MpttBaseModelMixin(MPTTModel):
         abstract = True
 
 
-class ContainerNode(MpttBaseModelMixin):
-    """Class representing the container tree."""
+class ComponentTreeNode(MpttTreeNodeMixin):
+    """Class representing the component tree."""
 
     def __str__(self):
         return f'{self.content_object.type} node: {self.name}'
 
 
-class ProductNode(MpttBaseModelMixin):
+class ProductTreeNode(MpttTreeNodeMixin):
     """Class representing the product tree."""
 
     def __str__(self):
