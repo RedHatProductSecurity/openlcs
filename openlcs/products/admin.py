@@ -1,13 +1,8 @@
 from django.contrib import admin
 from mptt.admin import MPTTModelAdmin
-
-from products.models import Container
-from products.models import ContainerPackage
-from products.models import Product
-from products.models import Release
-from products.models import ReleaseContainer
-from products.models import ReleasePackage
-from products.models import ComponentTreeNode
+from products.models import (ComponentTreeNode, Container, ContainerPackage,
+                             Product, Release, ReleaseContainer,
+                             ReleasePackage)
 
 
 # Register your models here.
@@ -43,5 +38,3 @@ class ReleasePackageAdmin(admin.ModelAdmin):
 
 
 admin.site.register(ComponentTreeNode, MPTTModelAdmin)
-class ComponentTreeNodeAdmin(admin.ModelAdmin):
-    pass

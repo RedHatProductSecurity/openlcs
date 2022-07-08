@@ -1,9 +1,9 @@
-from django.core.management.base import BaseCommand, CommandError
-from django.contrib.contenttypes.models import ContentType
-
 import json
-from products.models import ComponentTreeNode
+
+from django.contrib.contenttypes.models import ContentType
+from django.core.management.base import BaseCommand
 from packages.models import Component
+from products.models import ComponentTreeNode
 
 
 class Command(BaseCommand):

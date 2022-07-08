@@ -1,11 +1,9 @@
-from django.core.management.base import BaseCommand, CommandError
-
-# from polls.models import Question as Poll
-
-import time
 import concurrent.futures
 import json
+import time
+
 import requests
+from django.core.management.base import BaseCommand
 
 
 CORGI_API_ENDPIONTS = {
@@ -26,8 +24,8 @@ CORGI_COMPONENT_TYPES = [
 ]
 
 
-def load_json_from_url(session, url, params={}):
-    return session.get(url, params=params).json()
+def load_json_from_url(session, url):
+    return session.get(url).json()
 
 
 class Command(BaseCommand):
@@ -96,7 +94,7 @@ class Command(BaseCommand):
                 with concurrent.futures.ThreadPoolExecutor(
                     max_workers=5
                 ) as executor:
-                    # Start the load operations and mark each future with its URL
+                    # Start load operations and mark each future with its URL
                     future_to_url = {
                         executor.submit(
                             load_json_from_url, session, url, {}
@@ -119,19 +117,20 @@ class Command(BaseCommand):
                                         f"{container_data.get('name')}."
                                     )
                                 )
-                        except Exception as exc:
+                        except Exception:
+                            container_name = container_data.get("name")
                             retval["errors"].append(
                                 {
                                     "url": url,
-                                    "provided_by": container_data.get("name"),
+                                    "provided_by": container_name,
                                 }
                             )
                             if verbosity > 1:
                                 self.stdout.write(
                                     self.style.ERROR(
-                                        f"-- Failed to retrieve from {url} for container "
-                                        f"{container_data.get('name')}, "
-                                        f"check 'errors' in output for more details."
+                                        f"- Failed to retrieve from {url} for"
+                                        f"container {container_name}, check "
+                                        f"'errors' in output for more details."
                                     )
                                 )
                             continue
@@ -168,7 +167,7 @@ class Command(BaseCommand):
         if ctype is not None:
             params["type"] = ctype
         session = requests.Session()
-        for p in range(num_pages):
+        for _ in range(num_pages):
             params.update(
                 {
                     "limit": limit,
@@ -195,7 +194,7 @@ class Command(BaseCommand):
                 data.setdefault(k, []).extend(v)
 
         json_object = json.dumps(data, indent=2)
-        with open(output, "w") as outfile:
+        with open(output, "w", encoding='utf-8') as outfile:
             outfile.write(json_object)
         self.stdout.write(
             self.style.SUCCESS(
