@@ -9,7 +9,7 @@ from unittest import TestCase
 from kobo.shortcuts import run
 from django.conf import settings
 
-from libs.components import ContainerComponents
+from libs.components import ContainerComponentsAsync
 from libs.download import BrewBuild
 from libs.parsers import parse_manifest_file
 from libs.scanner import LicenseScanner
@@ -270,7 +270,6 @@ class TestComponents(TestCase):
         warnings.simplefilter('ignore', RuntimeWarning)
         os.environ.setdefault(
                 'DJANGO_SETTINGS_MODULE', 'openlcs.openlcs.settings')
-        self.container_nvr = 'grc-ui-api-container-13-v2.4.0'
         self.links = [
             'https://corgi.prodsec.redhat.com/api/v1/components?purl=pkg%3Arpm/redhat/glibc-minimal-langpack%402.28-151.el8%3Farch%3Ds390x',  # noqa
             'https://corgi.prodsec.redhat.com/api/v1/components?purl=pkg%3Arpm/redhat/openssl-libs%401.1.1g-15.el8_3%3Farch%3Ds390x',  # noqa
@@ -298,52 +297,48 @@ class TestComponents(TestCase):
             }
         ]
         base_url = "https://corgi.prodsec.redhat.com/api/v1/components"
-        self.container_components = ContainerComponents(base_url)
+        container_nvr = 'grc-ui-api-container-13-v2.4.0'
+        self.container_components = ContainerComponentsAsync(
+            base_url, container_nvr)
 
     @mock.patch.object(
-        ContainerComponents, 'get_component_data_from_corgi')
-    async def test_get_component_data_1(
+        ContainerComponentsAsync, 'get_component_data_from_corgi')
+    def test_get_component_data_1(
             self, mock_get_component_data_from_corgi):
         mock_get_component_data_from_corgi.return_value = \
             self.components_data[0]
-        component = await self.container_components.get_component_data(
+        component = self.container_components.get_component_data(
             self.links[0])
         self.assertEqual(component, self.components_data[0])
 
     @mock.patch.object(
-        ContainerComponents, 'get_component_data_from_corgi')
-    @mock.patch.object(ContainerComponents, 'parse_component_link')
-    async def test_get_component_data_2(
+        ContainerComponentsAsync, 'get_component_data_from_corgi')
+    @mock.patch.object(ContainerComponentsAsync, 'parse_component_link')
+    def test_get_component_data_2(
             self, mock_get_component_data_from_corgi,
             mock_parse_component_link):
         mock_get_component_data_from_corgi.return_value = {}
         mock_parse_component_link.return_value = \
             self.components_data[1]
-        component = await self.container_components.get_component_data(
+        component = self.container_components.get_component_data(
             self.links[1])
         self.assertEqual(component, self.components_data[1])
 
     @mock.patch.object(
-        ContainerComponents, 'get_component_data_from_corgi')
-    @mock.patch.object(ContainerComponents, 'parse_component_link')
-    async def test_get_component_data_3(
+        ContainerComponentsAsync, 'get_component_data_from_corgi')
+    @mock.patch.object(ContainerComponentsAsync, 'parse_component_link')
+    def test_get_component_data_3(
             self, mock_get_component_data_from_corgi,
             mock_parse_component_link):
         mock_get_component_data_from_corgi.return_value = {}
         mock_parse_component_link.return_value = \
             self.components_data[2]
-        component = await self.container_components.get_component_data(
+        component = self.container_components.get_component_data(
             self.links[2])
         self.assertEqual(component, self.components_data[2])
 
-    @mock.patch.object(ContainerComponents, 'get_component_links')
-    @mock.patch.object(ContainerComponents, 'get_component_event_loop')
-    async def test_get_components_data(
-            self, mock_get_component_links, mock_get_component_event_loop):
+    @mock.patch.object(ContainerComponentsAsync, 'get_component_links')
+    def test_get_components_data(self, mock_get_component_links):
         mock_get_component_links.return_value = self.links
-        mock_get_component_event_loop.return_value = \
-            self.components_data
-        components = await \
-            self.container_components.get_components_data(
-                self.container_nvr)
-        self.assertEqual(components, self.components_data)
+        self.assertEqual(self.container_components.get_components_data(),
+                         self.components_data)

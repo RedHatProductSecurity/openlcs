@@ -2,17 +2,21 @@ import asyncio
 import httpx
 import ijson
 import re
+import uvloop
+from concurrent.futures import ThreadPoolExecutor
 from urllib import parse
 from urllib.request import urlopen
 
+asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
-class ContainerComponents:
+
+class ContainerComponentsAsync:
     """
     Get container component data list from Corgi
     """
-
-    def __init__(self, base_url):
+    def __init__(self, base_url, container_nvr):
         self.base_url = base_url
+        self.container_nvr = container_nvr
 
     def get_component_links(self, nvr, component_type="CONTAINER_IMAGE"):
         """
@@ -21,9 +25,9 @@ class ContainerComponents:
         """
         component_links = []
         if nvr:
+            search_url = f"{self.base_url}?type={component_type}&nvr={nvr}"
+            data = urlopen(search_url)
             try:
-                search_url = f"{self.base_url}?type={component_type}&nvr={nvr}"
-                data = urlopen(search_url)
                 results = ijson.items(data, 'results.item')
                 # Only use provides in one of container components.
                 provides = results.__next__().get('provides')
@@ -31,12 +35,11 @@ class ContainerComponents:
                     component_links.append(provide.get('link'))
                 del results
             except Exception as e:
-                err_msg = f'Failed to get component links. Reason: {e}'
-                raise RuntimeError(err_msg) from None
+                raise RuntimeError(e) from None
         else:
-            err_msg = "Should provide the container nvr."
+            err_msg = "Should provide a container nvr."
             raise ValueError(err_msg)
-        return component_links
+        return list(set(component_links))
 
     def unquote_link(self, link):
         """
@@ -74,7 +77,6 @@ class ContainerComponents:
                 'version': match.group('version'),
                 'type': match.group('type').upper()
             }
-            component['nvr'] = "{name}-{version}".format(**component)
 
         if component:
             return component
@@ -83,13 +85,13 @@ class ContainerComponents:
             raise RuntimeError(err_msg)
 
     @staticmethod
-    async def get_component_data_from_corgi(component_link):
+    def get_component_data_from_corgi(component_link):
         """
         Get component data from the response of corgi component link.
         """
         component = {}
-        async with httpx.AsyncClient(verify=False, timeout=None) as client:
-            response = await client.get(component_link)
+        with httpx.Client(verify=False, timeout=None) as client:
+            response = client.get(component_link)
             if response.status_code == 200:
                 content = response.json()
                 component_type = content.get('type')
@@ -111,37 +113,38 @@ class ContainerComponents:
                     }
         return component
 
-    async def get_component_data(self, component_link):
+    def get_component_data(self, component_link):
         """
         Get component data from the response of component link.
         """
-        component = await self.get_component_data_from_corgi(
-            component_link)
+        component = self.get_component_data_from_corgi(component_link)
         if not component:
             # Provide a workaround for Corgi bug:
             # https://issues.redhat.com/browse/PSDEVOPS-3690
             component = self.parse_component_link(component_link)
         return component
 
-    async def get_event_loop(self, component_links):
+    async def get_event_loop(self, executor, component_links):
         """
         Event loop function for component links.
         """
-        return await asyncio.gather(*[
-            self.get_component_data(component_link)
+        loop = asyncio.get_event_loop()
+        futures = [
+            loop.run_in_executor(
+                executor, self.get_component_data, component_link)
             for component_link in component_links
-        ])
+        ]
+        return await asyncio.gather(*futures)
 
-    def get_components_data(self, container_nvr):
-        """
-        Get the container components data from link.
-        If we cannot find component data, will raise an error.
-        """
-        component_links = self.get_component_links(container_nvr)
+    def get_components_data(self):
+        # Create a limited thread pool
+        executor = ThreadPoolExecutor(max_workers=5,)
         event_loop = asyncio.get_event_loop()
+        component_links = self.get_component_links(self.container_nvr)
         try:
             components = event_loop.run_until_complete(
-                self.get_event_loop(component_links))
+                self.get_event_loop(executor, component_links)
+            )
             return components
         except Exception as e:
             raise RuntimeError(e) from None

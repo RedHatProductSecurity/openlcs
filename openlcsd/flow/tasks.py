@@ -15,7 +15,7 @@ from packagedcode.maven import parse as maven_parse
 from openlcsd.flow.task_wrapper import WorkflowWrapperTask
 from openlcsd.celery import app
 from openlcs.libs.brewconn import BrewConnector
-from openlcs.libs.components import ContainerComponents
+from openlcs.libs.components import ContainerComponentsAsync
 # from openlcs.libs.deposit import UploadToDeposit
 from openlcs.libs.scanner import LicenseScanner
 from openlcs.libs.scanner import CopyrightScanner
@@ -789,8 +789,8 @@ def get_components_from_corgi(context, engine):
     engine.logger.info('Start to get components data from Corgi...')
     config = context.get('config')
     base_url = os.path.join(config.get('CORGI_API_ROOT'), "components")
-    cc = ContainerComponents(base_url)
-    context['components'] = cc.get_components_data(context.get('package_nvr'))
+    cc = ContainerComponentsAsync(base_url, context.get('package_nvr'))
+    context['components'] = cc.get_components_data()
     engine.logger.info('Finished getting components data from Corgi.')
 
 
