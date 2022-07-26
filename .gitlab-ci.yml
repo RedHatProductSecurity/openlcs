@@ -63,10 +63,6 @@ variables:
     - name: 'quay.io/pelc/redis'
       alias: redis
 
-.only-merge-requests: &only-merge-requests
-  only:
-    - merge_requests
-
 .only-main: &only-main
   only:
     - main
@@ -78,7 +74,6 @@ variables:
 # ======== build-docker-ci  ========
 # Image build will always be triggered, and will read cache from the latest tag image
 build-ci-image:
-  <<: *only-merge-requests
   tags:
     - pelc-shell-runner
   stage: build-ci-image
@@ -104,14 +99,12 @@ build-ci-image:
 # ======== static-analysis-build========
 flake8:
   <<: *ci-image
-  <<: *only-merge-requests
   stage: static-analysis-build
   script:
     - tox -e flake8 --current-env
 
 pylint:
   <<: *ci-image
-  <<: *only-merge-requests
   stage: static-analysis-build
   script:
     - tox -e pylint --current-env
@@ -120,7 +113,6 @@ pylint:
 unit-tests:
   <<: *ci-image
   <<: *postgresql
-  <<: *only-merge-requests
   stage: tests-it-promote
   script:
     - tox -e unit --current-env
@@ -128,7 +120,6 @@ unit-tests:
 api-tests:
   <<: *ci-image
   <<: *api-services
-  <<: *only-merge-requests
   stage: tests-it-promote
   script:
     - tox -e api --current-env
@@ -165,3 +156,4 @@ build-release-image:
     - docker build -t $OPENLCS_IMAGE:$CI_COMMIT_TAG -f containers/docker-openlcs/Dockerfile .;
     - docker login -u="$PELC_CI_USER" -p=$PELC_CI_PASSWORD quay.io
     - docker push $OPENLCS_IMAGE:$CI_COMMIT_TAG
+# This line is added for test the merge request pipeline
