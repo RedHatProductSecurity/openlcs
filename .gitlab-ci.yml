@@ -165,3 +165,5 @@ build-release-image:
     - docker build -t $OPENLCS_IMAGE:$CI_COMMIT_TAG -f containers/docker-openlcs/Dockerfile .;
     - docker login -u="$PELC_CI_USER" -p=$PELC_CI_PASSWORD quay.io
     - docker push $OPENLCS_IMAGE:$CI_COMMIT_TAG
+
+# This line is added for test the merge request pipeline 3
