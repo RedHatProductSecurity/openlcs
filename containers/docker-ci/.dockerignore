@@ -1,0 +1,11 @@
+# Use this file to ignore some files or directories before send the context to the docker daemon when creating quay.io/pelc/openlcs-ci:latest image.
+logs
+openlcs
+openlcsd
+tests
+.gitignore
+.gitlab-ci.yml
+.pylintrc
+gunicorn.conf.py
+README.md
+tox.ini

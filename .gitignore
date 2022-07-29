@@ -1,0 +1,6 @@
+# Generic Python
+*.py[co]
+__pycache__
+
+# Pycharm IDE
+.idea

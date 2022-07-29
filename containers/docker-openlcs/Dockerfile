@@ -1,0 +1,66 @@
+# https://catalog.redhat.com/software/containers/ubi8/python-38/5dde9cacbed8bd164a0af24a?container-tabs=overview
+# FROM registry.access.redhat.com/ubi8/python-38:1-75
+FROM registry.access.redhat.com/ubi8/python-38:1-75
+
+ARG PRODSEC_DEV_OPENLCS_MAIL
+ARG ROOT_CA_URL
+ARG ENG_CA_URL
+ARG TITO_REPO_URL
+ARG RHEL8_REPO_URL
+ARG CORGI_API_STAGE
+ARG CORGI_API_PROD
+ARG KOJI_WEBSERVICE
+ARG KOJI_WEBURL
+ARG KOJI_DOWNLOAD
+ARG LDAP_URI
+
+LABEL name="openlcs" \
+      maintainer="${PRODSEC_DEV_OPENLCS_MAIL}" \
+      summary="OpenLCS" \
+      description="OpenLCS service in a container"
+
+USER 0
+
+# Copy sources from context
+COPY ./requirements /tmp
+COPY . /opt/app-root/src
+
+# To avoid docker cache invaild , put these code in the last part
+ARG quay_expiration
+LABEL quay.expires-after=$quay_expiration
+ENV REQUESTS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt
+ENV HOME=/opt/app-root/src
+ENV PYTHONUNBUFFERED 1
+ENV CORGI_API_STAGE=${CORGI_API_STAGE}
+ENV CORGI_API_PROD=${CORGI_API_PROD}
+ENV KOJI_WEBSERVICE=${KOJI_WEBSERVICE}
+ENV KOJI_WEBURL=${KOJI_WEBURL}
+ENV KOJI_DOWNLOAD=${KOJI_DOWNLOAD}
+ENV LDAP_URI=${LDAP_URI}
+
+RUN cd /etc/pki/ca-trust/source/anchors/ && \
+        curl -skO "${ROOT_CA_URL}" && \
+        curl -skO "${ENG_CA_URL}" && \
+        update-ca-trust && \
+        cd - && \
+    dnf config-manager --add-repo "${TITO_REPO_URL}" \
+        --add-repo "${RHEL8_REPO_URL}" && \
+    dnf install --nogpgcheck --nodoc -y cpio-2.12 atool-0.39.0 vim krb5-workstation && \
+    dnf clean all && \
+    # To make docker cache pip package, install dependencies
+    pip install --upgrade pip && pip install -r /tmp/devel.txt && \
+    # Add permissions for openlcs 
+    mkdir -p /var/openlcs/static /var/log/openlcs/ /var/cache/ && \
+    chmod a+rwX -R /var/log/openlcs/ /var/cache/ /var/openlcs/static "${HOME}" /etc/passwd && \
+    chmod a+x -R "${HOME}"/containers/docker-openlcs/bin/* && \
+    chown -R 1001:0 "${HOME}"
+
+# Apply patch for typecode, extractcode, packagedcode
+COPY "${HOME}"/containers/patches/* /opt/app-root/lib64/python3.8/site-packages/
+WORKDIR /opt/app-root/lib64/python3.8/site-packages/
+RUN patch -p0 < magic2.patch && \
+    patch -p0 < extract.patch && \
+    patch -p0 < rpm.patch
+
+WORKDIR "${HOME}"
+USER 1001

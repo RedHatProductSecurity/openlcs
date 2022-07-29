@@ -1,0 +1,165 @@
+stages:
+  # Build ci-image if dockerfile changed
+  - build-ci-image
+
+  # Run static analysis tools
+  # build OpenLCS image
+  - static-analysis-build
+
+  # Run all test cases
+  # Run unit and functional tests that do not require fully deployed OpenLCS 
+  # Run integration tests need to deploy current branch to openlcs-ci
+  - tests-it-promote
+
+  # build openlcs dev image
+  - build-dev-image
+
+  # deploy openlcs dev image to dev env
+  - deploy-to-dev
+
+  # Release new version when tagged
+  - release
+
+variables:
+  # For pgsql start param
+  POSTGRESQL_DATABASE: $POSTGRESQL_DATABASE
+  POSTGRESQL_USER: $POSTGRESQL_USER
+  POSTGRES_HOST_AUTH_METHOD: $POSTGRES_HOST_AUTH_METHOD
+  POSTGRESQL_ADMIN_PASSWORD: $POSTGRESQL_ADMIN_PASSWORD
+  POSTGRESQL_PASSWORD: $POSTGRESQL_PASSWORD
+
+.ci-image: &ci-image
+  image:
+    name: $CI_REGISTRY_IMAGE:latest
+  # The tags come from the labels of specified runners in project CI/CD settings
+  tags:
+    - pelc-docker-runner
+
+.ansible-tower-cli-image: &ansible-tower-cli-image
+  image:
+    # Copy from perrit/ansible-tower-cli-container
+    name: $ANSIBLE_TOWER_CLI_IMAGE
+  tags:
+    - pelc-docker-runner
+
+.postgresql: &postgresql
+  services:
+    - $POSTGRESQL_IMAGE
+
+# https://docs.gitlab.com/ee/ci/services/#starting-multiple-services-from-the-same-image
+.api-services: &api-services
+  services:
+    - name: $POSTGRESQL_IMAGE
+      alias: postgres
+    - name: $REDIS_IMAGE
+      alias: redis
+
+.only-main: &only-main
+  only:
+    - main
+
+.only-release: &only-release
+  only:
+    - tags
+
+# ======== build-docker-ci  ========
+# Image build will always be triggered, and will read cache from the latest tag image
+build-ci-image:
+  tags:
+    - pelc-shell-runner
+  stage: build-ci-image
+  script:
+    - docker login -u="$PELC_CI_USER" -p=$PELC_CI_PASSWORD quay.io
+    - cp containers/docker-ci/.dockerignore .
+    # https://docs.gitlab.com/ee/ci/docker/using_docker_build.html#docker-caching-example
+    # build and get local image sha id
+    - >
+      docker build -q
+      --build-arg PRODSEC_DEV_OPENLCS_MAIL=${PRODSEC_DEV_OPENLCS_MAIL}
+      --build-arg ROOT_CA_URL=${ROOT_CA_URL}
+      --build-arg ENG_CA_URL=${ENG_CA_URL}
+      --build-arg OPENSHIFT_CLI_URL=${OPENSHIFT_CLI_URL}
+      --build-arg RHEL8_REPO_URL=${RHEL8_REPO_URL}
+      --build-arg TITO_REPO_URL=${TITO_REPO_URL}
+      --build-arg CORGI_API_STAGE=${CORGI_API_STAGE}
+      --build-arg CORGI_API_PROD=${CORGI_API_PROD}
+      --build-arg KOJI_WEBSERVICE=${KOJI_WEBSERVICE}
+      --build-arg KOJI_WEBURL=${KOJI_WEBURL}
+      --build-arg KOJI_DOWNLOAD=${KOJI_DOWNLOAD}
+      --build-arg LDAP_URI=${LDAP_URI}
+      -f containers/docker-ci/Dockerfile .
+      | tee output
+    - LOCAL_IMAGE_SHA=`cat output`
+    - REMOTE_IMAGE_SHA=`skopeo inspect --format {{.Digest}} docker://$CI_REGISTRY_IMAGE:latest 2> /dev/null`
+    # If remote latest tag is not equal to current then
+    # push current image to latest
+    - >
+        if [ $LOCAL_IMAGE_SHA = $REMOTE_IMAGE_SHA ]; then
+          echo "Existing same image, nothing to do";
+        else
+          echo "Replace latest image"
+          docker tag $LOCAL_IMAGE_SHA $CI_REGISTRY_IMAGE:latest;
+          docker push $CI_REGISTRY_IMAGE:latest;
+        fi
+    - rm -f .dockerignore
+
+# ======== static-analysis-build========
+flake8:
+  <<: *ci-image
+  stage: static-analysis-build
+  script:
+    - tox -e flake8 --current-env
+
+pylint:
+  <<: *ci-image
+  stage: static-analysis-build
+  script:
+    - tox -e pylint --current-env
+
+# ======== tests-it-promote ========
+unit-tests:
+  <<: *ci-image
+  <<: *postgresql
+  stage: tests-it-promote
+  script:
+    - tox -e unit --current-env
+
+api-tests:
+  <<: *ci-image
+  <<: *api-services
+  stage: tests-it-promote
+  script:
+    - tox -e api --current-env
+
+# ======== build-dev-image ========
+build-dev-image:
+  <<: *only-main
+  tags:
+    - pelc-shell-runner
+  stage: build-dev-image
+  script:
+    - docker build -t $OPENLCS_IMAGE:dev -f containers/docker-openlcs/Dockerfile .;
+    - docker login -u="$PELC_CI_USER" -p=$PELC_CI_PASSWORD quay.io
+    - docker push $OPENLCS_IMAGE:dev
+
+deploy-to-dev:
+  <<: *ansible-tower-cli-image
+  <<: *only-main
+  stage: deploy-to-dev
+  script:
+   - tower-cli config verify_ssl false
+   - >
+      tower-cli job launch -J "OpenLCS deploy dev" --monitor --no-input --insecure
+      -e "openlcs_image_tag: dev"
+      -h "$TOWER_HOST" -t "$TOWER_TOKEN"
+
+# ======== build-release-image ========
+build-release-image:
+  <<: *only-release
+  tags:
+   - pelc-shell-runner
+  stage: release
+  script:
+    - docker build -t $OPENLCS_IMAGE:$CI_COMMIT_TAG -f containers/docker-openlcs/Dockerfile .;
+    - docker login -u="$PELC_CI_USER" -p=$PELC_CI_PASSWORD quay.io
+    - docker push $OPENLCS_IMAGE:$CI_COMMIT_TAG

@@ -1,0 +1,10 @@
+--- typecode/magic2.py	2022-01-26 17:22:18.330889855 +0800
++++ typecode/magic2_mod.py	2022-01-26 17:22:08.812841583 +0800
+@@ -29,6 +29,7 @@
+ # SOFTWARE.
+ 
+ import ctypes
++import ctypes.util
+ import glob
+ import os
+ 
