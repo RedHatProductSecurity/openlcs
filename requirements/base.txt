@@ -1,8 +1,8 @@
-Django==3.2  # Use LTS version
+Django==3.2.14  # Use LTS version
 psycopg2==2.9.2 # Python-PostgreSQL Database Adapter
-celery==5.2.1 # The latest version for Python3.8
+celery==5.2.7 # The latest version for Python3.8
 requests==2.28.1 # An HTTP library for Python
-redis==3.5.3  # Celery broker, make sure it matches celery
+redis==4.3.4  # Celery broker, make sure it matches celery
 SQLAlchemy==1.4.28  # The Database Toolkit for Python
 kobo==0.20.1
 filetype==1.0.8
