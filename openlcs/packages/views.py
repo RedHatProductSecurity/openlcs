@@ -988,7 +988,7 @@ class CheckSourceStatus(APIView):
 
 class ComponentViewSet(ModelViewSet, PackageImportTransactionMixin):
     """
-    API endpoint that allows files to be viewed or edited.
+    API endpoint that allows components to be viewed.
     """
     queryset = Component.objects.all()
     serializer_class = ComponentSerializer

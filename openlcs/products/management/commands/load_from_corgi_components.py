@@ -67,26 +67,26 @@ class Command(BaseCommand):
             type = component_data.get("type")
             if type == "CONTAINER_IMAGE":
                 container_component = self.create_component(component_data)
-                container_node = container_component.product_nodes.create(
+                cnode, _, = container_component.release_nodes.get_or_create(
                     name=container_component.name,
                     parent=release_node,
                 )
                 for provided in component_data.get("provides"):
                     component = self.create_component(provided)
-                    component.product_nodes.create(
+                    component.release_nodes.get_or_create(
                         name=component.name,
-                        parent=container_node,
+                        parent=cnode,
                     )
             else:
                 component = self.create_component(component_data)
-                component.product_nodes.create(
+                component.release_nodes.get_or_create(
                     name=component.name, parent=release_node
                 )
 
     def build_container_node(self, data):
         container_component = self.create_component(data)
         component_ctype = ContentType.objects.get_for_model(Component)
-        container_node, _ = ComponentTreeNode.objects.get_or_create(
+        cnode, _ = ComponentTreeNode.objects.get_or_create(
             name=container_component.name,
             content_type=component_ctype,
             object_id=container_component.id,
@@ -96,7 +96,7 @@ class Command(BaseCommand):
             component = self.create_component(component_data)
             ComponentTreeNode.objects.get_or_create(
                 name=component.name,
-                parent=container_node,
+                parent=cnode,
                 content_type=component_ctype,
                 object_id=component.id,
             )
