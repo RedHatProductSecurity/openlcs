@@ -28,15 +28,15 @@ COPY . /opt/app-root/src
 # To avoid docker cache invaild , put these code in the last part
 ARG quay_expiration
 LABEL quay.expires-after=$quay_expiration
-ENV REQUESTS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt
-ENV HOME=/opt/app-root/src
-ENV PYTHONUNBUFFERED 1
-ENV CORGI_API_STAGE=${CORGI_API_STAGE}
-ENV CORGI_API_PROD=${CORGI_API_PROD}
-ENV KOJI_WEBSERVICE=${KOJI_WEBSERVICE}
-ENV KOJI_WEBURL=${KOJI_WEBURL}
-ENV KOJI_DOWNLOAD=${KOJI_DOWNLOAD}
-ENV LDAP_URI=${LDAP_URI}
+ENV REQUESTS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt \
+    HOME=/opt/app-root/src \
+    PYTHONUNBUFFERED=1 \
+    CORGI_API_STAGE=${CORGI_API_STAGE} \
+    CORGI_API_PROD=${CORGI_API_PROD} \
+    KOJI_WEBSERVICE=${KOJI_WEBSERVICE} \
+    KOJI_WEBURL=${KOJI_WEBURL} \
+    KOJI_DOWNLOAD=${KOJI_DOWNLOAD} \
+    LDAP_URI=${LDAP_URI}
 
 RUN cd /etc/pki/ca-trust/source/anchors/ && \
         curl -skO "${ROOT_CA_URL}" && \
