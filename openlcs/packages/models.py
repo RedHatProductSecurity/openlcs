@@ -245,6 +245,8 @@ class Component(CorgiComponentMixin):
     def sync_with_corgi(self, data):
         if not self.synced:
             self.uuid = data.get("uuid")
+            # FIXME: should we add a validation here? i.e,. is it possible to
+            # have inconsistent name/version/release/arch/type while syncing?
             self.synced = True
             self.save()
 
