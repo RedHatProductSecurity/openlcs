@@ -2,6 +2,8 @@ from django.db import models
 from django.db.models import Q
 from django.contrib.contenttypes.fields import GenericRelation
 from django.core.validators import URLValidator
+# avoid name clash
+import uuid as uuid_module
 
 
 # Create your models here.
@@ -191,6 +193,12 @@ class CorgiComponentMixin(models.Model):
 
 
 class Component(CorgiComponentMixin):
+
+    uuid = models.UUIDField(
+        unique=True,
+        default=uuid_module.uuid4,
+        help_text='Component uuid',
+    )
     source = models.ForeignKey(
         Source,
         null=True,
@@ -212,6 +220,12 @@ class Component(CorgiComponentMixin):
         help_text="True if this component corresponds to the entire "
                   "source, rather than an actual binary package",
     )
+    synced = models.BooleanField(
+        default=False,
+        help_text="Indicate whether the component is synced with component "
+                  "from component registry. Synced component should have "
+                  "identical uuid.",
+    )
     component_nodes = GenericRelation(
         "products.ComponentTreeNode", related_query_name="component"
     )
@@ -227,6 +241,14 @@ class Component(CorgiComponentMixin):
                 fields=("name", "version", "release", "arch", "type"),
             ),
         ]
+
+    def sync_with_corgi(self, data):
+        if not self.synced:
+            self.uuid = data.get("uuid")
+            # FIXME: should we add a validation here? i.e,. is it possible to
+            # have inconsistent name/version/release/arch/type while syncing?
+            self.synced = True
+            self.save()
 
     def __str__(self):
         return f'{self.name}-{self.version}, {self.type}'
