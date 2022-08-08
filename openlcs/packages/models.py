@@ -229,7 +229,7 @@ class Component(CorgiComponentMixin):
     component_nodes = GenericRelation(
         "products.ComponentTreeNode", related_query_name="component"
     )
-    product_nodes = GenericRelation(
+    release_nodes = GenericRelation(
         "products.ProductTreeNode", related_query_name="component"
     )
 

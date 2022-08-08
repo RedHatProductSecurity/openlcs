@@ -14,6 +14,7 @@ class FileSerializer(serializers.ModelSerializer):
     """
     File serializer.
     """
+
     def validate(self, attrs):
         attrs = super(FileSerializer, self).validate(attrs)
         swhid_check(attrs.get('swhid'))
@@ -28,6 +29,7 @@ class BulkFileSerializer(serializers.Serializer):
     """
     Bulk file serializer, use to return validate files after created.
     """
+
     files = FileSerializer(many=True)
 
 
@@ -35,9 +37,9 @@ class BulkCreateFileSerializer(serializers.Serializer):
     """
     Bulk create file serializer, use to validate request files data.
     """
+
     swhids = serializers.ListField(
-        child=serializers.CharField(),
-        allow_empty=False
+        child=serializers.CharField(), allow_empty=False
     )
 
     def validate(self, attrs):
@@ -51,11 +53,13 @@ class PackageSerializer(serializers.ModelSerializer):
     """
     Package serializer.
     """
+
     source = serializers.SlugRelatedField(
         queryset=Source.objects.all(),
         slug_field='checksum',
         allow_null=False,
-        required=True)
+        required=True,
+    )
 
     class Meta:
         model = Package
@@ -66,6 +70,7 @@ class SourceSerializer(serializers.ModelSerializer):
     """
     Source serializer.
     """
+
     packages = PackageSerializer(many=True, read_only=True)
     license_detections = serializers.SerializerMethodField()
     copyright_detections = serializers.SerializerMethodField()
@@ -76,12 +81,14 @@ class SourceSerializer(serializers.ModelSerializer):
 
     def get_license_detections(self, obj):
         license_keys = obj.get_license_detections().values_list(
-                'license_key', flat=True)
+            'license_key', flat=True
+        )
         return license_keys.distinct()
 
     def get_copyright_detections(self, obj):
         copyrights = obj.get_copyright_detections().values_list(
-                'statement', flat=True)
+            'statement', flat=True
+        )
         return copyrights.distinct()
 
 
@@ -89,16 +96,19 @@ class PathSerializer(serializers.ModelSerializer):
     """
     Path serializer
     """
+
     source = serializers.SlugRelatedField(
         queryset=Source.objects.all(),
         slug_field='checksum',
         allow_null=False,
-        required=True)
+        required=True,
+    )
     file = serializers.SlugRelatedField(
         queryset=File.objects.all(),
         slug_field='swhid',
         allow_null=False,
-        required=True)
+        required=True,
+    )
 
     class Meta:
         model = Path
@@ -109,6 +119,7 @@ class BulkPathSerializer(serializers.Serializer):
     """
     Bulk file serializer, use to return validate paths after created.
     """
+
     paths = PathSerializer(many=True)
 
 
@@ -116,11 +127,13 @@ class CreatePathSerializer(serializers.Serializer):
     """
     Create path serializer, use to return validated paths data in paths list.
     """
+
     file = serializers.SlugRelatedField(
         queryset=File.objects.all(),
         slug_field='swhid',
         allow_null=False,
-        required=True)
+        required=True,
+    )
     path = serializers.CharField(required=True)
 
 
@@ -128,11 +141,13 @@ class BulkCreatePathSerializer(serializers.Serializer):
     """
     Bulk path serializer, use to validate request paths data.
     """
+
     source = serializers.SlugRelatedField(
         queryset=Source.objects.all(),
         slug_field='checksum',
         allow_null=False,
-        required=True)
+        required=True,
+    )
     paths = CreatePathSerializer(many=True)
 
 
@@ -184,6 +199,7 @@ class ImportScanOptionsMixin(ImportSerializer):
     """
     Basic options related to package import.
     """
+
     license_scan = serializers.BooleanField(required=False)
     copyright_scan = serializers.BooleanField(required=False)
 
@@ -193,7 +209,7 @@ class ReleaseImportMixin(ImportSerializer):
         allow_null=True,
         required=False,
         max_length=100,
-        validators=[release_validator]
+        validators=[release_validator],
     )
 
     def get_task_params(self):
@@ -209,9 +225,7 @@ class ReleaseImportMixin(ImportSerializer):
 
 
 class NVRImportSerializer(ImportScanOptionsMixin, ReleaseImportMixin):
-    package_nvrs = serializers.ListField(
-        child=serializers.CharField()
-    )
+    package_nvrs = serializers.ListField(child=serializers.CharField())
 
     def validate(self, attrs):
         attrs = super(NVRImportSerializer, self).validate(attrs)
@@ -224,11 +238,32 @@ class NVRImportSerializer(ImportScanOptionsMixin, ReleaseImportMixin):
 
 
 class ComponentSerializer(serializers.ModelSerializer):
-    """
-    Bulk file serializer, use to return validate files after created.
-    """
     source = SourceSerializer(required=False)
 
     class Meta:
         model = Component
         fields = '__all__'
+
+
+class ContainerComponentsSerializer(ComponentSerializer):
+    provides = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Component
+        fields = '__all__'
+
+    def get_provides(self, obj):
+        # get from release node tree if explicitly specified
+        if self.context.get("for_release"):
+            # FIXME: find identical node
+            node = obj.release_nodes.all().first()
+        else:
+            node = obj.container_nodes.get()
+
+        component_nodes = node.get_descendants()
+        components = Component.objects.filter(
+            id__in=component_nodes.values_list('object_id', flat=True)
+        )
+
+        serializer = ComponentSerializer(components, many=True)
+        return serializer.data
