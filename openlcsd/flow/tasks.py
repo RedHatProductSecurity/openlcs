@@ -241,6 +241,8 @@ def get_source_metadata(context, engine):
     src_filepath = context.get('tmp_src_filepath')
     pom_filepath = context.get('tmp_pom_filepath', None)
     build_type = context.get('build_type')
+    build = context.get('build')
+
     package = None
     try:
         if 'rpm' in build_type:
@@ -275,9 +277,12 @@ def get_source_metadata(context, engine):
             "url": context.get("source_url"),
             "archive_type": list(context['build_type'].keys())[0]
         },
-        "package": {
-            "nvr": context.get("package_nvr"),
-            "sum_license": context.get("declared_license"),
+        "component": {
+            "name": build.get('name'),
+            "version": build.get('version'),
+            "release": build.get('release'),
+            "arch": build.get('arch') or '',
+            "summary_license": context.get("declared_license"),
             "is_source": True
         }
     }

@@ -5,7 +5,7 @@ from django.db.utils import IntegrityError
 
 from libs.backoff_strategy import retry
 from packages.models import File
-from packages.models import Package
+from packages.models import Component
 from packages.models import Path
 from packages.models import Source
 from packages.serializers import BulkFileSerializer
@@ -25,7 +25,7 @@ class PackageImportTransactionMixin:
            max_wait_interval=settings.CREATE_FILES_MAX_WAIT_INTERVAL)
     def create_files(self, swhids):
         """
-        Create files.
+        Create source files.
         """
         exist_files = File.objects.in_bulk(id_list=list(swhids),
                                            field_name='swhid').keys()
@@ -45,14 +45,10 @@ class PackageImportTransactionMixin:
     @retry(rand=settings.CREATE_PATHS_RAND,
            max_retries=settings.CREATE_PATHS_MAX_RETRIES,
            max_wait_interval=settings.CREATE_PATHS_MAX_WAIT_INTERVAL)
-    def create_paths(self, source_checksum, paths):
+    def create_paths(self, source, paths):
         """
-        Create paths.
+        Create source file paths.
         """
-        # Three SQL queries will be run here.
-        # One is to get the Source object, one is to get all File objects.
-        # One is to created Path objects.
-        source = Source.objects.get(checksum=source_checksum)
         swhids = [path.get('file') for path in paths]
         files_dict = File.objects.in_bulk(id_list=list(swhids),
                                           field_name='swhid')
@@ -70,12 +66,11 @@ class PackageImportTransactionMixin:
             return {'message': 'No paths created.'}
 
     @staticmethod
-    def create_package(source_checksum, package):
+    def create_component(source, component):
         """
-        Create package.
+        Create source component.
         """
-        source, _ = Source.objects.get_or_create(checksum=source_checksum)
-        Package.objects.get_or_create(source=source, **package)
+        Component.objects.get_or_create(source=source, **component)
 
 
 class SaveScanResultMixin:
@@ -126,8 +121,7 @@ class SaveScanResultMixin:
                 err_msg = f'Error while saving licenses. Reason: {err}'
                 raise RuntimeError(err_msg) from None
 
-    def update_scan_flag(self, source_checksum, scan_type):
-        source = Source.objects.get(checksum=source_checksum)
+    def update_scan_flag(self, source, scan_type):
         scan_flag = source.scan_flag
         if scan_type == "license_scan":
             new_scan_flag = "license(" + settings.LICENSE_SCANNER + ")"
@@ -196,6 +190,7 @@ class SaveScanResultMixin:
         file_ids = [swhid_file_dict.get(swhid) for swhid in swhids]
         path_file_dict = dict(zip(paths, file_ids))
         source_checksum = kwargs.pop('source_checksum')
+        source = Source.objects.get(checksum=source_checksum)
 
         if kwargs.get('license_scan'):
             licenses = kwargs.pop('licenses')
@@ -205,7 +200,7 @@ class SaveScanResultMixin:
                     # Exist same files in different paths.
                     self.save_file_license_scan(list(set(file_ids)))
                     self.save_license_detections(path_file_dict, data)
-                    self.update_scan_flag(source_checksum, "license_scan")
+                    self.update_scan_flag(source, "license_scan")
 
         if kwargs.get('copyright_scan'):
             copyrights = kwargs.pop('copyrights')
@@ -214,4 +209,4 @@ class SaveScanResultMixin:
                 with transaction.atomic():
                     self.save_file_copyright_scan(list(set(file_ids)))
                     self.save_copyright_detections(path_file_dict, data)
-                    self.update_scan_flag(source_checksum, "copyright_scan")
+                    self.update_scan_flag(source, "copyright_scan")
