@@ -35,4 +35,4 @@ class PackageAdmin(admin.ModelAdmin):
 
 @admin.register(Component)
 class ComponentAdmin(admin.ModelAdmin):
-    search_fields = ['purl', 'type', 'name']
+    search_fields = ['uuid', 'purl', 'type', 'name']

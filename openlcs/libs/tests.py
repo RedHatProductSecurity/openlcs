@@ -9,7 +9,7 @@ from unittest import TestCase
 from kobo.shortcuts import run
 from django.conf import settings
 
-from libs.components import ContainerComponentsAsync
+from libs.corgi_handler import ContainerComponentsAsync
 from libs.download import KojiBuild
 from libs.parsers import parse_manifest_file
 from libs.scanner import LicenseScanner
@@ -278,27 +278,50 @@ class TestComponents(TestCase):
             f'{CORGI_API_PROD}components?purl=pkg%3Arpm/redhat/openssl-libs%401.1.1g-15.el8_3%3Farch%3Ds390x',  # noqa
             f'{CORGI_API_PROD}components?purl=pkg:npm/@jest/fake-timers@27.2.0'  # noqa
         ]
-        self.components_data = [
-            {
-                'name': 'glibc-minimal-langpack',
-                'version': '2.28',
-                'release': '151.el8',
-                'type': 'RPM',
-                'nvr': 'glibc-minimal-langpack-2.28-151.el8'
+        self.components_data = {
+            'container_component': {
+                'uuid': 'bb7e0e10-0a68-4bae-a490-3ff491cb1b78',
+                'type': 'CONTAINER_IMAGE',
+                'nvr': 'grc-ui-api-container-13-v2.4.0',
+                'name': "grc-ui-api-container",
+                'version': '13',
+                'release': 'v2.4.0',
+                'arch': 's390x',
+                'license': ''
             },
-            {
-                'name': 'openssl-libs',
-                'version': '1.1.1g',
-                'release': '15.el8_3',
-                'type': 'RPM',
-                'nvr': 'openssl-libs-1.1.1g-15.el8_3'
-            },
-            {
-                'name': '@jest/fake-timers',
-                'version': '27.2.0',
-                'type': 'NPM'
-            }
-        ]
+            'components': [
+                {
+                    'uuid': 'fe7f82c1-db81-4045-84d6-c81a9da8d145',
+                    'type': 'RPM',
+                    'nvr': 'glibc-minimal-langpack-2.28-151.el8',
+                    'name': 'glibc-minimal-langpack',
+                    'version': '2.28',
+                    'release': '151.el8',
+                    'arch': 's390x',
+                    'license': ""
+                },
+                {
+                    'uuid': 'fe7f82c1-db81-4045-84d6-c81a9da8d146',
+                    'type': 'RPM',
+                    'nvr': 'openssl-libs-1.1.1g-15.el8_3',
+                    'name': 'openssl-libs',
+                    'version': '1.1.1g',
+                    'release': '15.el8_3',
+                    'arch': 's390x',
+                    'license': ''
+                },
+                {
+                    'uuid': 'fe7f82c1-db81-4045-84d6-c81a9da8d147',
+                    'type': 'NPM',
+                    'nvr': '@jest/fake-timers-27.2.0',
+                    'name': '@jest/fake-timers',
+                    'version': '27.2.0',
+                    'release': '',
+                    'arch': '',
+                    'license': ''
+                }
+            ]
+        }
         base_url = f"{CORGI_API_PROD}components"
         container_nvr = 'grc-ui-api-container-13-v2.4.0'
         self.container_components = ContainerComponentsAsync(
@@ -309,10 +332,10 @@ class TestComponents(TestCase):
     def test_get_component_data_1(
             self, mock_get_component_data_from_corgi):
         mock_get_component_data_from_corgi.return_value = \
-            self.components_data[0]
+            self.components_data.get('components')[0]
         component = self.container_components.get_component_data(
             self.links[0])
-        self.assertEqual(component, self.components_data[0])
+        self.assertEqual(component, self.components_data.get('components')[0])
 
     @mock.patch.object(
         ContainerComponentsAsync, 'get_component_data_from_corgi')
@@ -322,10 +345,10 @@ class TestComponents(TestCase):
             mock_parse_component_link):
         mock_get_component_data_from_corgi.return_value = {}
         mock_parse_component_link.return_value = \
-            self.components_data[1]
+            self.components_data.get('components')[1]
         component = self.container_components.get_component_data(
             self.links[1])
-        self.assertEqual(component, self.components_data[1])
+        self.assertEqual(component, self.components_data.get('components')[1])
 
     @mock.patch.object(
         ContainerComponentsAsync, 'get_component_data_from_corgi')
@@ -335,16 +358,23 @@ class TestComponents(TestCase):
             mock_parse_component_link):
         mock_get_component_data_from_corgi.return_value = {}
         mock_parse_component_link.return_value = \
-            self.components_data[2]
+            self.components_data.get('components')[2]
         component = self.container_components.get_component_data(
             self.links[2])
-        self.assertEqual(component, self.components_data[2])
+        self.assertEqual(component, self.components_data.get('components')[2])
 
-    @mock.patch.object(ContainerComponentsAsync, 'get_component_links')
-    def test_get_components_data(self, mock_get_component_links):
-        mock_get_component_links.return_value = self.links
-        self.assertEqual(self.container_components.get_components_data(),
-                         self.components_data)
+    @mock.patch.object(ContainerComponentsAsync, 'get_event_loop')
+    @mock.patch.object(ContainerComponentsAsync, 'get_component_and_links')
+    def test_get_components_data(self, mock_get_component_and_links,
+                                 mock_get_event_loop):
+        mock_get_component_and_links.return_value = \
+            self.links, self.components_data.get('container_component')
+        mock_get_event_loop.return_value = \
+            self.components_data.get('components')
+        self.assertEqual(
+            self.container_components.get_components_data(),
+            self.components_data
+        )
 
 
 class TestMapSourceImage(TestCase):

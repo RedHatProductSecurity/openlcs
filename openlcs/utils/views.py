@@ -31,7 +31,7 @@ class ObtainConfigView(generics.RetrieveAPIView):
             'ORPHAN_CATEGORY',
             'LICENSE_SCANNER',
             'COPYRIGHT_SCANNER',
-            'CORGI_API_STAGE'
+            'CORGI_API_STAGE',
             'CORGI_API_PROD'
         ]
         for attr_name in allowable_attrs:
