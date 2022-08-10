@@ -868,10 +868,10 @@ class PackageImportTransactionView(APIView, PackageImportTransactionMixin):
         swhids = data.get('swhids')
         source = data.get('source')
         paths = data.get('paths')
-        package = data.get('package')
-        if not any([swhids, source, paths, package]):
+        component = data.get('component')
+        if not any([swhids, source, paths, component]):
             return Response(
-                data={'message': 'Not get enough data'},
+                data={'message': 'No data provided.'},
                 status=status.HTTP_400_BAD_REQUEST)
         try:
             with transaction.atomic():
@@ -880,15 +880,10 @@ class PackageImportTransactionView(APIView, PackageImportTransactionMixin):
                 source_checksum = source.get('checksum')
                 qs = Source.objects.filter(checksum=source_checksum)
                 if not qs.exists():
-                    # If source not exist in database, that's mean the paths
-                    # is not exist, bulk created them directly.
-                    Source.objects.create(**source)
-                    self.create_paths(source_checksum, paths)
-                    self.create_package(source_checksum, package)
-            msg = f'Build {package.get("nvr")} imported successfully.'
-            return Response(
-                data={'message': msg},
-                status=status.HTTP_200_OK)
+                    source = Source.objects.create(**source)
+                    self.create_paths(source, paths)
+                    self.create_component(source, component)
+            return Response()
         except (RuntimeError, ProcedureException) as err:
             return Response(
                 data={'message': err.args},
