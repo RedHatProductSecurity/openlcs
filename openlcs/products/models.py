@@ -4,6 +4,7 @@ from django.contrib.contenttypes.fields import (
     GenericForeignKey,
     GenericRelation,
 )
+import koji
 
 from mptt.models import MPTTModel, TreeForeignKey
 from packages.models import Package
@@ -58,14 +59,40 @@ class Release(models.Model):
     def __str__(self):
         return self.name
 
-    def update_packages(self, nvr_list, is_source=True):
-        existed_nvrs = self.packages.values_list('package_nvr', flat=True)
-        nvrs = list(set(nvr_list) - set(existed_nvrs))
-        objs = [
-            ReleasePackage(release=self, package_nvr=nvr, is_source=is_source)
-            for nvr in nvrs
-        ]
-        ReleasePackage.objects.bulk_create(objs)
+    def get_or_create_release_node(self):
+        ctype = ContentType.objects.get_for_model(self.__class__)
+        return ProductTreeNode.objects.get_or_create(
+            name=self.name,
+            content_type=ctype,
+            object_id=self.id,
+            # release node will not have a parent.
+            parent=None,
+        )
+
+    def create_component(self, data):
+        from packages.models import Component
+        component, _ = Component.objects.get_or_create(**data)
+        return component
+
+    def add_components_from_nvrs(self, nvrs, type="SRPM", arch="src"):
+        release_node, _ = self.get_or_create_release_node()
+        for nvr in nvrs:
+            nvr_dict = koji.parse_NVR(nvr)
+            # we don't have purl, summary_license based on nvrs.
+            component_data = {
+                'name': nvr_dict.get('name'),
+                'version': nvr_dict.get('version'),
+                'release': nvr_dict.get('release'),
+                # Unless explicitly specified, we will use default value for
+                # `type` and `arch` for components generated from nvrs.
+                'type': type,
+                'arch': arch,
+            }
+            component = self.create_component(component_data)
+            # attach component to the release_node tree.
+            component.release_nodes.get_or_create(
+                name=component.name, parent=release_node
+            )
 
 
 class ReleasePackage(models.Model):

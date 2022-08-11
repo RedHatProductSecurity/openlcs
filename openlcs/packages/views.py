@@ -465,7 +465,7 @@ file first, it should contain the following parameters:
                                 name=release_name, notes=data.get("notes"))
                     # Populate release packages with manifest content
                     if src_packages:
-                        release.update_packages(src_packages)
+                        release.add_components_from_nvrs(src_packages)
                 else:
                     release_name = None
                 manifest_data = {
@@ -478,7 +478,7 @@ file first, it should contain the following parameters:
                 package_nvrs = request.data.get('package_nvrs')
                 releases = Release.objects.filter(name=release_name)
                 if releases.exists() and package_nvrs:
-                    releases[0].update_packages(package_nvrs)
+                    releases[0].add_components_from_nvrs(package_nvrs)
                 else:
                     self.create_product_release(release_name)
                     releases = Release.objects.filter(name=release_name)
