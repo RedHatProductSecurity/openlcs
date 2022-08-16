@@ -7,7 +7,6 @@ from django.contrib.contenttypes.fields import (
 import koji
 
 from mptt.models import MPTTModel, TreeForeignKey
-from packages.models import Package
 
 
 class Product(models.Model):
@@ -93,57 +92,6 @@ class Release(models.Model):
             component.release_nodes.get_or_create(
                 name=component.name, parent=release_node
             )
-
-
-class ReleasePackage(models.Model):
-    """packages within each release"""
-
-    release = models.ForeignKey(
-        Release, related_name="packages", on_delete=models.CASCADE
-    )
-    package_nvr = models.TextField()
-    is_source = models.BooleanField(
-        default=True, help_text='True if the package is for source package'
-    )
-
-    class Meta:
-        app_label = 'products'
-        constraints = [
-            models.UniqueConstraint(
-                fields=['release', 'package_nvr'],
-                name='unique_release_package_nvr',
-            )
-        ]
-
-    def __str__(self):
-        return "%s-%s" % (self.release, self.package_nvr)
-
-    def get_scan_result(self):
-        qs = Package.objects.filter(nvr=self.package_nvr).select_related()
-        data = {}
-        if qs.exists():
-            package = qs[0]
-            data.update({'sum_license': package.sum_license})
-            if package.is_source:
-                source = package.source
-                licenses = (
-                    source.get_license_detections()
-                    .values_list('license_key', flat=True)
-                    .distinct()
-                )
-                copyrights = (
-                    source.get_copyright_detections()
-                    .values_list('statement', flat=True)
-                    .distinct()
-                )
-                data.update(
-                    {
-                        'url': source.url,
-                        'licenses': licenses,
-                        'copyrights': copyrights,
-                    }
-                )
-        return data
 
 
 class MpttTreeNodeMixin(MPTTModel):
