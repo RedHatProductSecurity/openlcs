@@ -58,7 +58,7 @@ class SourceSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Source
-        fields = ["name", "url", "checksum", "state", "archive_type",
+        fields = ["id", "name", "url", "checksum", "state", "archive_type",
                   "scan_flag", "component_set", "license_detections",
                   "copyright_detections"]
 
