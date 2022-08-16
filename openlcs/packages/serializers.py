@@ -205,6 +205,7 @@ class ImportScanOptionsMixin(ImportSerializer):
 
 
 class ReleaseImportMixin(ImportSerializer):
+    srpm_dir = serializers.CharField(required=False)
     product_release = serializers.CharField(
         allow_null=True,
         required=False,
@@ -218,7 +219,10 @@ class ReleaseImportMixin(ImportSerializer):
         params['license_scan'] = data.get('license_scan', True)
         params['copyright_scan'] = data.get('copyright_scan', True)
 
+        srpm_dir = data.get('srpm_dir', None)
         product_release = data.get('product_release')
+        if srpm_dir is not None:
+            params['srpm_dir'] = srpm_dir
         if product_release:
             params['product_release'] = product_release
         return params
