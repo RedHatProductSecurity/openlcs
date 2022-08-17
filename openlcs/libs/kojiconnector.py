@@ -131,6 +131,42 @@ class KojiConnector:
         """
         return self._service.getBuild(build_info)
 
+    def get_osbs_build_kind(self, build):
+        """
+        Get the osbs build type from build extra.
+        """
+        extra = build.get('extra', None)
+        osbs_build = extra.get('osbs_build') if extra else None
+        return osbs_build.get('kind') if osbs_build else None
+
+    def get_binary_nvr(self, sc_nvr):
+        """
+        Accept source container nvr that the brew build info is
+        extra.osbs_build.kind: source_container_build
+        Return the mapping binary nvr for the source build
+        """
+        build = self.get_build(sc_nvr)
+        container_kind = self.get_osbs_build_kind(build)
+        try:
+            if container_kind == 'source_container_build':
+                return build['extra']['image']['sources_for_nvr']
+        except KeyError as e:
+            raise KeyError(e) from None
+
+    def list_builds(self, package_id, state, query_opts):
+        """
+        Return a list of builds for a package with the state and queryOpts.
+        """
+        return self._service.listBuilds(
+                packageID=package_id, state=state,
+                queryOpts=query_opts)
+
+    def get_package_id(self, package_name):
+        """
+        Return the package id for a package name.
+        """
+        return self._service.getPackageID(package_name)
+
     def get_build_source(self, build_id):
         """
         Return srpm/source archive for build.

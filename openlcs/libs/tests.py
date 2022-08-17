@@ -345,3 +345,23 @@ class TestComponents(TestCase):
         mock_get_component_links.return_value = self.links
         self.assertEqual(self.container_components.get_components_data(),
                          self.components_data)
+
+
+class TestMapSourceImage(TestCase):
+    def setUp(self):
+        os.environ.setdefault(
+                'DJANGO_SETTINGS_MODULE', 'openlcs.openlcs.settings')
+        self.binary_nvr = 'dotnet-21-container-2.1-54'
+        self.source_nvr = 'dotnet-21-container-source-2.1-54.3'
+        self.context = {'config': {'KOJI_DOWNLOAD': settings.KOJI_DOWNLOAD,
+                                   'KOJI_WEBSERVICE': settings.KOJI_WEBSERVICE,
+                                   'KOJI_WEBURL': settings.KOJI_WEBURL
+                                   },
+                        }
+
+    def test_get_latest_source_container_build(self):
+        binary_nvr = self.binary_nvr
+        koji_build = KojiBuild(self.context.get('config'))
+        source_image = koji_build.get_latest_source_container_build(
+                binary_nvr)
+        self.assertEqual(source_image.get('nvr'), self.source_nvr)

@@ -23,6 +23,7 @@ from openlcs.libs.logger import get_task_logger
 from openlcs.libs.parsers import sha256sum
 from openlcs.libs.swh_tools import get_swhids_with_paths
 from openlcs.libs.unpack import UnpackArchive
+from openlcs.libs.download import KojiBuild
 from openlcs.utils.common import DateEncoder
 
 
@@ -82,7 +83,6 @@ def get_build(context, engine):
     @feeds: `build_type`, dict, with keys as build type names and values as
                 type info corresponding to that type.
     """
-    from openlcs.libs.download import KojiBuild
     config = context.get('config')
     koji_build = KojiBuild(config)
     build = koji_build.get_build(
@@ -96,22 +96,15 @@ def get_build(context, engine):
     context['build'] = build
 
 
-def get_osbs_build_kind(build):
-    """
-    Get the osbs build type from build extra.
-    """
-    extra = build.get('extra', None)
-    osbs_build = extra.get('osbs_build') if extra else None
-    return osbs_build.get('kind') if osbs_build else None
-
-
-def is_source_container_build(build):
+def is_source_container_build(context, build):
     """
     Check whether the build is a source container build.
     @requires: `build`, dictionary, the build got via API.
     @feeds: True, False
     """
-    container_type = get_osbs_build_kind(build)
+    config = context.get('config')
+    koji_connector = KojiConnector(config)
+    container_type = koji_connector.get_osbs_build_kind(build)
     return container_type == 'source_container_build'
 
 
@@ -125,7 +118,6 @@ def get_source_container_build(context, engine):
     @feeds: `build_type`, dict, with keys as build type names and values as
             type info corresponding to that build.
     """
-    from libs.download import KojiBuild
     config = context.get('config')
     koji_build = KojiBuild(config)
     build = context.get('build')
@@ -133,13 +125,11 @@ def get_source_container_build(context, engine):
     package_nvr = context.get('package_nvr')
     # Use the build directly if the build is for source container.
     if package_nvr and 'container-source' in package_nvr:
-        if is_source_container_build(build):
+        if is_source_container_build(context, build):
             sc_build = build
     # Get the source container build if the input is a binary container.
     elif package_nvr and 'container' in package_nvr:
-        # TODO: try to find the source container for binary container
-        pass
-
+        sc_build = koji_build.get_latest_source_container_build(package_nvr)
     if sc_build:
         if package_nvr != sc_build.get('nvr'):
             msg = 'Found source container build %s for %s in Brew/Koji'
@@ -149,6 +139,10 @@ def get_source_container_build(context, engine):
         build_type = koji_build.get_build_type(sc_build)
         context['build'] = sc_build
         context['build_type'] = build_type
+        context['is_source_container_build'] = True
+    else:
+        err_msg = "This binary container has no mapping source container."
+        raise ValueError(err_msg) from None
 
 
 def download_source_image(context, engine):
@@ -452,6 +446,37 @@ def unpack_source(context, engine):
     engine.logger.info("Finished unpacking source.")
 
 
+def unpack_container_source_archive(context, engine):
+    """
+    Uncompress sources of given build/archive.
+
+    @requires: 'src_dest_dir', destination directory.
+    @requires: 'src_file'.
+    """
+    prepare_dest_dir(context, engine)
+    extract_source(context, engine)
+    config = context.get('config')
+
+    # Get the src file and src_dest_dir
+    tmp_src_filepath = context.get('tmp_src_filepath')
+    file = tmp_src_filepath.split('/')[-1]
+    src_dest_dir = context.get('src_dest_dir')
+    src_file = os.path.join(src_dest_dir, file)
+    # Unpack the source container image
+    ua = UnpackArchive(config=config)
+    engine.logger.info('Start to unpack source container image...')
+    try:
+        misc_dir, srpm_dir, rc_dir = \
+                ua.unpack_source_container_image(src_file, src_dest_dir)
+    except RuntimeError as e:
+        err_msg = "Failed to decompress file %s: %s" % (src_file, e)
+        engine.logger.error(err_msg)
+        raise RuntimeError(e) from None
+    engine.logger.info('Finished unpacking the source archives.')
+    context['misc_dir'], context['srpm_dir'], context['rc_dir'] = \
+        misc_dir, srpm_dir, rc_dir
+
+
 def get_source_files_paths(source_dir):
     """
     Get all paths to these files in the source, except soft link.
@@ -685,10 +710,6 @@ def get_components_from_corgi(context, engine):
     engine.logger.info('Finished getting components data from Corgi.')
 
 
-def unpack_container_source_archive(context, engine):
-    raise NotImplementedError
-
-
 def get_component_source_path(context, engine):
     raise NotImplementedError
 
@@ -709,11 +730,17 @@ flow_default = [
             get_components_from_corgi,
             # Get the container source build
             get_source_container_build,
-            # Download the source image
-            download_source_image,
-            # Unpack the source image
-            unpack_container_source_archive,
-            # Get the source path for each component from contaner source
+
+            IF(
+                lambda o, e: o.get('is_source_container_build'),
+                [
+                    # Download the source image from Brew
+                    download_source_image,
+                    # Unpack the source image
+                    unpack_container_source_archive,
+                ],
+            ),
+            # Get the source path for each component from container source
             # For components failed to get a source path, exception warning
             # should be logged.
             get_component_source_path,
