@@ -10,7 +10,7 @@ from packages.mixins import (
     SaveScanResultMixin,
     SaveContainerComponentsMixin
 )
-from packages.models import Component, File, Package, Path, Source
+from packages.models import Component, File, Path, Source
 from packages.serializers import (
     BulkCreateFileSerializer,
     BulkCreatePathSerializer,
@@ -20,7 +20,6 @@ from packages.serializers import (
     PathSerializer,
     SourceSerializer
 )
-from packages.models import Component, File, Path, Source
 from products.models import Product, Release
 from reports.models import FileCopyrightScan, FileLicenseScan
 from rest_framework import status
@@ -257,14 +256,6 @@ class SourceViewSet(ModelViewSet, PackageImportTransactionMixin):
             [
                 {
                     "id": 1,
-                    "license_detections": [
-                        "bsd-simplified",
-                        "gpl-2.0-plus",
-                    ],
-                    "copyright_detections": [
-                        "Copyright (c) 2005 Ben Gardner <bgardner@wabtec.com>",
-                        "Copyright (c) 2013 Fusion-io, Inc.",
-                    ],
                     "checksum": \
 "45f5aacb70f6eddac629375bd4739471ece1a2747123338349df069919e909ac",
                     "name": "ansible-2.4.2.0-2.el7",
@@ -272,7 +263,18 @@ class SourceViewSet(ModelViewSet, PackageImportTransactionMixin):
                     "state": 0,
                     "archive_type": "rpm"
                     "scan_flag": \
-"license(scancode-toolkit 30.1.0),copyright(scancode-toolkit 30.1.0)"
+"license(scancode-toolkit 30.1.0),copyright(scancode-toolkit 30.1.0)",
+                    "component_set": [
+                        1
+                    ],
+                    "license_detections": [
+                        "bsd-simplified",
+                        "gpl-2.0-plus",
+                    ],
+                    "copyright_detections": [
+                        "Copyright (c) 2005 Ben Gardner <bgardner@wabtec.com>",
+                        "Copyright (c) 2013 Fusion-io, Inc.",
+                    ]
                 }
             ]
 
@@ -937,9 +939,6 @@ class ComponentViewSet(ModelViewSet, PackageImportTransactionMixin):
                     "id": 5,
                     "source": {
                         "id": 5,
-                        "packages": [],
-                        "license_detections": [],
-                        "copyright_detections": [],
                         "checksum": \
 "9fb25c78a1aa98a193d9d8b438113624456042f58b3061c851d1f9536d3046b7",
                         "name": "rpm-libs-4.14.3-23.el8",
@@ -947,7 +946,12 @@ class ComponentViewSet(ModelViewSet, PackageImportTransactionMixin):
                         "state": 0,
                         "archive_type": "SRPM",
                         "scan_flag": \
-"license(scancode-toolkit 30.1.0),copyright(scancode-toolkit 30.1.0)"
+"license(scancode-toolkit 30.1.0),copyright(scancode-toolkit 30.1.0)",
+                        "component_set": [
+                            5
+                        ],
+                        "license_detections": [],
+                        "copyright_detections": []
                     },
                     "type": "RPM",
                     "name": "rpm-libs",
@@ -984,9 +988,6 @@ class ComponentViewSet(ModelViewSet, PackageImportTransactionMixin):
                 "id": 5,
                 "source": {
                     "id": 5,
-                    "packages": [],
-                    "license_detections": [],
-                    "copyright_detections": [],
                     "checksum": \
 "9fb25c78a1aa98a193d9d8b438113624456042f58b3061c851d1f9536d3046b7",
                     "name": "rpm-libs-4.14.3-23.el8",
@@ -994,7 +995,12 @@ class ComponentViewSet(ModelViewSet, PackageImportTransactionMixin):
                     "state": 0,
                     "archive_type": "SRPM",
                     "scan_flag": \
-"license(scancode-toolkit 30.1.0),copyright(scancode-toolkit 30.1.0)"
+"license(scancode-toolkit 30.1.0),copyright(scancode-toolkit 30.1.0)",
+                    "component_set": [
+                        5
+                    ],
+                    "license_detections": [],
+                    "copyright_detections": []
                 },
                 "type": "RPM",
                 "name": "rpm-libs",
