@@ -1,14 +1,19 @@
 # -*- coding: utf-8 -*-
-
 import datetime
+import ijson
 import koji
 import os
 import re
 import shutil
 import subprocess
 import tempfile
+import uuid
+
 from kobo.shortcuts import run
 from urllib.parse import urlparse
+from urllib.request import urlopen
+
+from libs.common import group_components
 
 
 class KojiConnector:
@@ -93,7 +98,7 @@ class KojiConnector:
         """
         build = self._get_cached_build(build_id)
         if 'maven' not in self.get_build_type(build):
-            raise ValueError("Not a maven build.")
+            raise ValueError("Not a maven build.") from None
         else:
             source = {}
             maven_build = self.get_maven_build(build_info=build_id)
@@ -111,7 +116,8 @@ class KojiConnector:
                 return self._get_pathinfo(build_id, source)
             # method valid only for maven builds
             else:
-                raise ValueError("pom file %s not found." % pom_filename)
+                err_msg = f"pom file {pom_filename} not found."
+                raise ValueError(err_msg) from None
 
     def get_build_type(self, build_info):
         """
@@ -150,8 +156,8 @@ class KojiConnector:
         try:
             if container_kind == 'source_container_build':
                 return build['extra']['image']['sources_for_nvr']
-        except KeyError as e:
-            raise KeyError(e) from None
+        except KeyError as err:
+            raise KeyError(f"Failed to get binary nvr: {err}") from None
 
     def list_builds(self, package_id, state, query_opts):
         """
@@ -207,15 +213,14 @@ class KojiConnector:
                         )
                     except subprocess.CalledProcessError:
                         raise RuntimeError(
-                            "Failed to contact the git remote at {}"
-                            .format(url)
+                            f"Failed to contact the git remote at {url}"
                         ) from None
                     if git_out and 'refs/tags/' not in git_out:
                         raise RuntimeError(
                             "Import with SCM URL only allowed from a commit or"
                             " a tag. Please, make an adhoc import from a"
                             " tarball instead"
-                        )
+                        ) from None
                     source['scm'] = 'git'
                     source['url'] = url
                     source['rev'] = revision
@@ -252,8 +257,8 @@ class KojiConnector:
                         subprocess.check_call(cmd, shell=False, stdout=out,
                                               cwd=tmp_clone)
                     except subprocess.CalledProcessError as err:
-                        err_msg = f'Failed to create source archive from ' \
-                                  f'git. Reason: {err}'
+                        err_msg = ('Failed to create source archive from '
+                                   f'git: {err}')
                         raise RuntimeError(err_msg) from None
             finally:
                 shutil.rmtree(tmp_clone, ignore_errors=True)
@@ -269,7 +274,7 @@ class KojiConnector:
                 raise RuntimeError(err_msg) from None
             return url
         else:
-            raise RuntimeError('Failed to find build source.')
+            raise RuntimeError('Failed to find build source.') from None
 
     def download_pom(self, file_path, dest_dir):
         """
@@ -305,8 +310,7 @@ class KojiConnector:
         build_id = build.get('build_id')
         all_archives = self._service.listArchives(build_id)
         if not all_archives:
-            err_msg = "No build archives found."
-            raise ValueError(err_msg)
+            raise ValueError("No build archives found.") from None
 
         type_path = 'images'
         if arch:
@@ -325,5 +329,72 @@ class KojiConnector:
                 for archive in archives:
                     self.download_archive(build, type_path, archive, dest_dir)
             else:
-                err_msg = "No images found."
-                raise ValueError(err_msg)
+                raise ValueError("No images found.") from None
+
+    @staticmethod
+    def get_remote_source_component_flat(data):
+        return {
+            "uuid": str(uuid.uuid4()),
+            "type": data.get("type").upper(),
+            "name": data.get("name"),
+            "version": data.get("version", ""),
+            "release": "",
+            "license": "",
+            "arch": "",
+            'synced': False
+        }
+
+    def parse_remote_source_components(self, rs_archive_url):
+        """
+        Parse components from remote source archive url.
+        """
+        rs_comps = []
+        try:
+            data = urlopen(rs_archive_url)
+            dependencies = ijson.items(data, 'dependencies.item')
+            for dep in dependencies:
+                comp_type = dep.get('type')
+                # go-package is an abstraction over the gomod sources, not
+                # exist in remote-source.tar.gz, so will not add them to
+                # rs_comps list.
+                if comp_type != 'go-package':
+                    rs_comps.append(self.get_remote_source_component_flat(dep))
+            del dependencies
+        except Exception as err:
+            err_msg = f"Failed to parse remote source components: {err}"
+            raise RuntimeError(err_msg) from None
+        return rs_comps
+
+    def get_remote_source_components(self, build):
+        """
+        Get remote source components from remote source json files.
+        :param build: brew build information, dict
+        :return: component list of remote sources
+        """
+        rs_comps = []
+        package_name = build.get('package_name')
+        release = build.get('release')
+        version = build.get('version')
+        if not all([package_name, version, release]):
+            raise ValueError('Cannot get the build information.') from None
+
+        archives = self._service.listArchives(
+            build.get('build_id'), type='remote-sources')
+        json_archives = [a for a in archives if a.get('type_name') == 'json']
+        for archive in json_archives:
+            rs_path = os.path.join(
+                'packages', package_name, version, release,
+                'files', 'remote-sources', archive.get('filename'))
+            rs_archive_url = self._format_url(rs_path)
+            try:
+                rs_comps.extend(
+                    self.parse_remote_source_components(rs_archive_url))
+            except Exception as err:
+                msg = ('Failed to parse components from remote source '
+                       f'archive url {rs_archive_url}: {err}.')
+                raise RuntimeError(msg) from None
+
+        # Remove the duplicate components get from remote source json files.
+        rs_comps_tup_list = [tuple(d.items()) for d in rs_comps]
+        rs_comps = [dict(t) for t in set(rs_comps_tup_list)]
+        return group_components(rs_comps)
