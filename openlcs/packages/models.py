@@ -214,7 +214,7 @@ class Component(CorgiComponentMixin):
         help_text='Declared summary license expression'
     )
     # FIXME: migrated from existing "models.Package". This is probably
-    # no longer needed since we already have "arch"
+    #  no longer needed since we already have "arch"
     is_source = models.BooleanField(
         default=False,
         help_text="True if this component corresponds to the entire "

@@ -15,7 +15,7 @@ from packagedcode.maven import parse as maven_parse
 from openlcsd.flow.task_wrapper import WorkflowWrapperTask
 from openlcsd.celery import app
 from openlcs.libs.kojiconnector import KojiConnector
-from openlcs.libs.components import ContainerComponentsAsync
+from openlcs.libs.corgi_handler import ContainerComponentsAsync
 from openlcs.libs.scanner import LicenseScanner
 from openlcs.libs.scanner import CopyrightScanner
 from openlcs.libs.driver import OpenlcsClient
@@ -695,7 +695,16 @@ def send_scan_result(context, engine):
     engine.logger.info("Finished saving scan result to database.")
 
 
-def get_components_from_corgi(context, engine):
+def get_container_components(context, engine):
+    # Collect container components from Corgi
+    get_components_product_from_corgi(context, engine)
+    # If we cannot get components from Corgi, parse them from source container
+    if not context.get('components').get('components'):
+        get_components_product_from_source_container(context, engine)
+    engine.logger.info("Finished getting container components data.")
+
+
+def get_components_product_from_corgi(context, engine):
     """
     Get components information from Corgi.
     @requires: `nvr`, string, the container nvr.
@@ -704,10 +713,44 @@ def get_components_from_corgi(context, engine):
     """
     engine.logger.info('Start to get components data from Corgi...')
     config = context.get('config')
-    base_url = os.path.join(config.get('CORGI_API_PROD'), "components")
-    cc = ContainerComponentsAsync(base_url, context.get('package_nvr'))
+    cc = ContainerComponentsAsync(
+        config.get('CORGI_API_PROD'), context.get('package_nvr'))
     context['components'] = cc.get_components_data()
-    engine.logger.info('Finished getting components data from Corgi.')
+
+
+def get_components_product_from_source_container(context, engine):
+    engine.logger.info('Start to get components data from source container...')
+    raise NotImplementedError
+
+
+def save_container_components(context, engine):
+    """
+    Send container components to hub, then store the components.
+    """
+    url = 'savecontainercomponents'
+    cli = context.pop('client')
+    package_nvr = context.get('package_nvr')
+    data = {
+        'components': context.get('components'),
+        'product_release': context.get('product_release')
+    }
+    engine.logger.info(f'Start to save container  {package_nvr} components...')
+    fd, tmp_file_path = tempfile.mkstemp(prefix='scan_container_components_',
+                                         dir=context.get('post_dir'))
+    with os.fdopen(fd, 'w') as destination:
+        json.dump(data, destination, cls=DateEncoder)
+    resp = cli.post(url, data={"file_path": tmp_file_path})
+    context['client'] = cli
+    try:
+        resp.raise_for_status()
+    except HTTPError:
+        err_msg = f"Failed to save container components to " \
+                  f"database: {resp.text}"
+        engine.logger.error(err_msg)
+        raise RuntimeError(err_msg) from None
+    finally:
+        os.remove(tmp_file_path)
+    engine.logger.info('Finished saving container components.')
 
 
 def get_component_source_path(context, engine):
@@ -726,8 +769,6 @@ flow_default = [
         lambda o, e: 'image' in o.get('build_type'),
         # Task flow for image build
         [
-            # Collect container components from Corgi
-            get_components_from_corgi,
             # Get the container source build
             get_source_container_build,
 
@@ -740,6 +781,8 @@ flow_default = [
                     unpack_container_source_archive,
                 ],
             ),
+            get_container_components,
+            save_container_components,
             # Get the source path for each component from container source
             # For components failed to get a source path, exception warning
             # should be logged.

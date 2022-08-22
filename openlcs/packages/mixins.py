@@ -1,19 +1,30 @@
 from django.conf import settings
+from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 from django.db.models import Q
 from django.db.utils import IntegrityError
 
 from libs.backoff_strategy import retry
-from packages.models import File
-from packages.models import Component
-from packages.models import Path
-from packages.models import Source
-from packages.serializers import BulkFileSerializer
-from packages.serializers import BulkPathSerializer
-from reports.models import CopyrightDetection
-from reports.models import FileCopyrightScan
-from reports.models import FileLicenseScan
-from reports.models import LicenseDetection
+from libs.corgi_handler import ProductVersion
+from packages.models import (
+    Component,
+    File,
+    Path,
+    Source
+)
+from packages.serializers import BulkFileSerializer, BulkPathSerializer
+from products.models import (
+    Product,
+    Release,
+    ComponentTreeNode,
+    ProductTreeNode,
+)
+from reports.models import (
+    CopyrightDetection,
+    FileCopyrightScan,
+    FileLicenseScan,
+    LicenseDetection
+)
 
 
 class PackageImportTransactionMixin:
@@ -71,6 +82,39 @@ class PackageImportTransactionMixin:
         Create source component.
         """
         Component.objects.get_or_create(source=source, **component)
+
+    @staticmethod
+    def create_product(product_name, description=""):
+
+        p, _ = Product.objects.update_or_create(
+            name=product_name,
+            display_name=product_name,
+            defaults={
+                "description": description,
+            },
+        )
+        return p
+
+    def create_product_release(self, product_release):
+        """
+        Create product and release.
+        """
+        cp = ProductVersion(settings.CORGI_API_PROD, product_release)
+        product_data = cp.get_product_version()
+        if product_data:
+            product_name = product_data.get('products')[0].get('name')
+            product_name_release = product_data.get("name")
+            product_release = product_name_release[len(product_name)+1:]
+            description = product_data.get("description", "")
+
+            # Create product instance
+            product = self.create_product(product_name, description)
+            # Create release
+            product.add_release(
+                name=product_name_release,
+                version=product_release,
+                notes=description,
+            )
 
 
 class SaveScanResultMixin:
@@ -210,3 +254,89 @@ class SaveScanResultMixin:
                     self.save_file_copyright_scan(list(set(file_ids)))
                     self.save_copyright_detections(path_file_dict, data)
                     self.update_scan_flag(source, "copyright_scan")
+
+
+class SaveContainerComponentsMixin:
+    def __init__(self):
+        self.components = None
+        self.release = None
+
+    @staticmethod
+    def create_component(component_data):
+        summary_license = component_data.pop('license')
+        component, _ = Component.objects.update_or_create(
+            **component_data,
+            defaults={
+                "summary_license": summary_license,
+            },
+        )
+        return component
+
+    def build_release_node(self):
+        """
+        Build release node. For container, if exit release data, will create
+        release product tree node, then create a parent product tree node,
+        then create some child component product tree node. The parent and
+        child components will be component instances.
+        """
+        # Create container parent components
+        container_component = self.create_component(
+            self.components.get('container_component')
+        )
+        # Create release node
+        release_ctype = ContentType.objects.get_for_model(Release)
+        release_node, _ = ProductTreeNode.objects.get_or_create(
+            name=self.release.name,
+            content_type=release_ctype,
+            object_id=self.release.id,
+            parent=None,
+        )
+        # Create container node
+        cnode, _,  = container_component.release_nodes.get_or_create(
+            name=container_component.name,
+            parent=release_node,
+        )
+        # Create container child components
+        for component_data in self.components.get("components"):
+            component = self.create_component(component_data)
+            component.release_nodes.get_or_create(
+                name=component.name,
+                parent=cnode,
+            )
+
+    def build_container_node(self):
+        """
+        Build container node. For container, will create a parent component
+        tree node, then create some child component tree node. The parent and
+        child components will be component instances.
+        """
+        # Create container parent components
+        container_component = self.create_component(
+            self.components.get('container_component')
+        )
+        # Create container node
+        component_ctype = ContentType.objects.get_for_model(Component)
+        cnode, _ = ComponentTreeNode.objects.get_or_create(
+            name=container_component.name,
+            content_type=component_ctype,
+            object_id=container_component.id,
+            parent=None,
+        )
+        # Create container child components
+        for component_data in self.components.get("components"):
+            component = self.create_component(component_data)
+            ComponentTreeNode.objects.get_or_create(
+                name=component.name,
+                parent=cnode,
+                content_type=component_ctype,
+                object_id=component.id,
+            )
+
+    def save_container_components(self, **kwargs):
+        self.components = kwargs.pop('components')
+        product_release = kwargs.pop('product_release')
+        if product_release:
+            self.release = Release.objects.filter(name=product_release)[0]
+            self.build_release_node()
+        else:
+            self.build_container_node()

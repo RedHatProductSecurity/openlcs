@@ -5,13 +5,22 @@ from django.db import transaction
 from django.db.models import Q
 from libs.backoff_strategy import ProcedureException
 from libs.parsers import parse_manifest_file
-from packages.mixins import PackageImportTransactionMixin, SaveScanResultMixin
+from packages.mixins import (
+    PackageImportTransactionMixin,
+    SaveScanResultMixin,
+    SaveContainerComponentsMixin
+)
 from packages.models import Component, File, Package, Path, Source
-from packages.serializers import (BulkCreateFileSerializer,
-                                  BulkCreatePathSerializer,
-                                  ComponentSerializer, FileSerializer,
-                                  NVRImportSerializer, PackageSerializer,
-                                  PathSerializer, SourceSerializer)
+from packages.serializers import (
+    BulkCreateFileSerializer,
+    BulkCreatePathSerializer,
+    ComponentSerializer,
+    FileSerializer,
+    NVRImportSerializer,
+    PackageSerializer,
+    PathSerializer,
+    SourceSerializer
+)
 from products.models import Product, Release
 from reports.models import FileCopyrightScan, FileLicenseScan
 from rest_framework import status
@@ -471,6 +480,10 @@ file first, it should contain the following parameters:
                 if releases.exists() and package_nvrs:
                     releases[0].update_packages(package_nvrs)
                 else:
+                    self.create_product_release(release_name)
+                    releases = Release.objects.filter(name=release_name)
+
+                if not releases.exists():
                     # Release could be created once schema is locked down
                     err_msg = f"Product does Not exist: {release_name}."
                     return Response(data={'message': err_msg},
@@ -987,3 +1000,26 @@ class ComponentViewSet(ModelViewSet, PackageImportTransactionMixin):
     """
     queryset = Component.objects.all()
     serializer_class = ComponentSerializer
+
+
+class SaveContainerComponentsView(APIView, SaveContainerComponentsMixin):
+    """
+    Save container data to database
+    """
+    def post(self, request, *args, **kwargs):
+        try:
+            file_path = request.data.get("file_path")
+            with open(file_path, encoding='utf-8') as f:
+                data = json.load(f)
+        except Exception as e:
+            return Response(
+                data={'message': e.args},
+                status=status.HTTP_400_BAD_REQUEST)
+        try:
+            self.save_container_components(**data)
+            msg = 'Save container components successfully.'
+            return Response(data={'message': msg}, status=status.HTTP_200_OK)
+        except (RuntimeError, ProcedureException) as err:
+            return Response(
+                    data={'message': err.args},
+                    status=status.HTTP_400_BAD_REQUEST)
