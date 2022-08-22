@@ -3,7 +3,6 @@ import json
 import os
 import shutil
 import socket
-# import tarfile
 import tempfile
 from requests.exceptions import HTTPError
 
@@ -25,6 +24,8 @@ from openlcs.libs.swh_tools import get_swhids_with_paths
 from openlcs.libs.unpack import UnpackArchive
 from openlcs.libs.download import KojiBuild
 from openlcs.utils.common import DateEncoder
+from openlcs.libs.sc_handler import SourceContainerHandler
+from openlcs.libs.common import get_nvr_list_from_components
 
 
 def get_config(context, engine):
@@ -221,6 +222,28 @@ def download_package_archive(context, engine):
     engine.logger.info('Finished downloading source.')
 
 
+def download_component_source(context, engine):
+    """
+    Download the component src from brew. If the component's src was
+    downloaded from source container, then no need to download source of the
+    package archive from brew.
+    """
+    config = context.get('config')
+    nvr = context.get('package_nvr')
+    src_dir = context.get('src_dir')
+    if not context.get('src_dir'):
+        download_package_archive(context, engine)
+    else:
+        sc_handler = SourceContainerHandler(config)
+        if os.path.isdir(src_dir):
+            if 'rpm_dir' in src_dir:
+                context['tmp_src_filepath'] = \
+                        sc_handler.get_source_of_srpm_component(src_dir, nvr)
+            if 'metadata' in src_dir:
+                context['tmp_src_filepath'] = \
+                        sc_handler.get_source_of_misc_component(src_dir, nvr)
+
+
 def get_source_metadata(context, engine):
     """
     Get package metadata(upstream url, declared license) after source archive
@@ -263,7 +286,6 @@ def get_source_metadata(context, engine):
         # Use declared_license from packagecode output which could support
         # more package types instead of rebuilding wheels.
         context['declared_license'] = package.declared_license
-
     context['source_info'] = {
         "source": {
             "checksum": sha256sum(src_filepath),
@@ -371,6 +393,7 @@ def prepare_dest_dir(context, engine):
     config = context.get('config')
     build = context.get('build')
     release = context.get('product_release')
+    component_type = context.get('component_type')
     engine.logger.info('Start to prepare destination directory...')
     if build:
         # TODO: Currently we don't store product and release data. so the
@@ -384,9 +407,14 @@ def prepare_dest_dir(context, engine):
                 short_name = release
         else:
             short_name = config.get('ORPHAN_CATEGORY')
-
-        src_dir = os.path.join(config.get('SRC_ROOT_DIR'), short_name,
-                               build.get('name'), build.get('nvr'))
+        # Create source container metadata dest src dir
+        if component_type == 'CONTAINER_IMAGE':
+            metadata_dir = build.get('nvr') + '-metadata'
+            src_dir = os.path.join(config.get('SRC_ROOT_DIR'), short_name,
+                                   metadata_dir)
+        else:
+            src_dir = os.path.join(config.get('SRC_ROOT_DIR'), short_name,
+                                   build.get('name'), build.get('nvr'))
 
         if os.path.exists(src_dir):
             shutil.rmtree(src_dir, ignore_errors=True)
@@ -475,6 +503,7 @@ def unpack_container_source_archive(context, engine):
     engine.logger.info('Finished unpacking the source archives.')
     context['misc_dir'], context['srpm_dir'], context['rc_dir'] = \
         misc_dir, srpm_dir, rc_dir
+    context['sc_lable'] = True
 
 
 def get_source_files_paths(source_dir):
@@ -701,7 +730,6 @@ def get_container_components(context, engine):
     # If we cannot get components from Corgi, parse them from source container
     if not context.get('components').get('components'):
         get_components_product_from_source_container(context, engine)
-    engine.logger.info("Finished getting container components data.")
 
 
 def get_components_product_from_corgi(context, engine):
@@ -716,11 +744,7 @@ def get_components_product_from_corgi(context, engine):
     cc = ContainerComponentsAsync(
         config.get('CORGI_API_PROD'), context.get('package_nvr'))
     context['components'] = cc.get_components_data()
-
-
-def get_components_product_from_source_container(context, engine):
-    engine.logger.info('Start to get components data from source container...')
-    raise NotImplementedError
+    engine.logger.info("Finished getting container components data.")
 
 
 def save_container_components(context, engine):
@@ -753,12 +777,57 @@ def save_container_components(context, engine):
     engine.logger.info('Finished saving container components.')
 
 
-def get_component_source_path(context, engine):
-    raise NotImplementedError
+def get_components_product_from_source_container(context, engine):
+    engine.logger.info('Start to get components data from source container...')
+    config = context.get('config')
+    sc_nvr = context.get('package_nvr')
+    # Get components from the source conainer ifself.
+    srpm_dir = context.get('srpm_dir')
+    misc_dir = context.get('misc_dir')
+    sc_handler = SourceContainerHandler(config)
+    components = sc_handler.get_container_components(srpm_dir, misc_dir,
+                                                     sc_nvr)
+    engine.logger.info('Finished getting components from source container')
+    context['components'] = components
 
 
-def fork_component_imports(context, engine):
-    raise NotImplementedError
+def import_types_components(context, engine, nvr_list, src_dir, comp_type):
+    """
+    In a source container, it has different type of component. The different
+    components have different src_dir. This founction will be define the post
+    data for the differnt type component.
+    """
+    cli = context.get('client')
+    url = '/sources/import/'
+    msg = 'Start to fork imports for {} components...'.format(len(nvr_list))
+    data = {
+            'component_type': comp_type,
+            'src_dir': src_dir,
+            'package_nvrs': nvr_list,
+    }
+    engine.logger.info(msg)
+    cli.post(url, data=data)
+    msg = '-- Forked import tasks for below source components:{}'.format(
+            "\n\t" + "\n\t".join(nvr_list))
+    engine.logger.info(msg)
+    engine.logger.info('Done')
+
+
+def fork_components_imports(context, engine):
+    """
+    Fork components tasks
+    """
+    components = context.get('components')
+    srpm_nvr_list = \
+        get_nvr_list_from_components(components, 'SRPM')
+    # Fork srpm component tasks
+    if srpm_nvr_list:
+        import_types_components(context, engine, srpm_nvr_list,
+                                context.get('srpm_dir'), 'SRPM')
+    # Fork container-compnent tasks with the misc metadata files
+    if components.get('CONTAINER_IMAGE'):
+        import_types_components(context, engine, [context.get('package_nvr')],
+                                context.get('misc_dir'), 'CONTAINER_IMAGE')
 
 
 flow_default = [
@@ -766,12 +835,10 @@ flow_default = [
     get_build,
     # Different workflows could be used for different build types
     IF_ELSE(
-        lambda o, e: 'image' in o.get('build_type'),
+        lambda o, e: 'image' in o.get('build_type') and not o.get('component_type'), # noqa
         # Task flow for image build
         [
-            # Get the container source build
             get_source_container_build,
-
             IF(
                 lambda o, e: o.get('is_source_container_build'),
                 [
@@ -782,18 +849,15 @@ flow_default = [
                 ],
             ),
             get_container_components,
-            save_container_components,
-            # Get the source path for each component from container source
-            # For components failed to get a source path, exception warning
-            # should be logged.
-            get_component_source_path,
+            # uncomment it after OLCS-248 be fixed.
+            # save_container_components,
             # Fork the import task for each component
-            fork_component_imports
+            fork_components_imports,
         ],
 
         # Task flow for other build types
         [
-            download_package_archive,
+            download_component_source,
             get_source_metadata,
             check_source_scan_status,
             IF(
