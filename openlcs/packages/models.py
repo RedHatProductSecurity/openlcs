@@ -124,43 +124,6 @@ class Path(models.Model):
         return f'{self.source}, {self.path}'
 
 
-class Package(models.Model):
-    """
-    Packages for a given source.
-    """
-    nvr = models.CharField(
-        max_length=512,
-        verbose_name='NVR',
-        help_text='Package nvr'
-    )
-    source = models.ForeignKey(
-        Source,
-        on_delete=models.CASCADE,
-        related_name="packages",
-        help_text='Reference to source package'
-    )
-    sum_license = models.TextField(
-        null=True, blank=True,
-        help_text='Package declared summary license expression'
-    )
-    is_source = models.BooleanField(
-        default=False,
-        help_text='True if this package corresponds to the entire source, rather than an actual binary package' # noqa
-    )
-
-    class Meta:
-        app_label = 'packages'
-        constraints = [
-            models.UniqueConstraint(
-                fields=['nvr', 'source'],
-                name='unique_nvr_source'
-            ),
-        ]
-
-    def __str__(self):
-        return f'{self.nvr}, {self.source}'
-
-
 class CorgiComponentMixin(models.Model):
     """Model mixin for corgi component attributes
 

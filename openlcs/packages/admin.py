@@ -2,7 +2,6 @@ from django.contrib import admin
 from packages.models import File
 from packages.models import Path
 from packages.models import Source
-from packages.models import Package
 from packages.models import Component
 
 
@@ -24,13 +23,6 @@ class PathAdmin(admin.ModelAdmin):
 class SourceAdmin(admin.ModelAdmin):
     list_display = ('id', 'checksum', 'name', 'url', 'state', 'archive_type')
     search_fields = ['checksum', 'name', 'url', 'archive_type']
-
-
-@admin.register(Package)
-class PackageAdmin(admin.ModelAdmin):
-    raw_id_fields = ('source',)
-    list_display = ('id', 'nvr', 'source', 'sum_license', 'is_source')
-    search_fields = ['nvr', 'source__name', 'sum_license']
 
 
 @admin.register(Component)

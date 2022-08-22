@@ -10,14 +10,13 @@ from packages.mixins import (
     SaveScanResultMixin,
     SaveContainerComponentsMixin
 )
-from packages.models import Component, File, Package, Path, Source
+from packages.models import Component, File, Path, Source
 from packages.serializers import (
     BulkCreateFileSerializer,
     BulkCreatePathSerializer,
     ComponentSerializer,
     FileSerializer,
     NVRImportSerializer,
-    PackageSerializer,
     PathSerializer,
     SourceSerializer
 )
@@ -257,14 +256,6 @@ class SourceViewSet(ModelViewSet, PackageImportTransactionMixin):
             [
                 {
                     "id": 1,
-                    "license_detections": [
-                        "bsd-simplified",
-                        "gpl-2.0-plus",
-                    ],
-                    "copyright_detections": [
-                        "Copyright (c) 2005 Ben Gardner <bgardner@wabtec.com>",
-                        "Copyright (c) 2013 Fusion-io, Inc.",
-                    ],
                     "checksum": \
 "45f5aacb70f6eddac629375bd4739471ece1a2747123338349df069919e909ac",
                     "name": "ansible-2.4.2.0-2.el7",
@@ -272,7 +263,18 @@ class SourceViewSet(ModelViewSet, PackageImportTransactionMixin):
                     "state": 0,
                     "archive_type": "rpm"
                     "scan_flag": \
-"license(scancode-toolkit 30.1.0),copyright(scancode-toolkit 30.1.0)"
+"license(scancode-toolkit 30.1.0),copyright(scancode-toolkit 30.1.0)",
+                    "component_set": [
+                        1
+                    ],
+                    "license_detections": [
+                        "bsd-simplified",
+                        "gpl-2.0-plus",
+                    ],
+                    "copyright_detections": [
+                        "Copyright (c) 2005 Ben Gardner <bgardner@wabtec.com>",
+                        "Copyright (c) 2013 Fusion-io, Inc.",
+                    ]
                 }
             ]
 
@@ -465,7 +467,7 @@ file first, it should contain the following parameters:
                                 name=release_name, notes=data.get("notes"))
                     # Populate release packages with manifest content
                     if src_packages:
-                        release.update_packages(src_packages)
+                        release.add_components_from_nvrs(src_packages)
                 else:
                     release_name = None
                 manifest_data = {
@@ -478,7 +480,7 @@ file first, it should contain the following parameters:
                 package_nvrs = request.data.get('package_nvrs')
                 releases = Release.objects.filter(name=release_name)
                 if releases.exists() and package_nvrs:
-                    releases[0].update_packages(package_nvrs)
+                    releases[0].add_components_from_nvrs(package_nvrs)
                 else:
                     self.create_product_release(release_name)
                     releases = Release.objects.filter(name=release_name)
@@ -753,89 +755,6 @@ Key (id)=(5) already exists.\\n"]
                         status=status.HTTP_400_BAD_REQUEST)
 
 
-class PackageViewSet(ModelViewSet):
-    """
-    API endpoint that allows Packages to be viewed or edited.
-    """
-    queryset = Package.objects.all()
-    serializer_class = PackageSerializer
-
-    def list(self, request, *args, **kwargs):
-        """
-        Get a list of packages.
-
-        ####__Request__####
-
-            curl -X GET -H "Content-Type: application/json" \
-%(HOST_NAME)s/%(API_PATH)s/packages/  -H 'Authorization: Token your_token'
-
-        ####__Response__####
-
-            HTTP 200 OK
-            Content-Type: application/json
-            [
-                {
-                    "id": 2,
-                    "source": \
-"1a07e3b8433a840f8eda2ba9300309c7023e92f9a053c01d777bf8f4a9c5e9fe",
-                    "nvr": "rhel7.0",
-                    "sum_license": "",
-                    "is_source": false
-                },
-                {
-                    "id": 3,
-                    "source": \
-"677fd81a6e8221e0d9064c9995373e180291f95d96d21920b994191154f51c9f",
-                    "nvr": "rhel9.0",
-                    "sum_license": "",
-                    "is_source": false
-                },
-                {
-                    "id": 4,
-                    "source": \
-"ba215daaa78c415fce11b9e58c365d03bb602eaa5ea916578d76861a468cc3d9",
-                    "nvr": "rhel6.0",
-                    "sum_license": "",
-                    "is_source": false
-                },
-                {
-                    "id": 1,
-                    "source": \
-"72c9cfa91c6f417dc36053787f7ebd74791c0df8456554fdbaaab8e1aeb3c32d",
-                    "nvr": "rhel8.0",
-                    "sum_license": "",
-                    "is_source": false
-                }
-            ]
-        """
-        return super().list(request, *args, **kwargs)
-
-    def retrieve(self, request, *args, **kwargs):
-        """
-        Get a specific package.
-
-        ####__Request__####
-
-            curl -X GET -H "Content-Type: application/json" \
-%(HOST_NAME)s/%(API_PATH)s/packages/instance_pk/ -H 'Authorization: \
-Token your_token'
-
-        ####__Response__####
-
-            HTTP 200 OK
-            Content-Type: application/json
-            {
-                "id": 1,
-                "source": \
-"72c9cfa91c6f417dc36053787f7ebd74791c0df8456554fdbaaab8e1aeb3c32d",
-                "nvr": "rhel8.0",
-                "sum_license": "",
-                "is_source": false
-            }
-        """
-        return super().retrieve(request, *args, **kwargs)
-
-
 class PackageImportTransactionView(APIView, PackageImportTransactionMixin):
     """
     Package import transaction
@@ -1000,6 +919,103 @@ class ComponentViewSet(ModelViewSet, PackageImportTransactionMixin):
     """
     queryset = Component.objects.all()
     serializer_class = ComponentSerializer
+
+    def list(self, request, *args, **kwargs):
+        """
+        Get a list of components.
+
+        ####__Request__####
+
+            curl -X GET -H "Content-Type: application/json" \
+-H "Authorization: Token your_token" \
+%(HOST_NAME)s/%(API_PATH)s/components/
+
+        ####__Response__####
+
+            HTTP 200 OK
+            Content-Type: application/json
+            [
+                {
+                    "id": 5,
+                    "source": {
+                        "id": 5,
+                        "checksum": \
+"9fb25c78a1aa98a193d9d8b438113624456042f58b3061c851d1f9536d3046b7",
+                        "name": "rpm-libs-4.14.3-23.el8",
+                        "url": "https://www.redhat.com/",
+                        "state": 0,
+                        "archive_type": "SRPM",
+                        "scan_flag": \
+"license(scancode-toolkit 30.1.0),copyright(scancode-toolkit 30.1.0)",
+                        "component_set": [
+                            5
+                        ],
+                        "license_detections": [],
+                        "copyright_detections": []
+                    },
+                    "type": "RPM",
+                    "name": "rpm-libs",
+                    "version": "4.14.3",
+                    "release": "23.el8",
+                    "arch": "x86_64",
+                    "purl": \
+"pkg:rpm/redhat/rpm-libs@4.14.3-23.el8?arch=x86_64",
+                    "uuid": "852b587a-544d-4baf-8621-e134db891b6a",
+                    "summary_license": "",
+                    "is_source": false,
+                    "synced": true
+                },
+                ...
+            ]
+        """
+        return super().list(request, *args, **kwargs)
+
+    def retrieve(self, request, *args, **kwargs):
+        """
+        Get a specific component.
+
+        ####__Request__####
+
+            curl -X GET -H "Content-Type: application/json" \
+-H "Authorization: Token your_token" \
+%(HOST_NAME)s/%(API_PATH)s/components/instance_pk/
+
+        ####__Response__####
+
+            HTTP 200 OK
+            Content-Type: application/json
+            {
+                "id": 5,
+                "source": {
+                    "id": 5,
+                    "checksum": \
+"9fb25c78a1aa98a193d9d8b438113624456042f58b3061c851d1f9536d3046b7",
+                    "name": "rpm-libs-4.14.3-23.el8",
+                    "url": "https://www.redhat.com/",
+                    "state": 0,
+                    "archive_type": "SRPM",
+                    "scan_flag": \
+"license(scancode-toolkit 30.1.0),copyright(scancode-toolkit 30.1.0)",
+                    "component_set": [
+                        5
+                    ],
+                    "license_detections": [],
+                    "copyright_detections": []
+                },
+                "type": "RPM",
+                "name": "rpm-libs",
+                "version": "4.14.3",
+                "release": "23.el8",
+                "arch": "x86_64",
+                "purl": \
+"pkg:rpm/redhat/rpm-libs@4.14.3-23.el8?arch=x86_64",
+                "uuid": "852b587a-544d-4baf-8621-e134db891b6a",
+                "summary_license": "",
+                "is_source": false,
+                "synced": true
+            }
+        """
+        return super().retrieve(request, *args, **kwargs)
 
 
 class SaveContainerComponentsView(APIView, SaveContainerComponentsMixin):

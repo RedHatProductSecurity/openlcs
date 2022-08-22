@@ -1,7 +1,7 @@
 import copy
 
 from libs.swh_tools import swhid_check
-from packages.models import Component, File, Package, Path, Source
+from packages.models import Component, File, Path, Source
 from products.models import Release
 from rest_framework import serializers
 from tasks.models import Task
@@ -49,35 +49,18 @@ class BulkCreateFileSerializer(serializers.Serializer):
         return attrs
 
 
-class PackageSerializer(serializers.ModelSerializer):
-    """
-    Package serializer.
-    """
-
-    source = serializers.SlugRelatedField(
-        queryset=Source.objects.all(),
-        slug_field='checksum',
-        allow_null=False,
-        required=True,
-    )
-
-    class Meta:
-        model = Package
-        fields = "__all__"
-
-
 class SourceSerializer(serializers.ModelSerializer):
     """
     Source serializer.
     """
-
-    packages = PackageSerializer(many=True, read_only=True)
     license_detections = serializers.SerializerMethodField()
     copyright_detections = serializers.SerializerMethodField()
 
     class Meta:
         model = Source
-        fields = "__all__"
+        fields = ["id", "name", "url", "checksum", "state", "archive_type",
+                  "scan_flag", "component_set", "license_detections",
+                  "copyright_detections"]
 
     def get_license_detections(self, obj):
         license_keys = obj.get_license_detections().values_list(

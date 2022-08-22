@@ -1,7 +1,6 @@
 from rest_framework import serializers
 
 from products.models import Product, Release
-from products.models import ReleasePackage
 from packages.serializers import (
     ComponentSerializer,
     ContainerComponentsSerializer,
@@ -61,18 +60,3 @@ class ReleaseSerializer(serializers.ModelSerializer):
         serializer = ComponentSerializer(other_components, many=True)
         retval.append(serializer.data)
         return retval
-
-
-class ReleasePackageSerializer(serializers.ModelSerializer):
-
-    scan_result = serializers.SerializerMethodField()
-
-    class Meta:
-        model = ReleasePackage
-        exclude = (
-            'id',
-            'release',
-        )
-
-    def get_scan_result(self, obj):
-        return obj.get_scan_result()

@@ -4,9 +4,9 @@ from django.contrib.contenttypes.fields import (
     GenericForeignKey,
     GenericRelation,
 )
+import koji
 
 from mptt.models import MPTTModel, TreeForeignKey
-from packages.models import Package
 
 
 class Product(models.Model):
@@ -58,65 +58,40 @@ class Release(models.Model):
     def __str__(self):
         return self.name
 
-    def update_packages(self, nvr_list, is_source=True):
-        existed_nvrs = self.packages.values_list('package_nvr', flat=True)
-        nvrs = list(set(nvr_list) - set(existed_nvrs))
-        objs = [
-            ReleasePackage(release=self, package_nvr=nvr, is_source=is_source)
-            for nvr in nvrs
-        ]
-        ReleasePackage.objects.bulk_create(objs)
+    def get_or_create_release_node(self):
+        ctype = ContentType.objects.get_for_model(self.__class__)
+        return ProductTreeNode.objects.get_or_create(
+            name=self.name,
+            content_type=ctype,
+            object_id=self.id,
+            # release node will not have a parent.
+            parent=None,
+        )
 
+    def create_component(self, data):
+        from packages.models import Component
+        component, _ = Component.objects.get_or_create(**data)
+        return component
 
-class ReleasePackage(models.Model):
-    """packages within each release"""
-
-    release = models.ForeignKey(
-        Release, related_name="packages", on_delete=models.CASCADE
-    )
-    package_nvr = models.TextField()
-    is_source = models.BooleanField(
-        default=True, help_text='True if the package is for source package'
-    )
-
-    class Meta:
-        app_label = 'products'
-        constraints = [
-            models.UniqueConstraint(
-                fields=['release', 'package_nvr'],
-                name='unique_release_package_nvr',
+    def add_components_from_nvrs(self, nvrs, type="SRPM", arch="src"):
+        release_node, _ = self.get_or_create_release_node()
+        for nvr in nvrs:
+            nvr_dict = koji.parse_NVR(nvr)
+            # we don't have purl, summary_license based on nvrs.
+            component_data = {
+                'name': nvr_dict.get('name'),
+                'version': nvr_dict.get('version'),
+                'release': nvr_dict.get('release'),
+                # Unless explicitly specified, we will use default value for
+                # `type` and `arch` for components generated from nvrs.
+                'type': type,
+                'arch': arch,
+            }
+            component = self.create_component(component_data)
+            # attach component to the release_node tree.
+            component.release_nodes.get_or_create(
+                name=component.name, parent=release_node
             )
-        ]
-
-    def __str__(self):
-        return "%s-%s" % (self.release, self.package_nvr)
-
-    def get_scan_result(self):
-        qs = Package.objects.filter(nvr=self.package_nvr).select_related()
-        data = {}
-        if qs.exists():
-            package = qs[0]
-            data.update({'sum_license': package.sum_license})
-            if package.is_source:
-                source = package.source
-                licenses = (
-                    source.get_license_detections()
-                    .values_list('license_key', flat=True)
-                    .distinct()
-                )
-                copyrights = (
-                    source.get_copyright_detections()
-                    .values_list('statement', flat=True)
-                    .distinct()
-                )
-                data.update(
-                    {
-                        'url': source.url,
-                        'licenses': licenses,
-                        'copyrights': copyrights,
-                    }
-                )
-        return data
 
 
 class MpttTreeNodeMixin(MPTTModel):
