@@ -147,7 +147,7 @@ STATICFILES_DIRS = (
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # celery broker settings
-CELERY_BROKER_URL = os.environ.get('CELERY_BROKEN_URL',
+CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL',
                                    'redis://localhost:6379/0')
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
