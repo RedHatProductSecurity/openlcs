@@ -60,7 +60,7 @@ services:
       timeout: 5s
       retries: 5
     environment:
-      CELERY_BROKEN_URL: 'redis://redis:6379/0'
+      CELERY_BROKER_URL: 'redis://redis:6379/0'
       CELERY_RESULT_BACKEND: 'db+postgresql://openlcs:redhat@postgresql/openlcs'
     depends_on:
       gunicorn:
