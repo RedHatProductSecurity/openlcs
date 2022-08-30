@@ -77,11 +77,21 @@ class PackageImportTransactionMixin:
             return {'message': 'No paths created.'}
 
     @staticmethod
-    def create_component(source, component):
+    def create_component(source, component_data):
         """
         Create source component.
         """
-        Component.objects.get_or_create(source=source, **component)
+        # FIXME: similar functions already available, re-use if possible.
+        summary_license = component_data.pop("summary_license")
+        is_source = component_data.pop("is_source")
+        component, _ = Component.objects.update_or_create(
+            **component_data,
+            defaults={
+                'is_source': is_source,
+                'summary_license': summary_license,
+            })
+        component.source = source
+        component.save()
 
     @staticmethod
     def create_product(product_name, description=""):
