@@ -282,13 +282,17 @@ class SaveContainerComponentsMixin:
         )
         return component
 
-    def build_release_node(self, container_component):
+    def build_release_node(self):
         """
         Build release node. For container, if exit release data, will create
         release product tree node, then create a parent product tree node,
         then create some child component product tree node. The parent and
         child components will be component instances.
         """
+        # Create container parent components
+        container_component = self.create_component(
+            self.components.get('container_component')
+        )
         # Create release node
         release_ctype = ContentType.objects.get_for_model(Release)
         release_node, _ = ProductTreeNode.objects.get_or_create(
@@ -303,20 +307,23 @@ class SaveContainerComponentsMixin:
             parent=release_node,
         )
         # Create container child components
-        for _, components in self.components.items():
-            for component_data in components:
-                component = self.create_component(component_data)
-                component.release_nodes.get_or_create(
-                    name=component.name,
-                    parent=cnode,
-                )
+        for component_data in self.components.get("components"):
+            component = self.create_component(component_data)
+            component.release_nodes.get_or_create(
+                name=component.name,
+                parent=cnode,
+            )
 
-    def build_container_node(self, container_component):
+    def build_container_node(self):
         """
         Build container node. For container, will create a parent component
         tree node, then create some child component tree node. The parent and
         child components will be component instances.
         """
+        # Create container parent components
+        container_component = self.create_component(
+            self.components.get('container_component')
+        )
         # Create container node
         component_ctype = ContentType.objects.get_for_model(Component)
         cnode, _ = ComponentTreeNode.objects.get_or_create(
@@ -326,25 +333,20 @@ class SaveContainerComponentsMixin:
             parent=None,
         )
         # Create container child components
-        for _, components in self.components.items():
-            for component_data in components:
-                component = self.create_component(component_data)
-                ComponentTreeNode.objects.get_or_create(
-                    name=component.name,
-                    parent=cnode,
-                    content_type=component_ctype,
-                    object_id=component.id,
-                )
+        for component_data in self.components.get("components"):
+            component = self.create_component(component_data)
+            ComponentTreeNode.objects.get_or_create(
+                name=component.name,
+                parent=cnode,
+                content_type=component_ctype,
+                object_id=component.id,
+            )
 
     def save_container_components(self, **kwargs):
-        self.components = kwargs.get('components')
-        product_release = kwargs.get('product_release')
-
-        # Create container parent components
-        container_component_data = self.components.pop('CONTAINER_IMAGE')
-        container_component = self.create_component(container_component_data)
+        self.components = kwargs.pop('components')
+        product_release = kwargs.pop('product_release')
         if product_release:
             self.release = Release.objects.filter(name=product_release)[0]
-            self.build_release_node(container_component)
+            self.build_release_node()
         else:
-            self.build_container_node(container_component)
+            self.build_container_node()

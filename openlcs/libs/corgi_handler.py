@@ -5,7 +5,6 @@ import requests
 import uuid
 import uvloop
 from concurrent.futures import ThreadPoolExecutor
-from libs.common import group_components
 from urllib import parse
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
@@ -166,7 +165,10 @@ class ContainerComponentsAsync:
                 raise RuntimeError(e) from None
             finally:
                 event_loop.close()
-        return group_components(components.append(container_component))
+        return {
+            'container_component': container_component,
+            'components': components
+        }
 
 
 class ProductVersion:

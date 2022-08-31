@@ -13,19 +13,20 @@ from packagedcode.maven import parse as maven_parse
 
 from openlcsd.flow.task_wrapper import WorkflowWrapperTask
 from openlcsd.celery import app
-from openlcs.libs.kojiconnector import KojiConnector
+
+from openlcs.libs.common import get_nvr_list_from_components
 from openlcs.libs.corgi_handler import ContainerComponentsAsync
-from openlcs.libs.scanner import LicenseScanner
-from openlcs.libs.scanner import CopyrightScanner
+from openlcs.libs.download import KojiBuild
 from openlcs.libs.driver import OpenlcsClient
+from openlcs.libs.kojiconnector import KojiConnector
 from openlcs.libs.logger import get_task_logger
 from openlcs.libs.parsers import sha256sum
+from openlcs.libs.scanner import LicenseScanner
+from openlcs.libs.scanner import CopyrightScanner
+from openlcs.libs.sc_handler import SourceContainerHandler
 from openlcs.libs.swh_tools import get_swhids_with_paths
 from openlcs.libs.unpack import UnpackArchive
-from openlcs.libs.download import KojiBuild
 from openlcs.utils.common import DateEncoder
-from openlcs.libs.sc_handler import SourceContainerHandler
-from openlcs.libs.common import get_nvr_list_from_components
 
 
 def get_config(context, engine):
@@ -495,18 +496,17 @@ def unpack_container_source_archive(context, engine):
     src_dest_dir = context.get('src_dest_dir')
     src_file = os.path.join(src_dest_dir, file)
     # Unpack the source container image
-    ua = UnpackArchive(config=config)
+    sc_handler = SourceContainerHandler(config, src_file, src_dest_dir)
     engine.logger.info('Start to unpack source container image...')
     try:
-        misc_dir, srpm_dir, rc_dir = \
-                ua.unpack_source_container_image(src_file, src_dest_dir)
-    except RuntimeError as e:
-        err_msg = "Failed to decompress file %s: %s" % (src_file, e)
+        srpm_dir, rs_dir, misc_dir = sc_handler.unpack_source_container_image()
+    except (ValueError, RuntimeError) as err:
+        err_msg = "Failed to decompress file %s: %s" % (src_file, err)
         engine.logger.error(err_msg)
-        raise RuntimeError(e) from None
+        raise RuntimeError(err_msg) from None
     engine.logger.info('Finished unpacking the source archives.')
-    context['misc_dir'], context['srpm_dir'], context['rc_dir'] = \
-        misc_dir, srpm_dir, rc_dir
+    context['misc_dir'], context['srpm_dir'], context['rs_dir'] = \
+        misc_dir, srpm_dir, rs_dir
     context['sc_lable'] = True
 
 

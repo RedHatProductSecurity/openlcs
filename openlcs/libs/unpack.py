@@ -1,29 +1,9 @@
-import filetype
-import glob
-import mimetypes
 import os
-import sys
 import shutil
 import subprocess
 import tempfile
-import tarfile
 from kobo.shortcuts import run
-
-# Fix absolute import issue in openlcs.
-openlcs_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-if openlcs_dir not in sys.path:
-    sys.path.append(openlcs_dir)
-from libs.common import create_dir  # noqa: E402
-
-
-def get_mime_type(filepath):
-    mime_type = mimetypes.MimeTypes().guess_type(filepath)[0]
-    if not mime_type:
-        try:
-            mime_type = filetype.guess_mime(filepath)
-        except TypeError:
-            pass
-    return mime_type
+from libs.common import get_mime_type
 
 
 class UnpackArchive(object):
@@ -193,56 +173,3 @@ class UnpackArchive(object):
             errors.extend(
                 self.unpack_archives_using_atool(src_dir, top_dir=True))
         return errors
-
-    def uncompress_tar_file(self, src_file=None, dest_dir=None, f_type='tar'):
-        """
-        Uncompress tar and tar.gz file according to the file extension.
-        """
-        if f_type == 'tar':
-            cmd = f'tar xvf {src_file} -C {dest_dir}'
-            try:
-                subprocess.call(cmd, shell=True)
-            except subprocess.CalledProcessError:
-                error = f'Failed to uncompress file {src_file}'
-                return error
-        elif f_type == 'tar.gz':
-            try:
-                t = tarfile.open(src_file)
-                if not dest_dir:
-                    dest_dir = os.path.dirname(src_file)
-                t.extractall(path=dest_dir)
-            except Exception as e:
-                raise RuntimeError(e) from None
-        else:
-            err_msg = "The file {src_file} is unsupported to uncompress."
-            raise ValueError(err_msg) from None
-        os.remove(src_file)
-
-    def unpack_source_container_image(self, src_file, dest_dir=None):
-        """
-        Unpack source container image.
-        """
-        # Unpack the top level of source container image
-        self.uncompress_tar_file(src_file, dest_dir, f_type='tar.gz')
-        # Move the metadata files to metadata dir
-        misc_dir = os.path.join(dest_dir, 'metadata')
-        misc_dir = create_dir(misc_dir)
-        patterns = ['/*.json', '/repositories']
-        for pattern in patterns:
-            misc_files = glob.glob(dest_dir + pattern)
-            for file in misc_files:
-                shutil.move(file, misc_dir)
-        # Unpack all the layer.tar files and collect all the srpm files
-        files = glob.glob(dest_dir + "/**/layer.tar")
-        for file in files:
-            self.uncompress_tar_file(file, dest_dir, f_type='tar')
-        srpm_dir = os.path.join(dest_dir, 'rpm_dir')
-        # Unpack the remote source tar
-        rc_dir = os.path.join(dest_dir, 'extra_src_dir')
-        if os.path.isdir(rc_dir):
-            rc_file = os.path.join(rc_dir, 'extra-src.tar')
-            self.uncompress_tar_file(rc_file, rc_dir, f_type='tar')
-            files = glob.glob(rc_dir + "/*.tar.gz")
-            for file in files:
-                self.uncompress_tar_file(file, rc_dir, f_type='tar.gz')
-        return misc_dir, srpm_dir, rc_dir

@@ -272,14 +272,14 @@ class TestComponents(TestCase):
         warnings.simplefilter('ignore', RuntimeWarning)
         os.environ.setdefault(
                 'DJANGO_SETTINGS_MODULE', 'openlcs.openlcs.settings')
-        corgi_api_prod = os.getenv("CORGI_API_PROD")
+        CORGI_API_PROD = os.getenv("CORGI_API_PROD")
         self.links = [
-            f'{corgi_api_prod}components?purl=pkg%3Arpm/redhat/glibc-minimal-langpack%402.28-151.el8%3Farch%3Ds390x',  # noqa
-            f'{corgi_api_prod}components?purl=pkg%3Arpm/redhat/openssl-libs%401.1.1g-15.el8_3%3Farch%3Ds390x',  # noqa
-            f'{corgi_api_prod}components?purl=pkg:npm/@jest/fake-timers@27.2.0'  # noqa
+            f'{CORGI_API_PROD}components?purl=pkg%3Arpm/redhat/glibc-minimal-langpack%402.28-151.el8%3Farch%3Ds390x',  # noqa
+            f'{CORGI_API_PROD}components?purl=pkg%3Arpm/redhat/openssl-libs%401.1.1g-15.el8_3%3Farch%3Ds390x',  # noqa
+            f'{CORGI_API_PROD}components?purl=pkg:npm/@jest/fake-timers@27.2.0'  # noqa
         ]
         self.components_data = {
-            'CONTAINER_IMAGE': {
+            'container_component': {
                 'uuid': 'bb7e0e10-0a68-4bae-a490-3ff491cb1b78',
                 'type': 'CONTAINER_IMAGE',
                 'nvr': 'grc-ui-api-container-13-v2.4.0',
@@ -289,7 +289,7 @@ class TestComponents(TestCase):
                 'arch': 's390x',
                 'license': ''
             },
-            'RPM': [
+            'components': [
                 {
                     'uuid': 'fe7f82c1-db81-4045-84d6-c81a9da8d145',
                     'type': 'RPM',
@@ -309,9 +309,7 @@ class TestComponents(TestCase):
                     'release': '15.el8_3',
                     'arch': 's390x',
                     'license': ''
-                }
-            ],
-            'NPM': [
+                },
                 {
                     'uuid': 'fe7f82c1-db81-4045-84d6-c81a9da8d147',
                     'type': 'NPM',
@@ -324,7 +322,7 @@ class TestComponents(TestCase):
                 }
             ]
         }
-        base_url = f"{corgi_api_prod}components"
+        base_url = f"{CORGI_API_PROD}components"
         container_nvr = 'grc-ui-api-container-13-v2.4.0'
         self.container_components = ContainerComponentsAsync(
             base_url, container_nvr)
@@ -334,10 +332,10 @@ class TestComponents(TestCase):
     def test_get_component_data_1(
             self, mock_get_component_data_from_corgi):
         mock_get_component_data_from_corgi.return_value = \
-            self.components_data.get('RPM')[0]
+            self.components_data.get('components')[0]
         component = self.container_components.get_component_data(
             self.links[0])
-        self.assertEqual(component, self.components_data.get('RPM')[0])
+        self.assertEqual(component, self.components_data.get('components')[0])
 
     @mock.patch.object(
         ContainerComponentsAsync, 'get_component_data_from_corgi')
@@ -347,10 +345,10 @@ class TestComponents(TestCase):
             mock_parse_component_link):
         mock_get_component_data_from_corgi.return_value = {}
         mock_parse_component_link.return_value = \
-            self.components_data.get('RPM')[1]
+            self.components_data.get('components')[1]
         component = self.container_components.get_component_data(
             self.links[1])
-        self.assertEqual(component, self.components_data.get('RPM')[1])
+        self.assertEqual(component, self.components_data.get('components')[1])
 
     @mock.patch.object(
         ContainerComponentsAsync, 'get_component_data_from_corgi')
@@ -360,18 +358,19 @@ class TestComponents(TestCase):
             mock_parse_component_link):
         mock_get_component_data_from_corgi.return_value = {}
         mock_parse_component_link.return_value = \
-            self.components_data.get('NPM')[0]
+            self.components_data.get('components')[2]
         component = self.container_components.get_component_data(
             self.links[2])
-        self.assertEqual(component, self.components_data.get('NPM')[0])
+        self.assertEqual(component, self.components_data.get('components')[2])
 
     @mock.patch.object(ContainerComponentsAsync, 'get_event_loop')
     @mock.patch.object(ContainerComponentsAsync, 'get_component_and_links')
     def test_get_components_data(self, mock_get_component_and_links,
                                  mock_get_event_loop):
         mock_get_component_and_links.return_value = \
-            self.links, self.components_data.get('CONTAINER_IMAGE')
-        mock_get_event_loop.return_value = self.components_data
+            self.links, self.components_data.get('container_component')
+        mock_get_event_loop.return_value = \
+            self.components_data.get('components')
         self.assertEqual(
             self.container_components.get_components_data(),
             self.components_data
