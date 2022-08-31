@@ -1,6 +1,9 @@
 import os
 import shutil
 import subprocess
+from collections import defaultdict
+from itertools import groupby
+from operator import itemgetter
 
 
 def create_dir(directory):
@@ -14,6 +17,41 @@ def create_dir(directory):
     except Exception as e:
         raise RuntimeError(e) from None
     return directory
+
+
+def group_components(components, key='type'):
+    """ # noqa
+    Group by the remote source components.
+    Example:
+    [
+        {'name': 'github.com/blang/semver', 'type': "go-package", 'version': 'v3.5.1+incompatible', ...},
+        {'name': 'github.com/hashicorp/go-syslog', 'type': "gomod", 'version': 'v1.0.0', ...},
+        {'name': 'encoding/csv', 'type': "go-package", 'version': '', ...},
+        {'name': 'tunnel-agent', 'type': "yarn", 'version': '0.6.0', ...},
+        {'name': 'github.com/mattn/go-isatty', 'type': "gomod", 'version': 'v0.0.12', ...},
+        {'name': 'umd', 'type': "yarn", 'version': '3.0.3', ...},
+    ]
+    Result:
+    {
+        'go-package': [
+            {'name': 'github.com/blang/semver', 'type': 'go-package', 'version': 'v3.5.1+incompatible', ...},
+            {'name': 'encoding/csv', 'type': 'go-package', 'version': '', ...}
+        ],
+        'gomod': [
+            {'name': 'github.com/hashicorp/go-syslog', 'type': 'gomod', 'version': 'v1.0.0', ...},
+            {'name': 'github.com/mattn/go-isatty', 'type': 'gomod', 'version': 'v0.0.12', ...}
+        ],
+        'yarn': [
+            {'name': 'tunnel-agent', 'type': 'yarn', 'version': '0.6.0', ...},
+            {'name': 'umd', 'type': 'yarn', 'version': '3.0.3', ...}
+        ]
+    }
+    """
+    result = defaultdict(list)
+    for key, items in groupby(components, key=itemgetter(key)):
+        for i in items:
+            result[key].append(i)
+    return dict(result)
 
 
 def compress_source_to_tarball(dest_file, src_dir):
