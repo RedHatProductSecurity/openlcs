@@ -1,11 +1,18 @@
 import asyncio
 import httpx
+import os
 import re
 import requests
+import sys
 import uuid
 import uvloop
 from concurrent.futures import ThreadPoolExecutor
 from urllib import parse
+
+openlcs_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if openlcs_dir not in sys.path:
+    sys.path.append(openlcs_dir)
+from libs.common import group_components  # noqa: E402
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
@@ -165,10 +172,8 @@ class ContainerComponentsAsync:
                 raise RuntimeError(e) from None
             finally:
                 event_loop.close()
-        return {
-            'container_component': container_component,
-            'components': components
-        }
+        components.append(container_component)
+        return group_components(components)
 
 
 class ProductVersion:

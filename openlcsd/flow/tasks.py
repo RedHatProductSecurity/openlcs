@@ -853,8 +853,7 @@ flow_default = [
                 ],
             ),
             get_container_components,
-            # uncomment it after OLCS-248 be fixed.
-            # save_container_components,
+            save_container_components,
             # Fork the import task for each component
             fork_components_imports,
         ],
