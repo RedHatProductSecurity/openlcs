@@ -174,6 +174,7 @@ class Component(CorgiComponentMixin):
     # OpenLCS scans/populate it and possibly pushes back to corgi.
     summary_license = models.TextField(
         blank=True,
+        default='',
         help_text='Declared summary license expression'
     )
     # FIXME: migrated from existing "models.Package". This is probably

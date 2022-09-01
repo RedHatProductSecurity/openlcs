@@ -260,12 +260,15 @@ def get_source_metadata(context, engine):
     build_type = context.get('build_type')
     build = context.get('build')
 
+    component_type = "UNKNOWN"
     package = None
     try:
         if 'rpm' in build_type:
             package = rpm_parse(src_filepath)
+            component_type = "RPM"
         elif pom_filepath is not None:
             package = maven_parse(pom_filepath)
+            component_type = "MAVEN"
         # TODO: Add support for other package types.
     except Exception as e:
         engine.logger.warning(str(e))
@@ -298,7 +301,8 @@ def get_source_metadata(context, engine):
             "version": build.get('version'),
             "release": build.get('release'),
             "arch": build.get('arch') or '',
-            "summary_license": context.get("declared_license"),
+            "type": component_type,
+            "summary_license": context.get("declared_license", ""),
             "is_source": True
         }
     }
