@@ -1,6 +1,7 @@
 import glob
 import koji
 import os
+import re
 import sys
 import shutil
 import uuid
@@ -12,6 +13,8 @@ if openlcs_dir not in sys.path:
 from libs.common import (  # noqa: E402
     compress_source_to_tarball,
     create_dir,
+    get_component_name_version_combination,
+    search_content_according_patterns,
     uncompress_source_tarball
 )
 
@@ -36,7 +39,7 @@ class SourceContainerHandler(object):
             'name': data.get('name'),
             'version': data.get('version'),
             'release': data.get('release'),
-            'license': '',
+            'summary_license': '',
             'arch': '',
             'synced': False
         }
@@ -60,7 +63,7 @@ class SourceContainerHandler(object):
             'name': 'libcom_err',
             'version': '1.45.6',
             'release': '2.el8',
-            'license': '',
+            'summary_license': '',
             'arch': '',
             'synced': False
         }
@@ -78,7 +81,7 @@ class SourceContainerHandler(object):
                     'name': nvra.get('name'),
                     'version': nvra.get('version'),
                     'release': nvra.get('release'),
-                    'license': '',
+                    'summary_license': '',
                     'arch': nvra.get('arch'),
                     'synced': False
                 }
@@ -87,23 +90,22 @@ class SourceContainerHandler(object):
         else:
             return None
 
-    def get_source_of_srpm_component(self, srpm_dir, nvr):
+    @staticmethod
+    def get_source_of_srpm_component(srpm_dir, nvr):
         """
         Get the source file or srpm
         """
         srpm_file = nvr + '.src.rpm'
         srpm_filepath = os.path.join(srpm_dir, srpm_file)
-        if os.path.isfile(srpm_filepath):
-            return srpm_filepath
-        else:
-            return None
+        return srpm_filepath if os.path.isfile(srpm_filepath) else None
 
-    def get_source_of_misc_component(self, misc_dir, nvr):
+    @staticmethod
+    def get_source_of_misc_component(misc_dir, nvr):
         """
         Compress the metadata files to tar file
         """
         # Named the source tar file that unified with misc component
-        tar_file = nvr + '-metata.tar.gz'
+        tar_file = nvr + '-metadata.tar.gz'
         # Compress the metadata files to misc nvr tar file
         try:
             tar_filepath = os.path.join(os.path.dirname(misc_dir), tar_file)
@@ -111,6 +113,19 @@ class SourceContainerHandler(object):
         except RuntimeError as err:
             raise RuntimeError(err) from None
         return tar_filepath
+
+    @staticmethod
+    def get_source_of_remote_source_components(rs_dir, component):
+        """
+        Get the source tarball for remote source components.
+        """
+        name_version = get_component_name_version_combination(component)
+        name_version_dir = os.path.join(rs_dir, name_version)
+        tarball_name = os.listdir(name_version_dir)[0]
+        if tarball_name:
+            return os.path.join(name_version_dir, tarball_name)
+        else:
+            return None
 
     def get_container_components(self, srpm_dir, misc_dir, sc_nvr):
         """
@@ -151,8 +166,22 @@ class SourceContainerHandler(object):
         if os.path.exists(rs_dir):
             # uncompress extra source tarballs.
             extra_tarball_paths = glob.glob(f"{rs_dir}/*.tar")
+            link_path = ""
             for extra_tarball_path in extra_tarball_paths:
+                if os.path.islink(extra_tarball_path):
+                    link_path = os.readlink(extra_tarball_path)
                 uncompress_source_tarball(extra_tarball_path)
+
+                # Remove remote source tarball, so that it will not
+                # exist in misc source.
+                if link_path:
+                    full_path = os.path.normpath(
+                        os.path.join(
+                            os.path.dirname(extra_tarball_path),
+                            link_path
+                        )
+                    )
+                    os.remove(full_path)
 
             # uncompress remote source tarballs in extra source tarballs.
             rs_tarball_paths = glob.glob(f"{rs_dir}/*.tar.gz")
@@ -166,11 +195,19 @@ class SourceContainerHandler(object):
         """
         misc_dir = os.path.join(self.dest_dir, 'metadata')
         misc_dir = create_dir(misc_dir)
-        patterns = ['/*.json', '/repositories']
-        for pattern in patterns:
-            misc_files = glob.glob(self.dest_dir + pattern)
-            for file in misc_files:
-                shutil.move(file, misc_dir)
+
+        # Remove all the "layer.tar" files, because they are unuseful
+        # soft link files.
+        layer_file_paths = glob.glob(self.dest_dir + '/**/layer.tar')
+        for layer_file_path in layer_file_paths:
+            os.remove(layer_file_path)
+
+        # Move all the misc files, directories to "metadata" directory.
+        nested_items = os.listdir(self.dest_dir)
+        for nested_item in nested_items:
+            if nested_item not in ['extra_src_dir', 'rpm_dir', 'metadata']:
+                item_path = os.path.join(self.dest_dir, nested_item)
+                shutil.move(item_path, misc_dir)
         return misc_dir
 
     def unpack_source_container_image(self):
@@ -194,3 +231,116 @@ class SourceContainerHandler(object):
         misc_dir = self.get_source_container_srpms_metadata()
 
         return srpm_dir, rs_dir, misc_dir
+
+    @staticmethod
+    def get_component_search_items(component):
+        """
+        Get the search items of the component.
+        """
+        comp_type = component.get('type')
+        if comp_type == 'GOLANG':
+            # If the name contains Uppercase, will convert it to "!" + it's
+            # lowercase in the source tarball path. Reference link:
+            # https://pkg.go.dev/golang.org/x/mod/module#hdr-Escaped_Paths
+            search_name = ''.join([s.isupper() and "!" + s.lower() or s
+                                   for s in component.get('name')])
+            name_items = search_name.split("/")
+            # ":", "/", "#" maybe in the version string.
+            version_items = re.split("[:/#]", component.get('version'))
+        elif comp_type in ['NPM', 'YARN', 'PYPI']:
+            search_name = component.get('name')
+            name_items = component.get('name').replace("@", '').split("/")
+            # ":", "/", "#" maybe in the version string.
+            version_items = re.split("[:/#]", component.get('version'))
+        else:
+            err_msg = (f'Currently we do not support {comp_type} type of '
+                       f'remote source.')
+            raise RuntimeError(err_msg)
+        return search_name, name_items, version_items
+
+    def get_remote_source_search_patterns(self, component, extra_src_dir):
+        """
+        Get all possible matching patterns for the component.
+        """
+        search_name, name_items, version_items = \
+            self.get_component_search_items(component)
+        comp_type = component.get('type')
+        name_pattern = '/*' + '/'.join(name_items)
+        version_pattern = '/*' + '*'.join(version_items)
+        search_patterns = ""
+
+        # The extensions of remote source tarball:
+        # 'gomod' tarball is '.zip', 'npm' tarball is '.tgz',
+        # 'yarn' tarball is '.tgz', 'pip' tarball is '.tar.gz'.
+        if comp_type == 'GOLANG':
+            dep_dir = os.path.join(
+                extra_src_dir, "deps", 'gomod', "pkg",
+                "mod", "cache", "download")
+            vendor_dir = os.path.join(extra_src_dir, "app", "vendor")
+            # Exist new version, such as:
+            # 'deps/gomod/pkg/mod/cache/download/k8s.io/klog/@v/v1.0.0.zip'
+            # 'deps/gomod/pkg/mod/cache/download/k8s.io/klog/v2/@v/v2.9.0.zip'
+            search_patterns = [
+                dep_dir + name_pattern + "/@v" + version_pattern + '.zip',
+                dep_dir + name_pattern + "/**/@v" + version_pattern + '.zip',
+                vendor_dir + search_name
+                ]
+        elif comp_type in ['NPM', 'YARN', 'PYPI']:
+            # mapping Python source between Corgi and OSBS
+            comp_type = 'pip' if comp_type == 'PYPI' else comp_type.lower()
+            dep_dir = os.path.join(extra_src_dir, 'deps', comp_type)
+            common_pattern = dep_dir + name_pattern + version_pattern
+            search_patterns = [common_pattern + extension
+                               for extension in ['.tgz', '.tar.gz', '.zip']]
+        return search_patterns
+
+    def get_remote_source_path(self, component, extra_src_dir):
+        """
+        Get source tarball path of the remote source component.
+        """
+        search_patterns = self.get_remote_source_search_patterns(
+            component, extra_src_dir)
+
+        # Search remote source path.
+        paths = search_content_according_patterns(search_patterns)
+        return paths[0] if len(paths) == 1 else None
+
+    def get_container_remote_source(self, components):
+        """
+        Get remote source in source container.
+        """
+        missing_components = []
+        extra_src_dir = os.path.join(self.dest_dir, 'extra_src_dir')
+
+        # Get source for each component.
+        for component in components:
+            comp_path = self.get_remote_source_path(component, extra_src_dir)
+            name_version = get_component_name_version_combination(component)
+            if not comp_path:
+                missing_components.append(component)
+                continue
+
+            # Create a directory to store remote source tarball.
+            comp_dir = os.path.join(self.dest_dir, 'rs_dir', name_version)
+            create_dir(comp_dir)
+
+            # Handle source when found it in app vendor, compress the source
+            # as a source tarball.
+            if os.path.isdir(comp_path):
+                try:
+                    dest_path = os.path.join(
+                        comp_dir, name_version + ".tar.gz")
+                    compress_source_to_tarball(dest_path, comp_path)
+                except RuntimeError as err:
+                    err_msg = (f"Failed to compress {component} source in "
+                               f"app vendor: {err}")
+                    raise RuntimeError(err_msg) from None
+            else:
+                # Move source tarball to destination directory.
+                shutil.move(comp_path, comp_dir)
+
+        # Handle misc data in remote source.
+        misc_dir = os.path.join(self.dest_dir, 'metadata')
+        shutil.move(extra_src_dir, misc_dir)
+
+        return missing_components

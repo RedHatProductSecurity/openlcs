@@ -85,7 +85,11 @@ class PackageImportTransactionMixin:
         summary_license = component_data.pop("summary_license")
         is_source = component_data.pop("is_source")
         component, _ = Component.objects.update_or_create(
-            **component_data,
+            name=component_data.get('name'),
+            version=component_data.get('version'),
+            release=component_data.get('release'),
+            arch=component_data.get('arch'),
+            type=component_data.get('type'),
             defaults={
                 'is_source': is_source,
                 'summary_license': summary_license,
@@ -273,9 +277,13 @@ class SaveContainerComponentsMixin:
 
     @staticmethod
     def create_component(component_data):
-        summary_license = component_data.pop('license')
+        summary_license = component_data.pop('summary_license')
         component, _ = Component.objects.update_or_create(
-            **component_data,
+            name=component_data.get('name'),
+            version=component_data.get('version'),
+            release=component_data.get('release'),
+            arch=component_data.get('arch'),
+            type=component_data.get('type'),
             defaults={
                 "summary_license": summary_license,
             },

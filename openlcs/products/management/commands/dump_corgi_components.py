@@ -187,7 +187,7 @@ class Command(BaseCommand):
             "version": data.get("version"),
             "release": data.get("release", ""),
             "arch": data.get("arch", ""),
-            "license": data.get("license", ""),
+            "summary_license": data.get("license", ""),
         }
 
     # def get_pages(self, url, ctype=None, limit=10, offset=0, num_pages=2):

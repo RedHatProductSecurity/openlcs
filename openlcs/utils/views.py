@@ -15,6 +15,8 @@ class ObtainConfigView(generics.RetrieveAPIView):
         retval = {}
         allowable_attrs = [
             'SRC_ROOT_DIR',
+            'RS_SRC_ROOT_DIR',
+            'RS_TYPES',
             'TMP_ROOT_DIR',
             'POST_DIR',
             'KOJI_DOWNLOAD',

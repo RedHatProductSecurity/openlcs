@@ -1,4 +1,5 @@
 import filetype
+import glob
 import mimetypes
 import os
 import shutil
@@ -99,9 +100,39 @@ def compress_source_to_tarball(dest_file, src_dir):
         shutil.rmtree(src_dir)
 
 
+def get_component_name_version_combination(component):
+    """
+    Get a combination of name, version in component.
+    """
+    name_version_items = component.get('name').split('/')
+    name_version_items.append(component.get('version'))
+    return '-'.join(name_version_items)
+
+
 def get_nvr_list_from_components(components, comp_type):
+    """
+    Get a nvr list of components.
+    """
     nvr_list = []
-    for component in components.get(comp_type):
-        nvr = "{name}-{version}-{release}".format(**component)
-        nvr_list.append(nvr)
+    components = components.get(comp_type)
+    if components:
+        for component in components:
+            if component.get('release'):
+                nvr = "{name}-{version}-{release}".format(**component)
+            else:
+                nvr = "{name}-{version}".format(**component)
+            nvr_list.append(nvr)
     return nvr_list
+
+
+def search_content_according_patterns(search_patterns):
+    """
+    Search content according the giving patterns.
+    """
+    paths = []
+    if search_patterns:
+        for search_pattern in search_patterns:
+            paths = glob.glob(search_pattern)
+            if paths:
+                break
+    return paths

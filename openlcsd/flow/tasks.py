@@ -85,16 +85,40 @@ def get_build(context, engine):
                 type info corresponding to that type.
     """
     config = context.get('config')
-    koji_build = KojiBuild(config)
-    build = koji_build.get_build(
-        context.get('package_nvr'),
-        context.get('brew_tag'),
-        context.get('package_name'),
-        context.get('rpm_nvra'),
-    )
-    build_type = koji_build.get_build_type(build)
-    context['build_type'] = build_type
-    context['build'] = build
+    rs_comp = context.get('rs_comp')
+    if rs_comp:
+        rs_type = rs_comp.get('type')
+        if rs_type in config.get('RS_TYPES'):
+            context['build_type'] = {rs_type: None}
+            context['build'] = {
+                'name': rs_comp.get('name'),
+                'version': rs_comp.get('version'),
+                'release': rs_comp.get('release'),
+                'summary_license': '',
+                'arch': rs_comp.get('arch'),
+                'type': rs_type,
+            }
+    else:
+        koji_build = KojiBuild(config)
+        build = koji_build.get_build(
+            context.get('package_nvr'),
+            context.get('brew_tag'),
+            context.get('package_name'),
+            context.get('rpm_nvra'),
+        )
+        build_type = koji_build.get_build_type(build)
+        context['build_type'] = build_type
+        context['build'] = build
+
+    component_type = context.get('component_type')
+    # For forked source RPM task in container.
+    if component_type:
+        comp_type = component_type
+    # For forked remote source task in container, and source RPM import
+    else:
+        build_type = context.get('build_type')
+        comp_type = "SRPM" if build_type == 'rpm' else build_type
+    context['comp_type'] = comp_type
 
 
 def is_source_container_build(context, build):
@@ -132,17 +156,25 @@ def get_source_container_build(context, engine):
     elif package_nvr and 'container' in package_nvr:
         sc_build = koji_build.get_latest_source_container_build(package_nvr)
     if sc_build:
-        if package_nvr != sc_build.get('nvr'):
-            msg = 'Found source container build %s for %s in Brew/Koji'
-            engine.logger.info(msg % (sc_build.get('nvr'), package_nvr))
+        #  Add build id in the json.
         if "id" not in sc_build:
             sc_build["id"] = sc_build.get("build_id")
-        build_type = koji_build.get_build_type(sc_build)
+        # Get the binary build for the import source container nvr.
+        koji_connector = KojiConnector(config)
+        if package_nvr == sc_build.get('nvr'):
+            msg = 'Found source container build %s for %s in Brew/Koji'
+            engine.logger.info(msg % (sc_build.get('nvr'), package_nvr))
+            binary_nvr = koji_connector.get_binary_nvr(package_nvr)
+            binary_build = koji_connector.get_build(binary_nvr)
+        else:
+            binary_build = context.get('build')
+        context['binary_build'] = binary_build
         context['build'] = sc_build
-        context['build_type'] = build_type
-        context['is_source_container_build'] = True
+        context['build_type'] = koji_build.get_build_type(sc_build)
+
     else:
         err_msg = "This binary container has no mapping source container."
+        engine.logger.error(err_msg)
         raise ValueError(err_msg) from None
 
 
@@ -227,21 +259,42 @@ def download_component_source(context, engine):
     Download the component src from brew. If the component's src was
     downloaded from source container, then no need to download source of the
     package archive from brew.
+    @requires: `config`, configuration from hub server.
+    @requires: `package_nvr`, nvr of the package.
+    @requires: `src_dir`, source directory.
+    @feeds: `tmp_src_filepath`, absolute path of component source tarball.
     """
-    config = context.get('config')
-    nvr = context.get('package_nvr')
     src_dir = context.get('src_dir')
     if not context.get('src_dir'):
         download_package_archive(context, engine)
     else:
+        config = context.get('config')
+        nvr = context.get('package_nvr')
         sc_handler = SourceContainerHandler(config)
-        if os.path.isdir(src_dir):
-            if 'rpm_dir' in src_dir:
-                context['tmp_src_filepath'] = \
-                        sc_handler.get_source_of_srpm_component(src_dir, nvr)
-            if 'metadata' in src_dir:
-                context['tmp_src_filepath'] = \
-                        sc_handler.get_source_of_misc_component(src_dir, nvr)
+        if 'rpm_dir' in src_dir:
+            source_path = sc_handler.get_source_of_srpm_component(
+                src_dir, nvr)
+        elif 'metadata' in src_dir:
+            try:
+                source_path = sc_handler.get_source_of_misc_component(
+                    src_dir, nvr)
+            except RuntimeError as err:
+                err_msg = f"Failed to get source tarball for metadata: {err}"
+                engine.logger.error(err_msg)
+                raise RuntimeError(err_msg) from None
+        elif 'rs_dir' in src_dir:
+            component = context.get('rs_comp')
+            source_path = sc_handler.get_source_of_remote_source_components(
+                src_dir, component)
+        else:
+            source_path = ""
+
+        if source_path:
+            context['tmp_src_filepath'] = source_path
+        else:
+            err_msg = "Failed to get component source path in container."
+            engine.logger.error(err_msg)
+            raise RuntimeError(err_msg) from None
 
 
 def get_source_metadata(context, engine):
@@ -260,15 +313,12 @@ def get_source_metadata(context, engine):
     build_type = context.get('build_type')
     build = context.get('build')
 
-    component_type = "UNKNOWN"
     package = None
     try:
         if 'rpm' in build_type:
             package = rpm_parse(src_filepath)
-            component_type = "RPM"
         elif pom_filepath is not None:
             package = maven_parse(pom_filepath)
-            component_type = "MAVEN"
         # TODO: Add support for other package types.
     except Exception as e:
         engine.logger.warning(str(e))
@@ -276,19 +326,21 @@ def get_source_metadata(context, engine):
     if package is not None:
         # Package has below urls which could be referenced as source url:
         # homepage_url --> vcs_url --> code_view_url --> download_url
-        # download_url is version related which is not prefered.
+        # download_url is version related which is not preferred.
         # homepage_url: http://cxf.apache.org
         # vcs_url: git+http://gitbox.apache.org/repos/asf/cxf.git
         # code_view_url: https://gitbox.apache.org/repos/asf?p=cxf.git;a=summary    # noqa
         # download_url: https://pkg.freebsd.org/freebsd:10:x86:64/latest/All/dmidecode-2.12.txz    # noqa
         urls = ['homepage_url', 'vcs_url', 'code_view_url', 'download_url']
         for url in urls:
-            if getattr(package, url):
+            if hasattr(package, url):
                 context['source_url'] = getattr(package, url)
                 break
         # Use declared_license from packagecode output which could support
         # more package types instead of rebuilding wheels.
         context['declared_license'] = package.declared_license
+
+    # TODO: Update metadata for remote source.
     context['source_info'] = {
         "source": {
             "checksum": sha256sum(src_filepath),
@@ -300,8 +352,8 @@ def get_source_metadata(context, engine):
             "name": build.get('name'),
             "version": build.get('version'),
             "release": build.get('release'),
-            "arch": build.get('arch') or '',
-            "type": component_type,
+            "arch": build.get('arch') or 'src',
+            "type": context.get('comp_type'),
             "summary_license": context.get("declared_license", ""),
             "is_source": True
         }
@@ -399,11 +451,10 @@ def prepare_dest_dir(context, engine):
     release = context.get('product_release')
     component_type = context.get('component_type')
     engine.logger.info('Start to prepare destination directory...')
-    if build:
+    if component_type and component_type in ['SRPM', 'CONTAINER_IMAGE']:
         # TODO: Currently we don't store product and release data. so the
         #  import should not contain "product_release" or add it manually
         #  in database.
-
         if release:
             if isinstance(release, dict):
                 short_name = release.get('short_name')
@@ -411,28 +462,33 @@ def prepare_dest_dir(context, engine):
                 short_name = release
         else:
             short_name = config.get('ORPHAN_CATEGORY')
-        # Create source container metadata dest src dir
+
+        # Create source container metadata destination source directory.
+        src_root = config.get('SRC_ROOT_DIR')
         if component_type == 'CONTAINER_IMAGE':
             metadata_dir = build.get('nvr') + '-metadata'
-            src_dir = os.path.join(config.get('SRC_ROOT_DIR'), short_name,
-                                   metadata_dir)
+            src_dir = os.path.join(src_root, short_name, metadata_dir)
         else:
-            src_dir = os.path.join(config.get('SRC_ROOT_DIR'), short_name,
-                                   build.get('name'), build.get('nvr'))
+            src_dir = os.path.join(
+                src_root, short_name, build.get('name'), build.get('nvr'))
 
         if os.path.exists(src_dir):
             shutil.rmtree(src_dir, ignore_errors=True)
         try:
             os.makedirs(src_dir)
-        except OSError as e:
-            msg = "Failed to create directory {0}: {1}".format(
-                src_dir, e)
+        except OSError as err:
+            msg = f"Failed to create directory {src_dir}: {err}"
             engine.logger.error(msg)
             raise RuntimeError(msg) from None
+    # Remote source archives will be stored in a separate directory under
+    # "SRC_ROOT_DIR".
     else:
-        msg = "Failed to get build and release information."
-        engine.logger.error(msg)
-        raise RuntimeError(msg) from None
+        src_root = config.get('RS_SRC_ROOT_DIR')
+        # `src_root` for remote source archives may not exist for the first
+        # time unless explicitly created.
+        if not os.path.exists(src_root):
+            os.makedirs(src_root)
+        src_dir = tempfile.mkdtemp(prefix='rs_', dir=src_root)
     engine.logger.info('Finished preparing destination directory.')
     context['src_dest_dir'] = src_dir
 
@@ -481,26 +537,26 @@ def unpack_source(context, engine):
 def unpack_container_source_archive(context, engine):
     """
     Uncompress sources of given build/archive.
-
+    @requires: `config`, configuration from hub server.
+    @requires: 'tmp_src_filepath', absolute path to the archive.
     @requires: 'src_dest_dir', destination directory.
-    @requires: 'src_file'.
+    @feeds: 'misc_dir', directory to store misc files.
+    @feeds: 'srpm_dir', directory to store source RPMs.
+    @feeds: 'rs_dir', directory to store remote source
+    @feeds: 'sc_lable', True or False, a flag for source container.
     """
     prepare_dest_dir(context, engine)
-    extract_source(context, engine)
     config = context.get('config')
-
-    # Get the src file and src_dest_dir
     tmp_src_filepath = context.get('tmp_src_filepath')
-    file = tmp_src_filepath.split('/')[-1]
     src_dest_dir = context.get('src_dest_dir')
-    src_file = os.path.join(src_dest_dir, file)
-    # Unpack the source container image
-    sc_handler = SourceContainerHandler(config, src_file, src_dest_dir)
+
+    # Unpack the source container image.
+    sc_handler = SourceContainerHandler(config, tmp_src_filepath, src_dest_dir)
     engine.logger.info('Start to unpack source container image...')
     try:
         srpm_dir, rs_dir, misc_dir = sc_handler.unpack_source_container_image()
     except (ValueError, RuntimeError) as err:
-        err_msg = "Failed to decompress file %s: %s" % (src_file, err)
+        err_msg = "Failed to decompress file %s: %s" % (tmp_src_filepath, err)
         engine.logger.error(err_msg)
         raise RuntimeError(err_msg) from None
     engine.logger.info('Finished unpacking the source archives.')
@@ -610,7 +666,8 @@ def send_package_data(context, engine):
     url = 'packageimporttransaction'
     cli = context.pop('client')
     package_nvr = context.get('package_nvr')
-    engine.logger.info(f"Start to send {package_nvr} data to hub for further "
+    component = package_nvr if package_nvr else context.get('rs_comp')
+    engine.logger.info(f"Start to send {component} data to hub for further "
                        f"processing...")
 
     # Post data file name instead of post context data
@@ -707,7 +764,8 @@ def send_scan_result(context, engine):
     url = 'savescanresult'
     cli = context.pop('client')
     package_nvr = context.get('package_nvr')
-    engine.logger.info(f"Start to send {package_nvr} scan result to hub for "
+    component = package_nvr if package_nvr else context.get('rs_comp')
+    engine.logger.info(f"Start to send {component} scan result to hub for "
                        f"further processing...")
 
     fd, tmp_file_path = tempfile.mkstemp(prefix='scan_result_',
@@ -728,38 +786,46 @@ def send_scan_result(context, engine):
 
 
 def get_container_components(context, engine):
+    """
+    Get all component in the source container.
+    """
+    engine.logger.info('Start to get container components data...')
     # Collect container components from Corgi
-    get_components_product_from_corgi(context, engine)
+    components = get_components_product_from_corgi(context, engine)
     # If we cannot get components from Corgi, parse them from source container
-    if not context.get('components').get('components'):
-        get_components_product_from_source_container(context, engine)
+    if not components:
+        components = get_components_from_source_container(
+            context, engine)
+    context['components'] = components
+    engine.logger.info("Finished getting container components data.")
 
 
 def get_components_product_from_corgi(context, engine):
     """
     Get components information from Corgi.
     @requires: `nvr`, string, the container nvr.
-    @requires: `components`, list of dictionary,
-                components information of the container.
+    @feeds: `components`, list of dictionary,
+             components information of the container.
     """
-    engine.logger.info('Start to get components data from Corgi...')
     config = context.get('config')
     cc = ContainerComponentsAsync(
         config.get('CORGI_API_PROD'), context.get('package_nvr'))
-    context['components'] = cc.get_components_data()
-    engine.logger.info("Finished getting container components data.")
+    return cc.get_components_data()
 
 
 def get_remote_source_components(context, engine):
-    package_nvr = context.get('package_nvr')
+    """
+    Get remote source components in source container
+    @requires: `config`, configurations from Hub.
+    @requires: `package_nvr`, nvr of the container.
+    @feeds: `rs_components`, remote source components in source container.
+    """
     config = context.get('config')
     koji_connector = KojiConnector(config)
     engine.logger.info('Start to get remote source components...')
     try:
-        binary_nvr = koji_connector.get_binary_nvr(package_nvr)
-        binary_build = koji_connector.get_build(binary_nvr)
         rs_components = koji_connector.get_remote_source_components(
-            binary_build)
+            context.get('binary_build'))
     except (RuntimeError, ValueError) as err:
         err_msg = f"Failed to get remote source components. Reason: {err}"
         engine.logger.error(err_msg)
@@ -768,20 +834,61 @@ def get_remote_source_components(context, engine):
     return rs_components
 
 
-def get_components_product_from_source_container(context, engine):
-    engine.logger.info('Start to get components data from source container...')
+def get_components_from_source_container(context, engine):
+    """
+    Get components in the source container.
+    @requires: `config`, configurations from Hub.
+    @requires: `package_nvr`, nvr of the container.
+    @requires: `srpm_dir`, directory that store source RPMs.
+    @requires: `misc_dir`, directory that store misc files.
+    @feeds: `components`, components found in the container.
+    """
     config = context.get('config')
     sc_nvr = context.get('package_nvr')
+
     # Get components from the source container itself.
     srpm_dir = context.get('srpm_dir')
     misc_dir = context.get('misc_dir')
     sc_handler = SourceContainerHandler(config)
-    components = sc_handler.get_container_components(srpm_dir, misc_dir,
-                                                     sc_nvr)
+    components = sc_handler.get_container_components(
+        srpm_dir, misc_dir, sc_nvr)
+
     # Get remote source components from its binary container.
     components.update(get_remote_source_components(context, engine))
-    engine.logger.info('Finished getting components from source container')
-    context['components'] = components
+    return components
+
+
+def get_container_remote_source(context, engine):
+    """
+    Get remote source in container.
+    @requires: `config`, configurations from Hub.
+    @requires: `src_dest_dir`, destination source directory.
+    @requires: `components`, components found in the container.
+    @requires: `rs_dir`, directory that store remote source after collate.
+    """
+    rs_types = ['GOLANG', 'YARN', 'PYPI', 'NPM']
+    components = context.get('components')
+    if any([True for rs_type in rs_types if rs_type in components.keys()]):
+        engine.logger.info('Start to get remote source in source container...')
+        config = context.get('config')
+        src_dest_dir = context.get('src_dest_dir')
+        sc_handler = SourceContainerHandler(config, dest_dir=src_dest_dir)
+        rs_components = []
+        for comp_type in rs_types:
+            type_components = components.get(comp_type)
+            if type_components:
+                rs_components.extend(type_components)
+        missing_components = sc_handler.get_container_remote_source(
+            rs_components)
+        if missing_components:
+            engine.logger.error('Failed to get remote source for components:')
+            for missing_component in missing_components:
+                engine.logger.error(missing_component)
+
+        # Redefine the 'rs_dir' after collate remote source.
+        context['rs_dir'] = os.path.join(context.get('src_dest_dir'), 'rs_dir')
+        msg = "Finished getting remote source in source container."
+        engine.logger.info(msg)
 
 
 def save_container_components(context, engine):
@@ -795,9 +902,10 @@ def save_container_components(context, engine):
         'components': context.get('components'),
         'product_release': context.get('product_release')
     }
-    engine.logger.info(f'Start to save container  {package_nvr} components...')
-    fd, tmp_file_path = tempfile.mkstemp(prefix='scan_container_components_',
-                                         dir=context.get('post_dir'))
+    msg = f'Start to save components in container {package_nvr}...'
+    engine.logger.info(msg)
+    fd, tmp_file_path = tempfile.mkstemp(
+        prefix='scan_container_components_', dir=context.get('post_dir'))
     with os.fdopen(fd, 'w') as destination:
         json.dump(data, destination, cls=DateEncoder)
     resp = cli.post(url, data={"file_path": tmp_file_path})
@@ -814,19 +922,22 @@ def save_container_components(context, engine):
     engine.logger.info('Finished saving container components.')
 
 
-def import_types_components(context, engine, nvr_list, src_dir, comp_type):
+def fork_detail_type_components_imports(
+        context, engine, nvr_list, src_dir, comp_type):
     """
     In a source container, it has different type of component. The different
-    components have different src_dir. This founction will be define the post
-    data for the differnt type component.
+    components have different src_dir. This function will be defined the post
+    data for the different type component.
     """
     cli = context.get('client')
     url = '/sources/import/'
     msg = 'Start to fork imports for {} components...'.format(len(nvr_list))
     data = {
-            'component_type': comp_type,
-            'src_dir': src_dir,
-            'package_nvrs': nvr_list,
+        'component_type': comp_type,
+        'src_dir': src_dir,
+        'package_nvrs': nvr_list,
+        'license_scan': context.get('license_scan'),
+        'copyright_scan': context.get('copyright_scan')
     }
     engine.logger.info(msg)
     cli.post(url, data=data)
@@ -836,21 +947,61 @@ def import_types_components(context, engine, nvr_list, src_dir, comp_type):
     engine.logger.info('Done')
 
 
+def fork_remote_source_components_imports(context, engine, rs_comps, src_dir):
+    """
+    In a source container, it has different type of component. The different
+    components have different src_dir. This function will be defined the post
+    data for the different remote source component.
+    """
+    cli = context.get('client')
+    url = '/sources/import/'
+    msg = 'Start to fork imports for {} remote source components...'.format(
+        len(rs_comps))
+    data = {
+        'src_dir': src_dir,
+        'rs_comps': rs_comps,
+        'license_scan': context.get('license_scan'),
+        'copyright_scan': context.get('copyright_scan')
+    }
+    engine.logger.info(msg)
+    cli.post(url, data=data)
+    components = ""
+    for rs_comp in rs_comps:
+        components += "\n\t" + 'name(%s) version(%s) type(%s)' % (
+            rs_comp.get('name'), rs_comp.get('version'), rs_comp.get('type'))
+    msg = f'-- Forked import tasks for below source components:{components}'
+    engine.logger.info(msg)
+    engine.logger.info('Done')
+
+
 def fork_components_imports(context, engine):
     """
     Fork components tasks
     """
     components = context.get('components')
-    srpm_nvr_list = \
-        get_nvr_list_from_components(components, 'SRPM')
-    # Fork srpm component tasks
+    srpm_nvr_list = get_nvr_list_from_components(components, 'SRPM')
+
+    # Fork source RPM component tasks.
     if srpm_nvr_list:
-        import_types_components(context, engine, srpm_nvr_list,
-                                context.get('srpm_dir'), 'SRPM')
-    # Fork container-compnent tasks with the misc metadata files
+        fork_detail_type_components_imports(
+            context, engine, srpm_nvr_list, context.get('srpm_dir'), 'SRPM')
+
+    # Fork container-component tasks with the misc metadata files.
     if components.get('CONTAINER_IMAGE'):
-        import_types_components(context, engine, [context.get('package_nvr')],
-                                context.get('misc_dir'), 'CONTAINER_IMAGE')
+        fork_detail_type_components_imports(
+            context, engine, [context.get('package_nvr')],
+            context.get('misc_dir'), 'CONTAINER_IMAGE')
+
+    # Fork remote source component tasks.
+    config = context.get('config')
+    rs_comps = []
+    for comp_type in config.get('RS_TYPES'):
+        comps = components.get(comp_type)
+        if comps:
+            rs_comps.extend(comps)
+    if rs_comps:
+        fork_remote_source_components_imports(
+            context, engine, rs_comps, context.get('rs_dir'))
 
 
 flow_default = [
@@ -862,18 +1013,11 @@ flow_default = [
         # Task flow for image build
         [
             get_source_container_build,
-            IF(
-                lambda o, e: o.get('is_source_container_build'),
-                [
-                    # Download the source image from Brew
-                    download_source_image,
-                    # Unpack the source image
-                    unpack_container_source_archive,
-                ],
-            ),
+            download_source_image,
+            unpack_container_source_archive,
             get_container_components,
             save_container_components,
-            # Fork the import task for each component
+            get_container_remote_source,
             fork_components_imports,
         ],
 

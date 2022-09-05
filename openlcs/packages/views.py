@@ -18,6 +18,7 @@ from packages.serializers import (
     FileSerializer,
     NVRImportSerializer,
     PathSerializer,
+    RSImportSerializer,
     SourceSerializer
 )
 from products.models import Product, Release
@@ -237,6 +238,7 @@ class SourceViewSet(ModelViewSet, PackageImportTransactionMixin):
     queryset = Source.objects.all()
     serializer_class = SourceSerializer
     nvr_import_serializer = NVRImportSerializer
+    rs_import_serializer = RSImportSerializer
     parser_classes = [JSONParser, FileUploadParser]
 
     def list(self, request, *args, **kwargs):
@@ -456,18 +458,13 @@ file first, it should contain the following parameters:
                 if product_name and version:
                     release_name = "-".join([product_name, version])
                     product, _ = Product.objects.get_or_create(
-                            name=product_name)
+                        name=product_name)
                     releases = Release.objects.filter(
-                            product=product, version=version)
-                    if releases.exists():
-                        release = releases[0]
-                    else:
-                        release = Release.objects.create(
-                                product=product, version=version,
-                                name=release_name, notes=data.get("notes"))
-                    # Populate release packages with manifest content
-                    if src_packages:
-                        release.add_components_from_nvrs(src_packages)
+                        product=product, version=version)
+                    if not releases.exists():
+                        Release.objects.create(
+                            product=product, version=version,
+                            name=release_name, notes=data.get("notes"))
                 else:
                     release_name = None
                 manifest_data = {
@@ -477,14 +474,7 @@ file first, it should contain the following parameters:
         else:
             release_name = request.data.get('product_release')
             if release_name:
-                package_nvrs = request.data.get('package_nvrs')
                 releases = Release.objects.filter(name=release_name)
-                if releases.exists() and package_nvrs:
-                    releases[0].add_components_from_nvrs(package_nvrs)
-                else:
-                    self.create_product_release(release_name)
-                    releases = Release.objects.filter(name=release_name)
-
                 if not releases.exists():
                     # Release could be created once schema is locked down
                     err_msg = f"Product does Not exist: {release_name}."
@@ -492,7 +482,16 @@ file first, it should contain the following parameters:
                                     status=status.HTTP_400_BAD_REQUEST)
 
         data = manifest_data if manifest_data else request.data
-        serializer = self.nvr_import_serializer(data=data)
+        # Import packages based on "API bulk package nvrs import".
+        if 'package_nvrs' in request.data:
+            serializer = self.nvr_import_serializer(data=data)
+        # Import packages for remote source import.
+        elif 'rs_comps' in request.data:
+            serializer = self.rs_import_serializer(data=request.data)
+        else:
+            return Response("Missing arguments in request.",
+                            status=status.HTTP_400_BAD_REQUEST)
+
         user_id = request.data.get('owner_id') or request.user.id
         if serializer.is_valid():
             resp = serializer.fork_import_tasks(user_id)

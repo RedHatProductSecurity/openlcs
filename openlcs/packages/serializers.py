@@ -1,4 +1,6 @@
 import copy
+import os
+import sys
 
 from libs.swh_tools import swhid_check
 from packages.models import Component, File, Path, Source
@@ -8,6 +10,20 @@ from tasks.models import Task
 
 # pylint:disable=no-name-in-module,import-error
 from openlcs.celery import app
+
+# Fix absolute import issue in openlcs.
+openlcs_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if openlcs_dir not in sys.path:
+    sys.path.append(openlcs_dir)
+from libs.common import get_component_name_version_combination  # noqa: E402
+
+
+class AbstractSerializerMixin(serializers.Serializer):
+    def create(self, validated_data):
+        pass
+
+    def update(self, instance, validated_data):
+        pass
 
 
 class FileSerializer(serializers.ModelSerializer):
@@ -25,7 +41,7 @@ class FileSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
-class BulkFileSerializer(serializers.Serializer):
+class BulkFileSerializer(AbstractSerializerMixin):
     """
     Bulk file serializer, use to return validate files after created.
     """
@@ -33,7 +49,7 @@ class BulkFileSerializer(serializers.Serializer):
     files = FileSerializer(many=True)
 
 
-class BulkCreateFileSerializer(serializers.Serializer):
+class BulkCreateFileSerializer(AbstractSerializerMixin):
     """
     Bulk create file serializer, use to validate request files data.
     """
@@ -98,7 +114,7 @@ class PathSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
-class BulkPathSerializer(serializers.Serializer):
+class BulkPathSerializer(AbstractSerializerMixin):
     """
     Bulk file serializer, use to return validate paths after created.
     """
@@ -106,7 +122,7 @@ class BulkPathSerializer(serializers.Serializer):
     paths = PathSerializer(many=True)
 
 
-class CreatePathSerializer(serializers.Serializer):
+class CreatePathSerializer(AbstractSerializerMixin):
     """
     Create path serializer, use to return validated paths data in paths list.
     """
@@ -120,7 +136,7 @@ class CreatePathSerializer(serializers.Serializer):
     path = serializers.CharField(required=True)
 
 
-class BulkCreatePathSerializer(serializers.Serializer):
+class BulkCreatePathSerializer(AbstractSerializerMixin):
     """
     Bulk path serializer, use to validate request paths data.
     """
@@ -147,7 +163,7 @@ def release_validator(value):
     return value
 
 
-class ImportSerializer(serializers.Serializer):
+class ImportSerializer(AbstractSerializerMixin):
     def get_task_flow(self):
         return 'flow.tasks.flow_default'
 
@@ -226,6 +242,21 @@ class NVRImportSerializer(ImportScanOptionsMixin, ReleaseImportMixin):
         package_nvrs = self.validated_data.get('package_nvrs')
         params = self.get_task_params()
         return [(nvr, dict(package_nvr=nvr, **params)) for nvr in package_nvrs]
+
+
+class RSImportSerializer(ImportScanOptionsMixin, ReleaseImportMixin):
+    rs_comps = serializers.ListField(child=serializers.DictField())
+
+    def get_tasks_params(self):
+        params = self.get_task_params()
+        result = []
+        rs_comps = self.validated_data.get('rs_comps')
+        for rs_comp in rs_comps:
+            result.append(
+                (get_component_name_version_combination(rs_comp),
+                 dict(rs_comp=rs_comp, **params))
+            )
+        return result
 
 
 class ComponentSerializer(serializers.ModelSerializer):
