@@ -11,9 +11,8 @@ from workflow.patterns.controlflow import IF_ELSE
 from packagedcode.rpm import parse as rpm_parse
 from packagedcode.maven import parse as maven_parse
 
-from openlcsd.flow.task_wrapper import WorkflowWrapperTask
 from openlcsd.celery import app
-
+from openlcsd.flow.task_wrapper import WorkflowWrapperTask
 from openlcs.libs.common import get_nvr_list_from_components
 from openlcs.libs.corgi_handler import ContainerComponentsAsync
 from openlcs.libs.download import KojiBuild
@@ -751,6 +750,40 @@ def get_components_product_from_corgi(context, engine):
     engine.logger.info("Finished getting container components data.")
 
 
+def get_remote_source_components(context, engine):
+    package_nvr = context.get('package_nvr')
+    config = context.get('config')
+    koji_connector = KojiConnector(config)
+    engine.logger.info('Start to get remote source components...')
+    try:
+        binary_nvr = koji_connector.get_binary_nvr(package_nvr)
+        binary_build = koji_connector.get_build(binary_nvr)
+        rs_components = koji_connector.get_remote_source_components(
+            binary_build)
+    except (RuntimeError, ValueError) as err:
+        err_msg = f"Failed to get remote source components. Reason: {err}"
+        engine.logger.error(err_msg)
+        raise RuntimeError(err_msg) from None
+    engine.logger.info('Finished getting remote source components.')
+    return rs_components
+
+
+def get_components_product_from_source_container(context, engine):
+    engine.logger.info('Start to get components data from source container...')
+    config = context.get('config')
+    sc_nvr = context.get('package_nvr')
+    # Get components from the source container itself.
+    srpm_dir = context.get('srpm_dir')
+    misc_dir = context.get('misc_dir')
+    sc_handler = SourceContainerHandler(config)
+    components = sc_handler.get_container_components(srpm_dir, misc_dir,
+                                                     sc_nvr)
+    # Get remote source components from its binary container.
+    components.update(get_remote_source_components(context, engine))
+    engine.logger.info('Finished getting components from source container')
+    context['components'] = components
+
+
 def save_container_components(context, engine):
     """
     Send container components to hub, then store the components.
@@ -779,20 +812,6 @@ def save_container_components(context, engine):
     finally:
         os.remove(tmp_file_path)
     engine.logger.info('Finished saving container components.')
-
-
-def get_components_product_from_source_container(context, engine):
-    engine.logger.info('Start to get components data from source container...')
-    config = context.get('config')
-    sc_nvr = context.get('package_nvr')
-    # Get components from the source conainer ifself.
-    srpm_dir = context.get('srpm_dir')
-    misc_dir = context.get('misc_dir')
-    sc_handler = SourceContainerHandler(config)
-    components = sc_handler.get_container_components(srpm_dir, misc_dir,
-                                                     sc_nvr)
-    engine.logger.info('Finished getting components from source container')
-    context['components'] = components
 
 
 def import_types_components(context, engine, nvr_list, src_dir, comp_type):
