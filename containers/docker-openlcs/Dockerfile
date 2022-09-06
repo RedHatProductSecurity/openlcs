@@ -56,7 +56,7 @@ RUN cd /etc/pki/ca-trust/source/anchors/ && \
     chown -R 1001:0 "${HOME}"
 
 # Apply patch for typecode, extractcode, packagedcode
-COPY "${HOME}"/containers/patches/* /opt/app-root/lib64/python3.8/site-packages/
+COPY ./containers/patches/* /opt/app-root/lib64/python3.8/site-packages/
 WORKDIR /opt/app-root/lib64/python3.8/site-packages/
 RUN patch -p0 < magic2.patch && \
     patch -p0 < extract.patch && \
