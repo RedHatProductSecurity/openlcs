@@ -1,9 +1,9 @@
 import json
+import time
 
 from django.conf import settings
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import Q
-from libs.backoff_strategy import ProcedureException
 from libs.parsers import parse_manifest_file
 from packages.mixins import (
     PackageImportTransactionMixin,
@@ -220,13 +220,16 @@ already exists.\\n"
         serializer = self.bulk_create_file_serializer(data=data)
         if serializer.is_valid():
             try:
-                res_data = self.create_files(data.get('swhids'))
+                swhids = data.get('swhids')
+                exist_files = File.objects.in_bulk(
+                    id_list=list(swhids), field_name='swhid').keys()
+                file_objs = [File(swhid=swhid) for swhid in swhids
+                             if swhid not in exist_files]
+                res_data = self.create_files(file_objs)
                 return Response(data=res_data, status=status.HTTP_200_OK)
-            except (RuntimeError, ProcedureException) as err:
-                return Response(
-                    data={'message': err.args},
-                    status=status.HTTP_400_BAD_REQUEST)
-
+            except IntegrityError as err:
+                return Response(data={'message': err.args},
+                                status=status.HTTP_400_BAD_REQUEST)
         return Response(data={'message': serializer.errors},
                         status=status.HTTP_400_BAD_REQUEST)
 
@@ -742,14 +745,14 @@ Key (id)=(5) already exists.\\n"]
         serializer = self.bulk_create_path_serializer(data=data)
         if serializer.is_valid():
             try:
-                res_data = self.create_paths(data.get('source'),
-                                             data.get("paths"))
+                source_checksum = data.get("source")
+                paths = data.get("paths")
+                source = Source.objects.get(checksum=source_checksum)
+                res_data = self.create_paths(source, paths)
                 return Response(data=res_data, status=status.HTTP_200_OK)
-            except (RuntimeError, ProcedureException) as err:
-                return Response(
-                    data={'message': err.args},
-                    status=status.HTTP_400_BAD_REQUEST)
-
+            except IntegrityError as err:
+                return Response(data={'message': err.args},
+                                status=status.HTTP_400_BAD_REQUEST)
         return Response(data=serializer.errors,
                         status=status.HTTP_400_BAD_REQUEST)
 
@@ -779,10 +782,14 @@ class PackageImportTransactionView(APIView, PackageImportTransactionMixin):
                 "path": "/test6"
             }
         ],
-        "package": {
-            "nvr": "rhel8.0",
-            "sum_license": "",
-            "is_source": false
+        "component": {
+            "name": "jquery",
+            "version": "3.5.1",
+            "release": "",
+            "arch": "",
+            "type": YARN,
+            "summary_license": "",
+            "is_source": True
         }
     }
     """
@@ -791,9 +798,9 @@ class PackageImportTransactionView(APIView, PackageImportTransactionMixin):
             file_path = request.data.get("file_path")
             with open(file_path, encoding='utf-8') as f:
                 data = json.load(f)
-        except Exception as e:
+        except Exception as err:
             return Response(
-                data={'message': e.args},
+                data={'message': err.args},
                 status=status.HTTP_400_BAD_REQUEST)
 
         swhids = data.get('swhids')
@@ -804,21 +811,35 @@ class PackageImportTransactionView(APIView, PackageImportTransactionMixin):
             return Response(
                 data={'message': 'No data provided.'},
                 status=status.HTTP_400_BAD_REQUEST)
-        try:
-            with transaction.atomic():
-                if swhids:
-                    self.create_files(swhids)
-                source_checksum = source.get('checksum')
-                qs = Source.objects.filter(checksum=source_checksum)
-                if not qs.exists():
-                    source = Source.objects.create(**source)
-                    self.create_paths(source, paths)
-                    self.create_component(source, component)
-            return Response()
-        except (RuntimeError, ProcedureException) as err:
-            return Response(
-                data={'message': err.args},
-                status=status.HTTP_400_BAD_REQUEST)
+
+        source_checksum = source.get('checksum')
+        qs = Source.objects.filter(checksum=source_checksum)
+        if not qs.exists():
+            # Retry 10 times to bypass possible concurrency issue.
+            max_retries = settings.SAVE_DATA_MAX_RETRIES
+            for i in range(max_retries):
+                try:
+                    # Query files that need to be created.
+                    exist_files = File.objects.in_bulk(
+                        id_list=list(swhids), field_name='swhid').keys()
+                    file_objs = [File(swhid=swhid) for swhid in swhids
+                                 if swhid not in exist_files]
+
+                    with transaction.atomic():
+                        source_obj = Source.objects.create(**source)
+                        self.create_files(file_objs)
+                        self.create_paths(source_obj, paths)
+                        self.create_component(source_obj, component)
+                    break
+                except IntegrityError as err:
+                    if i == max_retries - 1:
+                        return Response(
+                            data={'message': f"Failed to process package import transaction data: {err}"},  # noqa
+                            status=status.HTTP_400_BAD_REQUEST)
+                    else:
+                        time.sleep(1 << i)
+                        continue
+        return Response()
 
 
 class SaveScanResultView(APIView, SaveScanResultMixin):
@@ -839,7 +860,7 @@ class SaveScanResultView(APIView, SaveScanResultMixin):
             msg = 'Save scan result successfully.'
             return Response(data={'message': msg}, status=status.HTTP_200_OK)
 
-        except (RuntimeError, ProcedureException) as err:
+        except RuntimeError as err:
             return Response(
                     data={'message': err.args},
                     status=status.HTTP_400_BAD_REQUEST)
@@ -1026,15 +1047,13 @@ class SaveContainerComponentsView(APIView, SaveContainerComponentsMixin):
             file_path = request.data.get("file_path")
             with open(file_path, encoding='utf-8') as f:
                 data = json.load(f)
-        except Exception as e:
-            return Response(
-                data={'message': e.args},
-                status=status.HTTP_400_BAD_REQUEST)
+        except Exception as err:
+            return Response(data={'message': err.args},
+                            status=status.HTTP_400_BAD_REQUEST)
         try:
             self.save_container_components(**data)
             msg = 'Save container components successfully.'
             return Response(data={'message': msg}, status=status.HTTP_200_OK)
-        except (RuntimeError, ProcedureException) as err:
-            return Response(
-                    data={'message': err.args},
-                    status=status.HTTP_400_BAD_REQUEST)
+        except IntegrityError as err:
+            return Response(data={'message': err.args},
+                            status=status.HTTP_400_BAD_REQUEST)

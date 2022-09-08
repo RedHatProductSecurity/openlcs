@@ -687,7 +687,7 @@ def send_package_data(context, engine):
         raise RuntimeError(err_msg) from None
     finally:
         os.remove(tmp_file_path)
-    engine.logger.info(f"Finished saving {package_nvr} data to database.")
+    engine.logger.info(f"Finished saving {component} data to database.")
 
 
 def license_scan(context, engine):
