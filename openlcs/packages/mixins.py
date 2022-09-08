@@ -4,7 +4,6 @@ from django.db import transaction
 from django.db.models import Q
 from django.db.utils import IntegrityError
 
-from libs.backoff_strategy import retry
 from libs.corgi_handler import ProductVersion
 from packages.models import (
     Component,
@@ -31,48 +30,28 @@ class PackageImportTransactionMixin:
     """
     Package import transaction mixin
     """
-    @retry(rand=settings.CREATE_FILES_RAND,
-           max_retries=settings.CREATE_FILES_MAX_RETRIES,
-           max_wait_interval=settings.CREATE_FILES_MAX_WAIT_INTERVAL)
-    def create_files(self, swhids):
+
+    @staticmethod
+    def create_files(file_objs):
         """
         Create source files.
         """
-        exist_files = File.objects.in_bulk(id_list=list(swhids),
-                                           field_name='swhid').keys()
-        objs = [File(swhid=swhid) for swhid in swhids
-                if swhid not in exist_files]
-        if objs:
-            try:
-                files = File.objects.bulk_create(objs)
-                serializer = BulkFileSerializer({'files': files})
-                return serializer.data
-            except IntegrityError as err:
-                err_msg = f'Error while create files. Reason: {err}'
-                raise RuntimeError(err_msg) from None
+        if file_objs:
+            files = File.objects.bulk_create(file_objs)
+            serializer = BulkFileSerializer({'files': files})
+            return serializer.data
         else:
             return {'message': 'No files created.'}
 
-    @retry(rand=settings.CREATE_PATHS_RAND,
-           max_retries=settings.CREATE_PATHS_MAX_RETRIES,
-           max_wait_interval=settings.CREATE_PATHS_MAX_WAIT_INTERVAL)
-    def create_paths(self, source, paths):
+    @staticmethod
+    def create_paths(path_objs):
         """
         Create source file paths.
         """
-        swhids = [path.get('file') for path in paths]
-        files_dict = File.objects.in_bulk(id_list=list(swhids),
-                                          field_name='swhid')
-        objs = [Path(source=source, file=files_dict.get(p.get('file')),
-                     path=p.get('path')) for p in paths]
-        if objs:
-            try:
-                new_paths = Path.objects.bulk_create(objs)
-                serializer = BulkPathSerializer({'paths': new_paths})
-                return serializer.data
-            except IntegrityError as err:
-                err_msg = f'Error while create paths. Reason: {err}'
-                raise RuntimeError(err_msg) from None
+        if path_objs:
+            paths = Path.objects.bulk_create(path_objs)
+            serializer = BulkPathSerializer({'paths': paths})
+            return serializer.data
         else:
             return {'message': 'No paths created.'}
 
