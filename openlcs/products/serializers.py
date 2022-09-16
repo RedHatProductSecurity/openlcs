@@ -26,14 +26,18 @@ class ReleaseSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
     def get_components(self, obj):
+        retval = list()
+        # For releases that have no corresponding node in `tree`, components
+        # would be empty
+        if not obj.release_nodes.exists():
+            return retval
         # There should be only one root node for each release
         release_node = obj.release_nodes.get()
-        retval = list()
         container_nodes = release_node.get_descendants().filter(
             component__type='CONTAINER_IMAGE'
         )
+        # To avoid circular imports
         from packages.models import Component
-
         container_components = Component.objects.filter(
             id__in=container_nodes.values_list('object_id', flat=True)
         )
