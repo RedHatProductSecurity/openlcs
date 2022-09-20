@@ -352,7 +352,7 @@ def get_source_metadata(context, engine):
             "name": build.get('name'),
             "version": build.get('version'),
             "release": build.get('release'),
-            "arch": build.get('arch') or 'src',
+            "arch": 'src',
             "type": context.get('comp_type'),
             "summary_license": context.get("declared_license", ""),
             "is_source": True

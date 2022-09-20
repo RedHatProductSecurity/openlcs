@@ -172,11 +172,9 @@ class ContainerComponentsAsync:
                 raise RuntimeError(e) from None
             finally:
                 event_loop.close()
+        if container_component:
             components.append(container_component)
-        if components:
-            return group_components(components)
-        else:
-            return {}
+        return group_components(components) if components else {}
 
 
 class ProductVersion:

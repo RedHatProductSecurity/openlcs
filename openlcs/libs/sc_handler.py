@@ -41,6 +41,7 @@ class SourceContainerHandler(object):
             'release': data.get('release'),
             'summary_license': '',
             'arch': '',
+            'is_source': False,
             'synced': False
         }
 
@@ -64,7 +65,8 @@ class SourceContainerHandler(object):
             'version': '1.45.6',
             'release': '2.el8',
             'summary_license': '',
-            'arch': '',
+            'arch': 'src',
+            'is_source': True,
             'synced': False
         }
         @params: srpm_dir, destination directory for srpm files' dir
@@ -83,6 +85,7 @@ class SourceContainerHandler(object):
                     'release': nvra.get('release'),
                     'summary_license': '',
                     'arch': nvra.get('arch'),
+                    'is_source': True,
                     'synced': False
                 }
                 components.append(component)
