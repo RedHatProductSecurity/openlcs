@@ -348,6 +348,7 @@ class KojiConnector:
             "release": "",
             "summary_license": "",
             "arch": "",
+            "is_source": True,
             'synced': False
         }
 
@@ -401,7 +402,8 @@ class KojiConnector:
                        f'archive url {rs_archive_url}: {err}.')
                 raise RuntimeError(msg) from None
 
-        # Remove the duplicate components get from remote source json files.
-        rs_comps_tup_list = [tuple(d.items()) for d in rs_comps]
-        rs_comps = [dict(t) for t in set(rs_comps_tup_list)]
-        return group_components(rs_comps)
+        if rs_comps:
+            # Remove duplicate components get from remote source json files.
+            rs_comps_tup_list = [tuple(d.items()) for d in rs_comps]
+            rs_comps = [dict(t) for t in set(rs_comps_tup_list)]
+        return group_components(rs_comps) if rs_comps else {}
