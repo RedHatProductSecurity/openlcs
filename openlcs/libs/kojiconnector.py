@@ -132,7 +132,7 @@ class KojiConnector:
         """
         Return information about a build.
 
-        build_info may be either a int ID, a string NVR, or a map containing
+        build_info may be either an int ID, a string NVR, or a map containing
         'name', 'version' and 'release.
         """
         return self._service.getBuild(build_info)
@@ -333,13 +333,20 @@ class KojiConnector:
 
     @staticmethod
     def get_remote_source_component_flat(data):
+        component_type = data.get("type")
+        if component_type == "gomod":
+            component_type = 'GOLANG'
+        elif component_type == "pip":
+            component_type = "PYPI"
+        else:
+            component_type = component_type.upper()
         return {
             "uuid": str(uuid.uuid4()),
-            "type": data.get("type").upper(),
+            "type": component_type,
             "name": data.get("name"),
             "version": data.get("version", ""),
             "release": "",
-            "license": "",
+            "summary_license": "",
             "arch": "",
             'synced': False
         }

@@ -70,11 +70,21 @@ class Release(models.Model):
 
     def create_component(self, data):
         from packages.models import Component
-        component, _ = Component.objects.get_or_create(**data)
+        component, _ = Component.objects.update_or_create(
+            name=data.get('name'),
+            version=data.get('version'),
+            release=data.get('release'),
+            arch=data.get('arch'),
+            type=data.get('type'),
+            defaults={
+                'summary_license': data.get('summary_license'),
+            })
         return component
 
     def add_components_from_nvrs(self, nvrs, type="SRPM", arch="src"):
         release_node, _ = self.get_or_create_release_node()
+        # Not add container nvr as "SRPM" component.
+        nvrs = [nvr for nvr in nvrs if 'container-source' not in nvr]
         for nvr in nvrs:
             nvr_dict = koji.parse_NVR(nvr)
             # we don't have purl, summary_license based on nvrs.
@@ -86,6 +96,8 @@ class Release(models.Model):
                 # `type` and `arch` for components generated from nvrs.
                 'type': type,
                 'arch': arch,
+                'summary_license': '',
+                'synced': False
             }
             component = self.create_component(component_data)
             # attach component to the release_node tree.

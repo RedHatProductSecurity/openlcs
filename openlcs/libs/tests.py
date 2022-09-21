@@ -286,7 +286,7 @@ class TestComponents(TestCase):
                 'version': '2.28',
                 'release': '151.el8',
                 'arch': 's390x',
-                'license': '',
+                'summary_license': '',
                 'synced': True
             },
             {
@@ -296,7 +296,7 @@ class TestComponents(TestCase):
                 'version': '1.1.1g',
                 'release': '15.el8_3',
                 'arch': 's390x',
-                'license': '',
+                'summary_license': '',
                 'synced': True
             },
             {
@@ -306,7 +306,7 @@ class TestComponents(TestCase):
                 'version': '27.2.0',
                 'release': '',
                 'arch': '',
-                'license': '',
+                'summary_license': '',
                 'synced': True
             },
             {
@@ -316,7 +316,7 @@ class TestComponents(TestCase):
                 'version': '13',
                 'release': 'v2.4.0',
                 'arch': 's390x',
-                'license': '',
+                'summary_license': '',
                 'synced': True
             }
         ]
@@ -329,7 +329,7 @@ class TestComponents(TestCase):
                     'version': '2.28',
                     'release': '151.el8',
                     'arch': 's390x',
-                    'license': '',
+                    'summary_license': '',
                     'synced': True
                 },
                 {
@@ -339,7 +339,7 @@ class TestComponents(TestCase):
                     'version': '1.1.1g',
                     'release': '15.el8_3',
                     'arch': 's390x',
-                    'license': '',
+                    'summary_license': '',
                     'synced': True
                 }
             ],
@@ -351,7 +351,7 @@ class TestComponents(TestCase):
                     'version': '27.2.0',
                     'release': '',
                     'arch': '',
-                    'license': '',
+                    'summary_license': '',
                     'synced': True
                 }
             ],
@@ -363,7 +363,7 @@ class TestComponents(TestCase):
                     'version': '13',
                     'release': 'v2.4.0',
                     'arch': 's390x',
-                    'license': '',
+                    'summary_license': '',
                     'synced': True
                 }
             ]

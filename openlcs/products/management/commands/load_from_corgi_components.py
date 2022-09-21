@@ -41,7 +41,7 @@ class Command(BaseCommand):
             synced=True,
             defaults={
                 "purl": data.get("purl"),
-                "summary_license": data.get("license"),
+                "summary_license": data.get("summary_license"),
             },
         )
         return component

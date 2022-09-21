@@ -34,7 +34,7 @@ class ContainerComponentsAsync:
             "name": data.get("name"),
             "version": data.get("version"),
             "release": data.get("release", ""),
-            "license": data.get("license", ""),
+            "summary_license": data.get("license", ""),
             "arch": data.get("arch", ""),
             'synced': True
         }
@@ -99,7 +99,7 @@ class ContainerComponentsAsync:
                 'version': match.group('version'),
                 'release': match.group('release'),
                 'arch': match.group('arch'),
-                'license': '',
+                'summary_license': '',
                 'synced': False
             }
 
@@ -113,7 +113,7 @@ class ContainerComponentsAsync:
                 'version': match.group('version'),
                 'release': '',
                 'arch': '',
-                'license': '',
+                'summary_license': '',
                 'synced': False
             }
         if component:
@@ -172,8 +172,11 @@ class ContainerComponentsAsync:
                 raise RuntimeError(e) from None
             finally:
                 event_loop.close()
-        components.append(container_component)
-        return group_components(components)
+            components.append(container_component)
+        if components:
+            return group_components(components)
+        else:
+            return {}
 
 
 class ProductVersion:
