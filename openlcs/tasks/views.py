@@ -31,7 +31,8 @@ class TaskViewSet(ModelViewSet):
                     "meta_id": "1e234842-0993-4e3a-8bb7-7dd9bed6f28c",
                     "owner": "qduanmu",
                     "params": "{\"package_nvr\": \"a2ps-4.14-23.el7\", \
-\"license_scan\": true, \"copyright_scan\": true}"
+\"license_scan\": true, \"copyright_scan\": true}",
+                    "logs": ""
                 },
                 {
                     "id": 2,
@@ -39,7 +40,8 @@ class TaskViewSet(ModelViewSet):
                     "owner": "qduanmu",
                     "params": "{\"package_nvr\": \"ansible-2.4.2.0-2.el7\", \
 \"license_scan\": false, \"copyright_scan\": true, \"product_release\": \
-\"satellite-6.9.0\"}"
+\"satellite-6.9.0\"}",
+                    "logs": ""
                 },
             ]
         """

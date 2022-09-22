@@ -1,5 +1,7 @@
 import json
+import os
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
@@ -51,3 +53,11 @@ class Task(models.Model):
             return json.loads(self.params)
         except Exception:
             return self.params
+
+    @property
+    def logs(self):
+        log_path = os.path.join(settings.LOGGER_DIR, f"{self.meta_id}.log")
+        if os.path.isfile(log_path):
+            with open(log_path, "r", encoding="utf-8") as logfile:
+                return logfile.read()
+        return ""
