@@ -44,6 +44,8 @@ class LicenseScanner(object):
                                       .format(proc.returncode))
                 # There may be traceback or nothing in case scancode was killed
                 if error.strip():
+                    if isinstance(error, bytes):
+                        error = error.decode('utf-8')
                     license_errors.append(error)
             else:
                 files = scan_result.get('files', [])
@@ -117,6 +119,8 @@ class CopyrightScanner(object):
                 copyright_errors.append("Scancode exited with exit code {}"
                                         .format(proc.returncode))
                 if error.strip():
+                    if isinstance(error, bytes):
+                        error = error.decode('utf-8')
                     copyright_errors.append(error)
             else:
                 # Get the summary copyrights
