@@ -770,8 +770,13 @@ def send_scan_result(context, engine):
 
     fd, tmp_file_path = tempfile.mkstemp(prefix='scan_result_',
                                          dir=context.get('post_dir'))
-    with os.fdopen(fd, 'w') as destination:
-        json.dump(context.get("scan_result"), destination, cls=DateEncoder)
+    try:
+        with os.fdopen(fd, 'w') as destination:
+            json.dump(context.get("scan_result"), destination, cls=DateEncoder)
+    except Exception as e:
+        err_msg = f"Failed to create scan result file: {e}"
+        engine.logger.error(err_msg)
+        raise RuntimeError(err_msg) from None
     resp = cli.post(url, data={"file_path": tmp_file_path})
     context['client'] = cli
     try:
