@@ -40,8 +40,8 @@ class SourceContainerHandler(object):
             'version': data.get('version'),
             'release': data.get('release'),
             'summary_license': '',
-            'arch': '',
-            'is_source': False,
+            'arch': 'src',
+            'is_source': True,
             'synced': False
         }
 
