@@ -1,10 +1,11 @@
+import time
+
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 from django.db.models import Q
 from django.db.utils import IntegrityError
 
-from libs.backoff_strategy import retry
 from libs.corgi_handler import ProductVersion
 from packages.models import (
     Component,
@@ -31,48 +32,31 @@ class PackageImportTransactionMixin:
     """
     Package import transaction mixin
     """
-    @retry(rand=settings.CREATE_FILES_RAND,
-           max_retries=settings.CREATE_FILES_MAX_RETRIES,
-           max_wait_interval=settings.CREATE_FILES_MAX_WAIT_INTERVAL)
-    def create_files(self, swhids):
+
+    @staticmethod
+    def create_files(file_objs):
         """
         Create source files.
         """
-        exist_files = File.objects.in_bulk(id_list=list(swhids),
-                                           field_name='swhid').keys()
-        objs = [File(swhid=swhid) for swhid in swhids
-                if swhid not in exist_files]
-        if objs:
-            try:
-                files = File.objects.bulk_create(objs)
-                serializer = BulkFileSerializer({'files': files})
-                return serializer.data
-            except IntegrityError as err:
-                err_msg = f'Error while create files. Reason: {err}'
-                raise RuntimeError(err_msg) from None
+        if file_objs:
+            files = File.objects.bulk_create(file_objs)
+            serializer = BulkFileSerializer({'files': files})
+            return serializer.data
         else:
             return {'message': 'No files created.'}
 
-    @retry(rand=settings.CREATE_PATHS_RAND,
-           max_retries=settings.CREATE_PATHS_MAX_RETRIES,
-           max_wait_interval=settings.CREATE_PATHS_MAX_WAIT_INTERVAL)
-    def create_paths(self, source, paths):
+    @staticmethod
+    def create_paths(source, paths):
         """
         Create source file paths.
         """
-        swhids = [path.get('file') for path in paths]
-        files_dict = File.objects.in_bulk(id_list=list(swhids),
-                                          field_name='swhid')
-        objs = [Path(source=source, file=files_dict.get(p.get('file')),
-                     path=p.get('path')) for p in paths]
-        if objs:
-            try:
-                new_paths = Path.objects.bulk_create(objs)
-                serializer = BulkPathSerializer({'paths': new_paths})
-                return serializer.data
-            except IntegrityError as err:
-                err_msg = f'Error while create paths. Reason: {err}'
-                raise RuntimeError(err_msg) from None
+        if paths:
+            path_objs = [Path(source=source,
+                              file=File.objects.get(swhid=p.get('file')),
+                              path=p.get('path')) for p in paths]
+            paths = Path.objects.bulk_create(path_objs)
+            serializer = BulkPathSerializer({'paths': paths})
+            return serializer.data
         else:
             return {'message': 'No paths created.'}
 
@@ -136,29 +120,17 @@ class SaveScanResultMixin:
         self.file_license_scan_dict = None
         self.file_copyright_scan_dict = None
 
-    def save_file_license_scan(self, file_ids):
-        license_detector = settings.LICENSE_SCANNER
-        filters = [Q(file__in=file_ids), Q(detector=license_detector)]
-        license_file_ids = FileLicenseScan.objects.filter(
-            *filters).values_list('file_id', flat=True)
-        new_file_ids = list(set(file_ids).difference(license_file_ids))
-
+    def save_file_license_scan(self, new_file_ids, license_detector):
         if new_file_ids:
             objs = [
-                FileLicenseScan(
-                    file_id=file_id,
-                    detector=license_detector
-                ) for file_id in new_file_ids]
-            try:
-                FileLicenseScan.objects.bulk_create(objs)
-            except IntegrityError as err:
-                err_msg = f'Error while saving file license scan. ' \
-                          f'Reason: {err}'
-                raise RuntimeError(err_msg) from None
-        self.file_license_scan_dict = dict(FileLicenseScan.objects.filter(
-            *filters).values_list('file_id', 'id'))
+                FileLicenseScan(file_id=file_id, detector=license_detector)
+                for file_id in new_file_ids]
+            file_license_scan_list = FileLicenseScan.objects.bulk_create(objs)
+            new_file_license_scan_dict = {item.file_id: item.id
+                                          for item in file_license_scan_list}
+            self.file_license_scan_dict.update(new_file_license_scan_dict)
 
-    def save_license_detections(self, path_file_dict, data):
+    def save_license_detections(self, path_file_dict, data, license_detector):
         licenses = [
             [self.file_license_scan_dict.get(path_file_dict.get(x[0]))] + x[1:]
             for x in data]
@@ -173,11 +145,7 @@ class SaveScanResultMixin:
                     rule=lic[6],
                 ) for lic in licenses
             ]
-            try:
-                LicenseDetection.objects.bulk_create(objs)
-            except IntegrityError as err:
-                err_msg = f'Error while saving licenses. Reason: {err}'
-                raise RuntimeError(err_msg) from None
+            LicenseDetection.objects.bulk_create(objs)
 
     def update_scan_flag(self, source, scan_type):
         scan_flag = source.scan_flag
@@ -192,29 +160,20 @@ class SaveScanResultMixin:
         source.scan_flag = scan_flag
         source.save(update_fields=['scan_flag'])
 
-    def save_file_copyright_scan(self, file_ids):
-        copyright_detector = settings.COPYRIGHT_SCANNER
-        filters = [Q(file__in=file_ids), Q(detector=copyright_detector)]
-        copyright_file_ids = FileCopyrightScan.objects.filter(
-            *filters).values_list('file_id', flat=True)
-        new_file_ids = list(set(file_ids).difference(copyright_file_ids))
-
+    def save_file_copyright_scan(
+            self, new_file_ids, copyright_detector):
         if new_file_ids:
             objs = [
-                FileCopyrightScan(
-                    file_id=file_id,
-                    detector=copyright_detector
-                ) for file_id in new_file_ids]
-            try:
-                FileCopyrightScan.objects.bulk_create(objs)
-            except IntegrityError as err:
-                err_msg = f'Error while saving file copyright scan. ' \
-                          f'Reason: {err}'
-                raise RuntimeError(err_msg) from None
-        self.file_copyright_scan_dict = dict(FileCopyrightScan.objects.filter(
-            *filters).values_list('file_id', 'id'))
+                FileCopyrightScan(file_id=file_id, detector=copyright_detector)
+                for file_id in new_file_ids]
+            file_copyright_scan_list = FileCopyrightScan.objects.bulk_create(
+                objs)
+            new_file_copyright_scan_dict = {
+                item.file_id: item.id for item in file_copyright_scan_list}
+            self.file_copyright_scan_dict.update(new_file_copyright_scan_dict)
 
-    def save_copyright_detections(self, path_file_dict, data):
+    def save_copyright_detections(
+            self, path_file_dict, data, copyright_detector):
         raw_data = data.get('detail_copyrights')
         copyrights = dict(
             (self.file_copyright_scan_dict.get(path_file_dict.get(k)), v) for
@@ -233,11 +192,7 @@ class SaveScanResultMixin:
                 objs.extend(k_objs)
 
             if objs:
-                try:
-                    CopyrightDetection.objects.bulk_create(objs)
-                except IntegrityError as err:
-                    err_msg = f'Error while saving copyrights. Reason: {err}'
-                    raise RuntimeError(err_msg) from None
+                CopyrightDetection.objects.bulk_create(objs)
 
     def save_scan_result(self, **kwargs):
         path_with_swhids = kwargs.pop('path_with_swhids')
@@ -252,22 +207,72 @@ class SaveScanResultMixin:
 
         if kwargs.get('license_scan'):
             licenses = kwargs.pop('licenses')
-            data = licenses.get('data')
             if not licenses.get('has_exception'):
-                with transaction.atomic():
-                    # Exist same files in different paths.
-                    self.save_file_license_scan(list(set(file_ids)))
-                    self.save_license_detections(path_file_dict, data)
-                    self.update_scan_flag(source, "license_scan")
+                data = licenses.get('data')
+                license_detector = settings.LICENSE_SCANNER
+                filters = [Q(file__in=file_ids), Q(detector=license_detector)]
+
+                # Retry max_retries times to bypass possible concurrency issue.
+                max_retries = settings.SAVE_DATA_MAX_RETRIES
+                for i in range(max_retries):
+                    try:
+                        self.file_license_scan_dict = dict(
+                            FileLicenseScan.objects.filter(
+                                *filters).values_list('file_id', 'id'))
+                        license_file_ids = self.file_license_scan_dict.keys()
+                        new_file_ids = list(
+                            set(file_ids).difference(license_file_ids))
+
+                        with transaction.atomic():
+                            # Exist same files in different paths.
+                            self.save_file_license_scan(
+                                new_file_ids, license_detector)
+                            self.save_license_detections(
+                                path_file_dict, data, license_detector)
+                            self.update_scan_flag(source, "license_scan")
+                    except IntegrityError as err:
+                        if i == max_retries - 1:
+                            err_msg = (f'Failed to save license scan result.'
+                                       f' Reason: {err}')
+                            raise RuntimeError(err_msg) from None
+                        else:
+                            time.sleep(1 << i)
+                            continue
 
         if kwargs.get('copyright_scan'):
             copyrights = kwargs.pop('copyrights')
-            data = copyrights.get('data')
             if not copyrights.get('has_exception'):
-                with transaction.atomic():
-                    self.save_file_copyright_scan(list(set(file_ids)))
-                    self.save_copyright_detections(path_file_dict, data)
-                    self.update_scan_flag(source, "copyright_scan")
+                data = copyrights.get('data')
+                copyright_detector = settings.COPYRIGHT_SCANNER
+                filters = [Q(file__in=file_ids),
+                           Q(detector=copyright_detector)]
+
+                # Retry 5 times to bypass possible concurrency issue.
+                max_retries = settings.SAVE_DATA_MAX_RETRIES
+                for i in range(max_retries):
+                    try:
+                        self.file_copyright_scan_dict = dict(
+                            FileCopyrightScan.objects.filter(
+                                *filters).values_list('file_id', 'id'))
+                        copyright_file_ids = \
+                            self.file_copyright_scan_dict.keys()
+                        new_file_ids = list(
+                            set(file_ids).difference(copyright_file_ids))
+
+                        with transaction.atomic():
+                            self.save_file_copyright_scan(
+                                new_file_ids, copyright_detector)
+                            self.save_copyright_detections(
+                                path_file_dict, data, copyright_detector)
+                            self.update_scan_flag(source, "copyright_scan")
+                    except IntegrityError as err:
+                        if i == max_retries - 1:
+                            err_msg = (f'Failed to save copyright scan result.'
+                                       f' Reason: {err}')
+                            raise RuntimeError(err_msg) from None
+                        else:
+                            time.sleep(1 << i)
+                            continue
 
 
 class SaveContainerComponentsMixin:
