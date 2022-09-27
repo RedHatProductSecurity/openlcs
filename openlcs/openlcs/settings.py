@@ -136,7 +136,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/3.2/howto/static-files/
 
 STATIC_URL = '/static/'
-STATIC_ROOT = '/var/openlcs/static/'
+STATIC_ROOT = '/srv/git/repos/openlcs/static/'
 STATICFILES_DIRS = (
     BASE_DIR / "static",
 )
