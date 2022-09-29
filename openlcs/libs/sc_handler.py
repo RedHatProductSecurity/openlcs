@@ -286,7 +286,7 @@ class SourceContainerHandler(object):
             search_patterns = [
                 dep_dir + name_pattern + "/@v" + version_pattern + '.zip',
                 dep_dir + name_pattern + "/**/@v" + version_pattern + '.zip',
-                vendor_dir + search_name
+                vendor_dir + "/" + search_name
                 ]
         elif comp_type in ['NPM', 'YARN', 'PYPI']:
             # mapping Python source between Corgi and OSBS
