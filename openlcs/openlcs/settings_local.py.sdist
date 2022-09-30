@@ -98,6 +98,7 @@ if DEBUG:
 SRC_ROOT_DIR = os.path.join(REPO_DIR, 'sources')
 if not os.path.exists(SRC_ROOT_DIR):
     os.mkdir(SRC_ROOT_DIR)
+RS_SRC_ROOT_DIR = os.path.join(SRC_ROOT_DIR, 'remote_source')
 RETRY_DIR = os.path.join(SRC_ROOT_DIR, 'retry')
 TMP_ROOT_DIR = os.path.join(SRC_ROOT_DIR, 'tmp')
 POST_DIR = os.path.join(SRC_ROOT_DIR, 'post')

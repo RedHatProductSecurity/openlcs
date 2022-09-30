@@ -1006,7 +1006,8 @@ def fork_components_imports(context, engine):
             rs_comps.extend(comps)
     missing_components = context.get('missing_components')
     if missing_components:
-        rs_comps = list(set(rs_comps) - set(missing_components))
+        rs_comps = [rs_comp for rs_comp in rs_comps
+                    if rs_comp not in missing_components]
     if rs_comps:
         fork_remote_source_components_imports(
             context, engine, rs_comps, context.get('rs_dir'))

@@ -15,7 +15,8 @@ from libs.common import (  # noqa: E402
     create_dir,
     get_component_name_version_combination,
     search_content_according_patterns,
-    uncompress_source_tarball
+    uncompress_source_tarball,
+    selection_sort_components
 )
 
 
@@ -122,8 +123,9 @@ class SourceContainerHandler(object):
         """
         name_version = get_component_name_version_combination(component)
         name_version_dir = os.path.join(rs_dir, name_version)
-        tarball_name = os.listdir(name_version_dir)[0]
-        if tarball_name:
+        rs_tarballs = os.listdir(name_version_dir)
+        if rs_tarballs:
+            tarball_name = os.listdir(name_version_dir)[0]
             return os.path.join(name_version_dir, tarball_name)
         else:
             return None
@@ -187,7 +189,10 @@ class SourceContainerHandler(object):
             # uncompress remote source tarballs in extra source tarballs.
             rs_tarball_paths = glob.glob(f"{rs_dir}/*.tar.gz")
             for rs_tarball_path in rs_tarball_paths:
-                uncompress_source_tarball(rs_tarball_path)
+                rs_tarball_name = os.path.basename(rs_tarball_path).replace(
+                    '.tar.gz', "")
+                rs_dest_dir = os.path.join(rs_dir, rs_tarball_name)
+                uncompress_source_tarball(rs_tarball_path, rs_dest_dir)
         return rs_dir
 
     def get_source_container_srpms_metadata(self):
@@ -274,23 +279,28 @@ class SourceContainerHandler(object):
         # 'gomod' tarball is '.zip', 'npm' tarball is '.tgz',
         # 'yarn' tarball is '.tgz', 'pip' tarball is '.tar.gz'.
         if comp_type == 'GOLANG':
-            dep_dir = os.path.join(
-                extra_src_dir, "deps", 'gomod', "pkg",
+            dep_dir_pattern = os.path.join(
+                extra_src_dir, "**", "deps", 'gomod', "pkg",
                 "mod", "cache", "download")
-            vendor_dir = os.path.join(extra_src_dir, "app", "vendor")
+            vendor_pattern = extra_src_dir + "/**/app/vendor"
             # Exist new version, such as:
             # 'deps/gomod/pkg/mod/cache/download/k8s.io/klog/@v/v1.0.0.zip'
             # 'deps/gomod/pkg/mod/cache/download/k8s.io/klog/v2/@v/v2.9.0.zip'
             search_patterns = [
-                dep_dir + name_pattern + "/@v" + version_pattern + '.zip',
-                dep_dir + name_pattern + "/**/@v" + version_pattern + '.zip',
-                vendor_dir + "/" + search_name
-                ]
+                dep_dir_pattern + name_pattern + "/@v" + version_pattern + '.zip',  # noqa
+                dep_dir_pattern + name_pattern + "/**/@v" + version_pattern + '.zip',  # noqa
+                vendor_pattern + "/" + search_name
+            ]
+            # Use the original name in app vendor source path.
+            component_name = component.get('name')
+            if search_name != component_name:
+                search_patterns.append(vendor_pattern + "/" + component_name)
         elif comp_type in ['NPM', 'YARN', 'PYPI']:
             # mapping Python source between Corgi and OSBS
             comp_type = 'pip' if comp_type == 'PYPI' else comp_type.lower()
-            dep_dir = os.path.join(extra_src_dir, 'deps', comp_type)
-            common_pattern = dep_dir + name_pattern + version_pattern
+            dep_dir_pattern = os.path.join(
+                extra_src_dir, '**', 'deps', comp_type)
+            common_pattern = dep_dir_pattern + name_pattern + version_pattern
             search_patterns = [common_pattern + extension
                                for extension in ['.tgz', '.tar.gz', '.zip']]
         return search_patterns
@@ -304,7 +314,41 @@ class SourceContainerHandler(object):
 
         # Search remote source path.
         paths = search_content_according_patterns(search_patterns)
-        return paths[0] if len(paths) == 1 else None
+        source_path = None
+        if paths:
+            # Find the correct source path.
+            if len(paths) == 1:
+                source_path = paths[0]
+            # Exist components with same name, but different version.
+            # Currently, only find this scenario exists for GOLANG components.
+            else:
+                comp_name = component.get('name')
+                comp_version = component.get('version')
+                comp_type = component.get('type')
+                check_str = comp_name + " " + comp_version
+                for path in paths:
+                    # Exist many source paths in "app/vendor".
+                    if "/app/vendor/" in path:
+                        app_path = path[:path.index('vendor')]
+                        modules_file_path = os.path.join(
+                            app_path, 'vendor', 'modules.txt')
+                        with open(modules_file_path, encoding='utf8') as f:
+                            if check_str in f.read():
+                                source_path = path
+                                break
+                    # Exist many source paths in "deps".
+                    elif "/deps/" in path and comp_type == 'GOLANG':
+                        modules_file_path = os.path.join(
+                            os.path.dirname(path), comp_version + ".mod")
+                        if os.path.exists(modules_file_path):
+                            source_path = path
+                            break
+                    # Exist two json file with same component, each one has
+                    # the relative source. For this scenario, use one of them.
+                    else:
+                        source_path = path
+                        break
+        return source_path
 
     def get_container_remote_source(self, components):
         """
@@ -314,17 +358,22 @@ class SourceContainerHandler(object):
         extra_src_dir = os.path.join(self.dest_dir, 'extra_src_dir')
 
         if os.path.exists(extra_src_dir):
+            # Sort components so that not remove the source needed by other
+            # components.
+            components = selection_sort_components(components)
+
             # Get source for each component.
-            for component in components:
+            for _ in range(len(components)):
+                component = components.pop(0)
                 comp_path = self.get_remote_source_path(
-                        component, extra_src_dir)
-                name_version = get_component_name_version_combination(
-                        component)
+                    component, extra_src_dir)
                 if not comp_path:
                     missing_components.append(component)
                     continue
 
                 # Create a directory to store remote source tarball.
+                name_version = get_component_name_version_combination(
+                    component)
                 comp_dir = os.path.join(self.dest_dir, 'rs_dir', name_version)
                 create_dir(comp_dir)
 
@@ -334,7 +383,19 @@ class SourceContainerHandler(object):
                     try:
                         dest_path = os.path.join(
                             comp_dir, name_version + ".tar.gz")
-                        compress_source_to_tarball(dest_path, comp_path)
+                        # Check if the source is child component source. For
+                        # this scenario, cannot remove the source, the source
+                        # will be reused by parent component.
+                        comp_name = component.get('name')
+                        comp_type = component.get('type')
+                        if any([comp_name.startswith(
+                                c.get('name') + os.sep) and c.get(
+                                'type') == comp_type for c in components]):
+                            remove_source = False
+                        else:
+                            remove_source = True
+                        compress_source_to_tarball(
+                            dest_path, comp_path, remove_source=remove_source)
                     except RuntimeError as err:
                         err_msg = (f"Failed to compress {component} source in "
                                    f"app vendor: {err}")
