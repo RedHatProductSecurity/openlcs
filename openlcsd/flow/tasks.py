@@ -110,11 +110,12 @@ def get_build(context, engine):
         context['build_type'] = build_type
         context['build'] = build
 
-    component_type = context.get('component_type')
     # For forked source RPM task in container.
-    if component_type:
-        comp_type = component_type
+    if context.get('component_type'):
+        comp_type = context.get('component_type')
     # For forked remote source task in container, and source RPM import
+    elif context.get('rs_comp'):
+        comp_type = context.get('rs_comp')['type']
     else:
         build_type = context.get('build_type')
         comp_type = "SRPM" if build_type == 'rpm' else build_type
@@ -669,7 +670,6 @@ def send_package_data(context, engine):
     component = package_nvr if package_nvr else context.get('rs_comp')
     engine.logger.info(f"Start to send {component} data to hub for further "
                        f"processing...")
-
     # Post data file name instead of post context data
     fd, tmp_file_path = tempfile.mkstemp(prefix='send_package_',
                                          dir=context.get('post_dir'))
