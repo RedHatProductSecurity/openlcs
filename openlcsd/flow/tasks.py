@@ -889,6 +889,7 @@ def get_container_remote_source(context, engine):
             engine.logger.error('Failed to get remote source for components:')
             for missing_component in missing_components:
                 engine.logger.error(missing_component)
+            context['missing_components'] = missing_components
 
         # Redefine the 'rs_dir' after collate remote source.
         context['rs_dir'] = os.path.join(context.get('src_dest_dir'), 'rs_dir')
@@ -1004,6 +1005,9 @@ def fork_components_imports(context, engine):
         comps = components.get(comp_type)
         if comps:
             rs_comps.extend(comps)
+    missing_components = context.get('missing_components')
+    if missing_components:
+        rs_comps = list(set(rs_comps) - set(missing_components))
     if rs_comps:
         fork_remote_source_components_imports(
             context, engine, rs_comps, context.get('rs_dir'))
