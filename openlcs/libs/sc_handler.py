@@ -89,9 +89,7 @@ class SourceContainerHandler(object):
                     'synced': False
                 }
                 components.append(component)
-            return components
-        else:
-            return None
+        return components
 
     @staticmethod
     def get_source_of_srpm_component(srpm_dir, nvr):
@@ -315,35 +313,40 @@ class SourceContainerHandler(object):
         missing_components = []
         extra_src_dir = os.path.join(self.dest_dir, 'extra_src_dir')
 
-        # Get source for each component.
-        for component in components:
-            comp_path = self.get_remote_source_path(component, extra_src_dir)
-            name_version = get_component_name_version_combination(component)
-            if not comp_path:
-                missing_components.append(component)
-                continue
+        if os.path.exists(extra_src_dir):
+            # Get source for each component.
+            for component in components:
+                comp_path = self.get_remote_source_path(
+                        component, extra_src_dir)
+                name_version = get_component_name_version_combination(
+                        component)
+                if not comp_path:
+                    missing_components.append(component)
+                    continue
 
-            # Create a directory to store remote source tarball.
-            comp_dir = os.path.join(self.dest_dir, 'rs_dir', name_version)
-            create_dir(comp_dir)
+                # Create a directory to store remote source tarball.
+                comp_dir = os.path.join(self.dest_dir, 'rs_dir', name_version)
+                create_dir(comp_dir)
 
-            # Handle source when found it in app vendor, compress the source
-            # as a source tarball.
-            if os.path.isdir(comp_path):
-                try:
-                    dest_path = os.path.join(
-                        comp_dir, name_version + ".tar.gz")
-                    compress_source_to_tarball(dest_path, comp_path)
-                except RuntimeError as err:
-                    err_msg = (f"Failed to compress {component} source in "
-                               f"app vendor: {err}")
-                    raise RuntimeError(err_msg) from None
-            else:
-                # Move source tarball to destination directory.
-                shutil.move(comp_path, comp_dir)
+                # Handle source when found it in app vendor, compress the
+                # source as a source tarball.
+                if os.path.isdir(comp_path):
+                    try:
+                        dest_path = os.path.join(
+                            comp_dir, name_version + ".tar.gz")
+                        compress_source_to_tarball(dest_path, comp_path)
+                    except RuntimeError as err:
+                        err_msg = (f"Failed to compress {component} source in "
+                                   f"app vendor: {err}")
+                        raise RuntimeError(err_msg) from None
+                else:
+                    # Move source tarball to destination directory.
+                    shutil.move(comp_path, comp_dir)
 
-        # Handle misc data in remote source.
-        misc_dir = os.path.join(self.dest_dir, 'metadata')
-        shutil.move(extra_src_dir, misc_dir)
+            # Handle misc data in remote source.
+            misc_dir = os.path.join(self.dest_dir, 'metadata')
+            shutil.move(extra_src_dir, misc_dir)
+        else:
+            missing_components = components
 
         return missing_components
