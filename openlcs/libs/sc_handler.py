@@ -53,7 +53,7 @@ class SourceContainerHandler(object):
         container_component = [self.get_component_flat(nvr, 'CONTAINER_IMAGE')]
         return container_component
 
-    def get_srpm_components(self, srpm_dir, sc_nvr):
+    def get_srpm_components(self, srpm_dir):
         """
         Get the srpm components list from source container itself. The
         component value is almost same as the srpm component from corgi.
@@ -128,11 +128,11 @@ class SourceContainerHandler(object):
         else:
             return None
 
-    def get_container_components(self, srpm_dir, misc_dir, sc_nvr):
+    def get_container_components(self, srpm_dir, sc_nvr):
         """
         Get container components.
         """
-        srpm_components = self.get_srpm_components(srpm_dir, sc_nvr)
+        srpm_components = self.get_srpm_components(srpm_dir)
         container_component = self.get_container_component(sc_nvr)
         components = {
             'SRPM': srpm_components,
