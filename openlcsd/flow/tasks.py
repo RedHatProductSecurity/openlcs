@@ -845,7 +845,6 @@ def get_components_from_source_container(context, engine):
     @requires: `config`, configurations from Hub.
     @requires: `package_nvr`, nvr of the container.
     @requires: `srpm_dir`, directory that store source RPMs.
-    @requires: `misc_dir`, directory that store misc files.
     @feeds: `components`, components found in the container.
     """
     config = context.get('config')
@@ -853,12 +852,12 @@ def get_components_from_source_container(context, engine):
 
     # Get components from the source container itself.
     srpm_dir = context.get('srpm_dir')
-    misc_dir = context.get('misc_dir')
     sc_handler = SourceContainerHandler(config)
-    components = sc_handler.get_container_components(
-        srpm_dir, misc_dir, sc_nvr)
+    components = sc_handler.get_container_components(srpm_dir, sc_nvr)
 
     # Get remote source components from its binary container.
+    # There may be inconsistency between components listed in the remote
+    # source json files and those collected from source container, OLCS-287.
     components.update(get_remote_source_components(context, engine))
     return components
 
