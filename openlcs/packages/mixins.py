@@ -275,7 +275,7 @@ class SaveScanResultMixin:
                             continue
 
 
-class SaveContainerComponentsMixin:
+class SaveGroupComponentsMixin:
     def __init__(self):
         self.components = None
         self.release = None
@@ -283,26 +283,38 @@ class SaveContainerComponentsMixin:
     @staticmethod
     def create_component(component_data):
         summary_license = component_data.pop('summary_license')
-        is_source = component_data.pop("is_source")
-        component, _ = Component.objects.update_or_create(
-            name=component_data.get('name'),
-            version=component_data.get('version'),
-            release=component_data.get('release'),
-            arch=component_data.get('arch'),
-            type=component_data.get('type'),
-            defaults={
-                'is_source': is_source,
-                "summary_license": summary_license,
-            },
-        )
+        if component_data.get('type') == "CONTAINER_IMAGE":
+            is_source = component_data.pop("is_source")
+            component, _ = Component.objects.update_or_create(
+                name=component_data.get('name'),
+                version=component_data.get('version'),
+                release=component_data.get('release'),
+                arch=component_data.get('arch'),
+                type=component_data.get('type'),
+                defaults={
+                    'is_source': is_source,
+                    "summary_license": summary_license,
+                },
+            )
+        else:
+            component, _ = Component.objects.update_or_create(
+                name=component_data.get('name'),
+                version=component_data.get('version'),
+                release=component_data.get('release'),
+                arch=component_data.get('arch'),
+                type=component_data.get('type'),
+                defaults={
+                    "summary_license": summary_license,
+                },
+            )
         return component
 
-    def build_release_node(self, container_component):
+    def build_release_node(self, parent_component):
         """
-        Build release node. For container, if exit release data, will create
-        release product tree node, then create a parent product tree node,
-        then create some child component product tree node. The parent and
-        child components will be component instances.
+        Build release node. For container/module, if exit release data, will
+        create release product tree node, then create a parent product tree
+        node, then create some child component product tree node. The parent
+        and child components will be component instances.
         """
         # Create release node
         release_ctype = ContentType.objects.get_for_model(Release)
@@ -312,27 +324,27 @@ class SaveContainerComponentsMixin:
             object_id=self.release.id,
             parent=None,
         )
-        # Create container node
-        container_component.release_nodes.get_or_create(
-            name=container_component.name,
+        # Create parent node
+        parent_component.release_nodes.get_or_create(
+            name=parent_component.name,
             parent=release_node,
         )
 
-    def build_component_node(self, container_component):
+    def build_component_node(self, parent_component):
         """
-        Build container node. For container, will create a parent component
-        tree node, then create some child component tree node. The parent and
-        child components will be component instances.
+        Build container/module node. For container/module, will create a
+        parent component tree node, then create some child component tree
+        node. The parent and child components will be component instances.
         """
-        # Create container node
+        # Create container/module node
         component_ctype = ContentType.objects.get_for_model(Component)
         cnode, _ = ComponentTreeNode.objects.get_or_create(
-            name=container_component.name,
+            name=parent_component.name,
             content_type=component_ctype,
-            object_id=container_component.id,
+            object_id=parent_component.id,
             parent=None,
         )
-        # Create container child components
+        # Create child components
         for _, components in self.components.items():
             for component_data in components:
                 component = self.create_component(component_data)
@@ -341,14 +353,16 @@ class SaveContainerComponentsMixin:
                     parent=cnode,
                 )
 
-    def save_container_components(self, **kwargs):
+    def save_group_components(self, **kwargs):
         self.components = kwargs.get('components')
         product_release = kwargs.get('product_release')
+        component_type = kwargs.get('component_type')
 
-        # Create container parent components
-        container_component_data = self.components.pop('CONTAINER_IMAGE')[0]
-        container_component = self.create_component(container_component_data)
+        # Create container/module parent components
+        parent_component_data = self.components.pop(component_type)[0]
+        parent_component = self.create_component(parent_component_data)
+
         if product_release:
             self.release = Release.objects.filter(name=product_release)[0]
-            self.build_release_node(container_component)
-        self.build_component_node(container_component)
+            self.build_release_node(parent_component)
+        self.build_component_node(parent_component)

@@ -14,7 +14,7 @@ from packagedcode.maven import parse as maven_parse
 from openlcsd.celery import app
 from openlcsd.flow.task_wrapper import WorkflowWrapperTask
 from openlcs.libs.common import get_nvr_list_from_components
-from openlcs.libs.corgi_handler import ContainerComponentsAsync
+from openlcs.libs.corgi_handler import ParentComponentsAsync
 from openlcs.libs.download import KojiBuild
 from openlcs.libs.driver import OpenlcsClient
 from openlcs.libs.kojiconnector import KojiConnector
@@ -813,9 +813,9 @@ def get_components_product_from_corgi(context, engine):
              components information of the container.
     """
     config = context.get('config')
-    cc = ContainerComponentsAsync(
+    cc = ParentComponentsAsync(
         config.get('CORGI_API_PROD'), context.get('package_nvr'))
-    return cc.get_components_data()
+    return cc.get_components_data("CONTAINER_IMAGE")
 
 
 def get_remote_source_components(context, engine):
@@ -896,21 +896,26 @@ def get_container_remote_source(context, engine):
         engine.logger.info(msg)
 
 
-def save_container_components(context, engine):
+def save_group_components(context, engine):
     """
-    Send container components to hub, then store the components.
+    Send container/module components to hub, then store the components.
     """
-    url = 'savecontainercomponents'
+    url = 'savegroupcomponents'
     cli = context.pop('client')
     package_nvr = context.get('package_nvr')
+    if 'image' in context.get('build_type'):
+        component_type = 'CONTAINER_IMAGE'
+    else:
+        component_type = 'RHEL_MODULE'
     data = {
         'components': context.get('components'),
-        'product_release': context.get('product_release')
+        'product_release': context.get('product_release'),
+        'component_type': component_type
     }
-    msg = f'Start to save components in container {package_nvr}...'
+    msg = f'Start to save components in {component_type} {package_nvr}...'
     engine.logger.info(msg)
     fd, tmp_file_path = tempfile.mkstemp(
-        prefix='scan_container_components_', dir=context.get('post_dir'))
+        prefix='scan_group_components_', dir=context.get('post_dir'))
     with os.fdopen(fd, 'w') as destination:
         json.dump(data, destination, cls=DateEncoder)
     resp = cli.post(url, data={"file_path": tmp_file_path})
@@ -918,13 +923,25 @@ def save_container_components(context, engine):
     try:
         resp.raise_for_status()
     except HTTPError:
-        err_msg = f"Failed to save container components to " \
+        err_msg = f"Failed to save {component_type} components to " \
                   f"database: {resp.text}"
         engine.logger.error(err_msg)
         raise RuntimeError(err_msg) from None
     finally:
         os.remove(tmp_file_path)
-    engine.logger.info('Finished saving container components.')
+    engine.logger.info(f'Finished saving {component_type} components.')
+
+
+def get_module_components_from_corgi(context, engine):
+    """
+    Get module components from corgi
+    """
+    config = context.get('config')
+    engine.logger.info("Start to get module components data...")
+    mc = ParentComponentsAsync(
+        config.get('CORGI_API_PROD'), context.get('package_nvr'))
+    context['components'] = mc.get_components_data('RHEL_MODULE')
+    engine.logger.info("Finished getting module components data.")
 
 
 def fork_detail_type_components_imports(
@@ -1025,32 +1042,41 @@ flow_default = [
             download_source_image,
             unpack_container_source_archive,
             get_container_components,
-            save_container_components,
+            save_group_components,
             get_container_remote_source,
             fork_components_imports,
         ],
-
-        # Task flow for other build types
         [
-            download_component_source,
-            get_source_metadata,
-            check_source_scan_status,
-            IF(
-                lambda o, e: not o.get("source_scanned"),
+            IF_ELSE(
+                lambda o, e: 'module' in o.get('build_type'),
+                # Task flow for module
                 [
-                    unpack_source,
-                    deduplicate_source,
-                    send_package_data,
+                    get_module_components_from_corgi,
+                    save_group_components,
+                ],
+                # Task flow for source scan
+                [
+                    download_component_source,
+                    get_source_metadata,
+                    check_source_scan_status,
                     IF(
-                        lambda o, e: o.get('license_scan_req'),
-                        license_scan,
-                    ),
-                    IF(
-                        lambda o, e: o.get('copyright_scan_req'),
-                        copyright_scan,
-                    ),
-                    send_scan_result,
-                ]
+                        lambda o, e: not o.get("source_scanned"),
+                        [
+                            unpack_source,
+                            deduplicate_source,
+                            send_package_data,
+                            IF(
+                                lambda o, e: o.get('license_scan_req'),
+                                license_scan,
+                             ),
+                            IF(
+                                lambda o, e: o.get('copyright_scan_req'),
+                                copyright_scan,
+                            ),
+                            send_scan_result,
+                        ],
+                    )
+                 ]
             )
         ]
     )

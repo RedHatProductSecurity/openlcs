@@ -8,7 +8,7 @@ from libs.parsers import parse_manifest_file
 from packages.mixins import (
     PackageImportTransactionMixin,
     SaveScanResultMixin,
-    SaveContainerComponentsMixin
+    SaveGroupComponentsMixin
 )
 from packages.models import Component, File, Path, Source
 from packages.serializers import (
@@ -1038,7 +1038,7 @@ class ComponentViewSet(ModelViewSet, PackageImportTransactionMixin):
         return super().retrieve(request, *args, **kwargs)
 
 
-class SaveContainerComponentsView(APIView, SaveContainerComponentsMixin):
+class SaveGroupComponentsView(APIView, SaveGroupComponentsMixin):
     """
     Save container data to database
     """
@@ -1051,7 +1051,7 @@ class SaveContainerComponentsView(APIView, SaveContainerComponentsMixin):
             return Response(data={'message': err.args},
                             status=status.HTTP_400_BAD_REQUEST)
         try:
-            self.save_container_components(**data)
+            self.save_group_components(**data)
             msg = 'Save container components successfully.'
             return Response(data={'message': msg}, status=status.HTTP_200_OK)
         except IntegrityError as err:

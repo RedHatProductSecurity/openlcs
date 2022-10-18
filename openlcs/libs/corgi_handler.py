@@ -17,13 +17,13 @@ from libs.common import group_components  # noqa: E402
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 
-class ContainerComponentsAsync:
+class ParentComponentsAsync:
     """
-    Get container component data list from Corgi
+    Get parent component data list from Corgi
     """
-    def __init__(self, base_url, container_nvr):
+    def __init__(self, base_url, parent_nvr):
         self.base_url = base_url
-        self.container_nvr = container_nvr
+        self.parent_nvr = parent_nvr
         self.endpoint = f"{self.base_url}components"
 
     @staticmethod
@@ -39,13 +39,13 @@ class ContainerComponentsAsync:
             'synced': True
         }
 
-    def get_component_and_links(self, nvr, component_type="CONTAINER_IMAGE"):
+    def get_component_and_links(self, nvr, component_type):
         """
-        Get component links in one of "CONTAINER_IMAGE" type container
-        component with container nvr.
+        Get component links in one of "CONTAINER_IMAGE" type or "RHEL_MODULE"
+        component with nvr.
         """
         component_links = []
-        container_component = {}
+        parent_component = {}
         if nvr:
             params = {'type': component_type, 'nvr': nvr}
             response = requests.get(
@@ -54,12 +54,14 @@ class ContainerComponentsAsync:
                 try:
                     results = response.json().get('results')
                     for result in results:
+                        # This part is only for contianer, won't share this
+                        # condition with Module
                         # Currently, we only need arch='src' components.
-                        if result.get('arch') != 'src':
+                        if result.get('arch') != 'src' and\
+                                component_type == "CONTAINER_IMAGE":
                             continue
                         else:
-                            container_component = self.get_component_flat(
-                                result)
+                            parent_component = self.get_component_flat(result)
                             provides = result.get('provides')
                             for provide in provides:
                                 component_links.append(provide.get('link'))
@@ -67,9 +69,9 @@ class ContainerComponentsAsync:
                 except Exception as e:
                     raise RuntimeError(e) from None
         else:
-            err_msg = "Should provide a container nvr."
+            err_msg = "Should provide a container or module nvr."
             raise ValueError(err_msg)
-        return component_links, container_component
+        return component_links, parent_component
 
     def unquote_link(self, link):
         """
@@ -147,11 +149,10 @@ class ContainerComponentsAsync:
             component = self.parse_component_link(component_link)
         return component
 
-    async def get_event_loop(self, executor, component_links):
+    async def get_event_loop(self, executor, component_links, loop):
         """
         Event loop function for component links.
         """
-        loop = asyncio.get_event_loop()
         futures = [
             loop.run_in_executor(
                 executor, self.get_component_data, component_link)
@@ -159,24 +160,25 @@ class ContainerComponentsAsync:
         ]
         return await asyncio.gather(*futures)
 
-    def get_components_data(self):
+    def get_components_data(self, component_type):
         # Create a limited thread pool
         executor = ThreadPoolExecutor(max_workers=5,)
+        asyncio.set_event_loop(asyncio.new_event_loop())
         event_loop = asyncio.get_event_loop()
         components = []
-        component_links, container_component = self.get_component_and_links(
-            self.container_nvr)
-        if component_links and container_component:
+        component_links, parent_component = self.get_component_and_links(
+            self.parent_nvr, component_type)
+        if component_links and parent_component:
             try:
                 components = event_loop.run_until_complete(
-                    self.get_event_loop(executor, component_links)
+                    self.get_event_loop(executor, component_links, event_loop)
                 )
             except Exception as e:
                 raise RuntimeError(e) from None
             finally:
                 event_loop.close()
-        if container_component:
-            components.append(container_component)
+        if parent_component:
+            components.append(parent_component)
         return group_components(components) if components else {}
 
 
