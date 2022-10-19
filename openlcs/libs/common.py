@@ -28,6 +28,9 @@ def create_dir(directory):
         if os.path.exists(directory):
             shutil.rmtree(directory, ignore_errors=True)
         os.makedirs(directory)
+        if not os.path.exists(directory):
+            err_msg = f"Failed to create directory: {directory}"
+            raise RuntimeError(err_msg)
     except Exception as err:
         raise RuntimeError(err) from None
     return directory
@@ -49,10 +52,10 @@ def uncompress_source_tarball(src_file, dest_dir=None):
         os.remove(src_file)
 
 
-def group_components(components, key='type'):
+def group_components(components, key=None):
     """ # noqa
     Group by the remote source components.
-    Example:
+    Example of group by 'type':
     [
         {'name': 'github.com/blang/semver', 'type': "go-package", 'version': 'v3.5.1+incompatible', ...},
         {'name': 'github.com/hashicorp/go-syslog', 'type': "gomod", 'version': 'v1.0.0', ...},
@@ -78,13 +81,14 @@ def group_components(components, key='type'):
     }
     """
     result = defaultdict(list)
-    for key, items in groupby(components, key=itemgetter(key)):
+    key = key if key else ['type']
+    for key, items in groupby(components, key=itemgetter(*key)):
         for i in items:
             result[key].append(i)
     return dict(result)
 
 
-def compress_source_to_tarball(dest_file, src_dir):
+def compress_source_to_tarball(dest_file, src_dir, remove_source=True):
     """
     Compress source in the directory to tar.gz file,
     and remove the source directory.
@@ -97,7 +101,8 @@ def compress_source_to_tarball(dest_file, src_dir):
     except subprocess.CalledProcessError as e:
         raise RuntimeError(e) from None
     else:
-        shutil.rmtree(src_dir)
+        if remove_source:
+            shutil.rmtree(src_dir)
 
 
 def get_component_name_version_combination(component):
@@ -136,3 +141,15 @@ def search_content_according_patterns(search_patterns):
             if paths:
                 break
     return paths
+
+
+def selection_sort_components(components):
+    """
+    Sort components by the component name.
+    """
+    length = len(components)
+    for i in range(length - 1, 0, -1):
+        for j in range(i):
+            if components[j].get('name') in components[i].get('name'):
+                components[j], components[i] = components[i], components[j]
+    return components

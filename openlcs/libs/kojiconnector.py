@@ -266,7 +266,7 @@ class KojiConnector:
         elif 'src' in source:
             source_path = self._get_pathinfo(build_id, source)
             url = self._format_url(source_path)
-            cmd = ['wget', url]
+            cmd = ['wget', url, '-q', '--show-progress']
             try:
                 subprocess.check_call(cmd, shell=False, cwd=dest_dir)
             except subprocess.CalledProcessError as err:
@@ -297,7 +297,7 @@ class KojiConnector:
             'packages', package_name, version,
             release, type_path, archive_name)
         image_url = self._format_url(archive_file_path)
-        cmd = ['wget', image_url]
+        cmd = ['wget', image_url, '-q', '--show-progress']
         try:
             subprocess.check_call(cmd, cwd=dest_dir)
         except Exception as e:
@@ -404,6 +404,7 @@ class KojiConnector:
 
         if rs_comps:
             # Remove duplicate components get from remote source json files.
-            rs_comps_tup_list = [tuple(d.items()) for d in rs_comps]
-            rs_comps = [dict(t) for t in set(rs_comps_tup_list)]
+            grouped_comps = group_components(rs_comps, key=['name', 'version'])
+            rs_comp_values = grouped_comps.values()
+            rs_comps = [values[0] for values in rs_comp_values]
         return group_components(rs_comps) if rs_comps else {}
