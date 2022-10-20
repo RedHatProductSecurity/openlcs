@@ -1,6 +1,6 @@
 import json
 import time
-
+import django_filters
 from django.conf import settings
 from django.db import IntegrityError, transaction
 from django.db.models import Q
@@ -26,6 +26,7 @@ from reports.models import FileCopyrightScan, FileLicenseScan
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.parsers import FileUploadParser, JSONParser
+from rest_framework.filters import SearchFilter
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
@@ -933,12 +934,48 @@ class CheckSourceStatus(APIView):
                               "source_scan_flag": None})
 
 
+class ComponentFilter(django_filters.FilterSet):
+    """Class that filters queries to Component list views."""
+
+    name = django_filters.CharFilter(field_name='name', lookup_expr='iexact')
+    type = django_filters.CharFilter(
+            field_name='type', lookup_expr='icontains')
+    version = django_filters.CharFilter(
+            field_name='version', lookup_expr='iexact')
+    release = django_filters.CharFilter(
+            field_name='release', lookup_expr='iexact')
+    arch = django_filters.CharFilter(field_name='arch', lookup_expr='iexact')
+    purl = django_filters.CharFilter(
+            field_name='purl', lookup_expr='icontains')
+    uuid = django_filters.CharFilter(field_name='uuid', lookup_expr='iexact')
+    summary_license = django_filters.CharFilter(
+            field_name='summary_license', lookup_expr='iexact')
+    is_source = django_filters.BooleanFilter(field_name='is_source')
+    synced = django_filters.BooleanFilter(field_name='synced')
+    source__name = django_filters.CharFilter(lookup_expr='iexact')
+    source__state = django_filters.NumberFilter()
+    source__archive_type = django_filters.CharFilter(lookup_expr='iexact')
+    source__scan_flag = django_filters.CharFilter(lookup_expr='icontains')
+
+    class Meta:
+        model = Component
+
+        fields = (
+            'name', 'type', 'version', 'release', 'arch', 'purl',
+            'uuid', 'summary_license', 'is_source', 'synced',
+        )
+
+
 class ComponentViewSet(ModelViewSet, PackageImportTransactionMixin):
     """
     API endpoint that allows components to be viewed.
     """
     queryset = Component.objects.all()
     serializer_class = ComponentSerializer
+    filter_backends = (
+            django_filters.rest_framework.DjangoFilterBackend, SearchFilter)
+    filter_class = ComponentFilter
+    search_fields = ['type', 'name', 'version', 'release', 'arch']
 
     def list(self, request, *args, **kwargs):
         """
@@ -987,6 +1024,110 @@ class ComponentViewSet(ModelViewSet, PackageImportTransactionMixin):
                 },
                 ...
             ]
+
+        ####__Request__####
+
+            curl -X GET -H "Content-Type: application/json" \
+-H "Authorization: Token your_token" \
+%(HOST_NAME)s/%(API_PATH)s/components/?name=fio&type= \
+&version=&release=&arch=&purl=&uuid=&summary_license=& \
+is_source=unknown&synced=unknown&source__name=& \
+source__state=&source__archive_type=&source__scan_flag=
+
+        ####__Supported query params__####
+
+        ``name``: String, the component name.
+
+        ``type``: String, the component type.
+
+        ``version``: String, the component version.
+
+        ``release``: String, the component release.
+
+        ``arch``: String, the component arch.
+
+        ``purl``: String, the component purl.
+
+        ``uuid``: String, the component uuid.
+
+        ``summary_license``: String, the component summary_license.
+
+        ``is_source``: Boolean, the component is_source.
+
+        ``synced``: Boolean, the component synced.
+
+        ``source__name``: String, the source's name.
+
+        ``source__state``: String, the source's state.
+
+        ``source__archive_type``: String, the source's archive_type.
+
+        ``source__scan_flag``: String, the source's scan_flag.
+
+
+        ####__Response__####
+
+            HTTP 200 OK
+            Content-Type: application/json
+            [
+                {
+                    "id": 1,
+                    "source": {
+                        "id": 1,
+                        "name": "fio-3.1-2.el7.src.rpm",
+                        "url": "http://git.kernel.dk/?p=fio.git;a=summary",
+                        "checksum": "65ddad4b0831a46d9064d96e80283618c04bdxxx",
+                        "state": 0,
+                        "archive_type": "rpm",
+                        "scan_flag": "copyright(scancode-toolkit 30.1.0)",
+                        "component_set": [
+                            1
+                        ],
+                        "license_detections": [
+                            "gpl-2.0-plus",
+                            "gpl-2.0",
+                            "gpl-1.0-plus",
+                            "public-domain",
+                            "bsd-simplified"
+                        ],
+                        "copyright_detections": [
+                            "(c) 2012-2017 Jens Axboe <axboe@kernel.dk>",
+                            "Copyright (c) 2013 Fusion-io, Inc.",
+                            "(c) 2002 William Lee Irwin III",
+                        ]
+                    },
+                    "type": "{'rpm': None}",
+                    "name": "fio",
+                    "version": "3.1",
+                    "release": "2.el7",
+                    "arch": "src",
+                    "purl": "",
+                    "uuid": "de3da5cc-bbf2-4953-9e33-084506706073",
+                    "summary_license": "GPLv2",
+                    "is_source": true,
+                    "synced": false
+                }
+            ]
+
+        ####__Request__####
+            curl -X GET -H "Content-Type: application/json" \
+-H "Authorization: Token your_token" \
+%(HOST_NAME)s/%(API_PATH)s/components/?search=fio
+
+        ####__Supported search field__####
+
+        NOTE: ``fio`` denotes the value of field ``name``
+
+        ``name``: String, the component name.
+
+        ``type``: String, the component type.
+
+        ``version``: String, the component version.
+
+        ``release``: String, the component release.
+
+        ``arch``: String, the component arch.
+
         """
         return super().list(request, *args, **kwargs)
 
