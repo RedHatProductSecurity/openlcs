@@ -313,20 +313,12 @@ class SaveContainerComponentsMixin:
             parent=None,
         )
         # Create container node
-        cnode, _,  = container_component.release_nodes.get_or_create(
+        container_component.release_nodes.get_or_create(
             name=container_component.name,
             parent=release_node,
         )
-        # Create container child components
-        for _, components in self.components.items():
-            for component_data in components:
-                component = self.create_component(component_data)
-                component.release_nodes.get_or_create(
-                    name=component.name,
-                    parent=cnode,
-                )
 
-    def build_container_node(self, container_component):
+    def build_component_node(self, container_component):
         """
         Build container node. For container, will create a parent component
         tree node, then create some child component tree node. The parent and
@@ -344,11 +336,9 @@ class SaveContainerComponentsMixin:
         for _, components in self.components.items():
             for component_data in components:
                 component = self.create_component(component_data)
-                ComponentTreeNode.objects.get_or_create(
+                component.component_nodes.get_or_create(
                     name=component.name,
                     parent=cnode,
-                    content_type=component_ctype,
-                    object_id=component.id,
                 )
 
     def save_container_components(self, **kwargs):
@@ -361,5 +351,4 @@ class SaveContainerComponentsMixin:
         if product_release:
             self.release = Release.objects.filter(name=product_release)[0]
             self.build_release_node(container_component)
-        else:
-            self.build_container_node(container_component)
+        self.build_component_node(container_component)
