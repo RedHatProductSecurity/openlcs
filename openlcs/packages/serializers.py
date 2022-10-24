@@ -275,13 +275,7 @@ class ContainerComponentsSerializer(ComponentSerializer):
         fields = '__all__'
 
     def get_provides(self, obj):
-        # get from release node tree if explicitly specified
-        if self.context.get("for_release"):
-            # FIXME: find identical node
-            node = obj.release_nodes.all().first()
-        else:
-            node = obj.container_nodes.get()
-
+        node = obj.component_nodes.get()
         component_nodes = node.get_descendants()
         components = Component.objects.filter(
             id__in=component_nodes.values_list('object_id', flat=True)

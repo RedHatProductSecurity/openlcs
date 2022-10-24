@@ -42,7 +42,7 @@ class ReleaseSerializer(serializers.ModelSerializer):
             id__in=container_nodes.values_list('object_id', flat=True)
         )
         serializer = ContainerComponentsSerializer(
-            container_components, many=True, context={'for_release': True}
+            container_components, many=True
         )
         retval.append(serializer.data)
         # FIXME: rhel module build

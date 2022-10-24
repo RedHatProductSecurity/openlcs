@@ -386,6 +386,9 @@ class SourceContainerHandler(object):
                         # Check if the source is child component source. For
                         # this scenario, cannot remove the source, the source
                         # will be reused by parent component.
+                        # TODO: the policy here should be refined. This way
+                        # the same source will be scanned twice, the parent's
+                        # result could be summarized from its children nodes.
                         comp_name = component.get('name')
                         comp_type = component.get('type')
                         if any([comp_name.startswith(
