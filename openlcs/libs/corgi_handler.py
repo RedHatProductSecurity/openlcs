@@ -49,7 +49,7 @@ class ContainerComponentsAsync:
         if nvr:
             params = {'type': component_type, 'nvr': nvr}
             response = requests.get(
-                self.endpoint, params=params, verify=False)
+                self.endpoint, params=params)
             if response.status_code == 200:
                 try:
                     results = response.json().get('results')
@@ -127,8 +127,11 @@ class ContainerComponentsAsync:
         Get component data from the response of corgi component link.
         """
         component = {}
-        with httpx.Client(verify=False, timeout=None) as client:
-            response = client.get(component_link)
+        with httpx.Client(timeout=None) as client:
+            cert = os.getenv("REQUESTS_CA_BUNDLE")
+            response = client.get(
+                component_link,
+                params={'cert': cert})
             if response.status_code == 200:
                 content = response.json()
                 component = self.get_component_flat(content)
