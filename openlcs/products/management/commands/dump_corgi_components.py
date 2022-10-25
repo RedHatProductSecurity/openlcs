@@ -18,6 +18,7 @@ CORGI_API_ENDPIONTS = {
 
 CORGI_COMPONENT_TYPES = [
     "CONTAINER_IMAGE",
+    "RHEL_MODULE",
     "GOLANG",
     "MAVEN",
     "NPM",
@@ -96,7 +97,7 @@ class Command(BaseCommand):
 
     def get_components(self, page: dict, verbosity=1) -> dict:
         """
-        Accepts a raw page result json, and returns nested container components
+        Accepts a raw page result json, and returns nested components
         if there is, along with needed component attributes.
         Returned value follows below form:
 
@@ -111,12 +112,12 @@ class Command(BaseCommand):
         }
         for result in page["results"]:
             component_type = result.get("type")
-            if component_type == "CONTAINER_IMAGE":
-                container_data = self.get_component_flat(result)
-                # deal with container images
+            if component_type in ["CONTAINER_IMAGE", "RHEL_MODULE"]:
+                component_data = self.get_component_flat(result)
+                # Deal with container or rhel module provides
                 provides = []
-                container_provides = result.get("provides")
-                links = [c.get("link") for c in container_provides]
+                raw_provides = result.get("provides")
+                links = [c.get("link") for c in raw_provides]
                 session = requests.Session()
                 # too many workers cause corgi api to fail with 500 error
                 with concurrent.futures.ThreadPoolExecutor(
@@ -142,28 +143,28 @@ class Command(BaseCommand):
                                     self.style.SUCCESS(
                                         f"-- Retrieved component from {url} "
                                         f"provided by "
-                                        f"{container_data.get('name')}."
+                                        f"{component_data.get('name')}."
                                     )
                                 )
                         except Exception:
-                            container_name = container_data.get("name")
+                            component_name = component_data.get("name")
                             retval["errors"].append(
                                 {
                                     "url": url,
-                                    "provided_by": container_name,
+                                    "provided_by": component_name,
                                 }
                             )
                             if verbosity > 1:
                                 self.stdout.write(
                                     self.style.ERROR(
                                         f"- Failed to retrieve from {url} for"
-                                        f"container {container_name}, check "
+                                        f"component {component_name}, check "
                                         f"'errors' in output for more details."
                                     )
                                 )
                             continue
-                container_data["provides"] = provides
-                retval["components"].append(container_data)
+                component_data["provides"] = provides
+                retval["components"].append(component_data)
             else:
                 component_data = self.get_component_flat(result)
                 retval["components"].append(component_data)

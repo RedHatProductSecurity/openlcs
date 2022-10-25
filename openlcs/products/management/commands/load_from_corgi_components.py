@@ -66,41 +66,30 @@ class Command(BaseCommand):
             parent=None,
         )
         for component_data in components:
-            type = component_data.get("type")
-            if type == "CONTAINER_IMAGE":
-                container_component = self.create_component(component_data)
-                cnode, _, = container_component.release_nodes.get_or_create(
-                    name=container_component.name,
-                    parent=release_node,
-                )
-                for provided in component_data.get("provides"):
-                    component = self.create_component(provided)
-                    component.release_nodes.get_or_create(
-                        name=component.name,
-                        parent=cnode,
-                    )
-            else:
-                component = self.create_component(component_data)
-                component.release_nodes.get_or_create(
-                    name=component.name, parent=release_node
-                )
+            # Create component and build release node
+            component = self.create_component(component_data)
+            component.release_nodes.get_or_create(
+                name=component.name, parent=release_node
+            )
 
-    def build_container_node(self, data):
-        container_component = self.create_component(data)
+            ctype = component_data.get("type")
+            # Create provided component and build component tree
+            if ctype in ["CONTAINER_IMAGE", "RHEL_MODULE"]:
+                provides = component_data.get("provides", [])
+                self.build_component_node(component, provides)
+
+    def build_component_node(self, component, provides):
         component_ctype = ContentType.objects.get_for_model(Component)
         cnode, _ = ComponentTreeNode.objects.get_or_create(
-            name=container_component.name,
+            name=component.name,
             content_type=component_ctype,
-            object_id=container_component.id,
+            object_id=component.id,
             parent=None,
         )
-        for component_data in data.get("provides", []):
-            component = self.create_component(component_data)
-            ComponentTreeNode.objects.get_or_create(
-                name=component.name,
-                parent=cnode,
-                content_type=component_ctype,
-                object_id=component.id,
+        for provided in provides:
+            provided_component = self.create_component(provided)
+            provided_component.component_nodes.get_or_create(
+                name=provided_component.name, parent=cnode
             )
 
     def handle(self, *args, **options):
@@ -111,16 +100,12 @@ class Command(BaseCommand):
             self.build_release_node(data)
         else:
             components = data["components"]
-            for component in components:
-                if component.get("type") == "CONTAINER_IMAGE":
-                    self.build_container_node(component)
-                # FIXME: deal with RHEL_MODULE properly.
-                # This `elif` is probably not needed, as similar with container
-                # image, "RHEL_MODULE" also consist of nested components.
-                elif component.get("type") == "RHEL_MODULE":
-                    continue
-                else:
-                    self.create_component(component)
+            for component_data in components:
+                component = self.create_component(component_data)
+                ctype = component_data.get("type")
+                if ctype in ["CONTAINER_IMAGE", "RHEL_MODULE"]:
+                    provides = component_data.get("provides", [])
+                    self.build_component_node(component, provides)
 
         self.stdout.write(
             self.style.SUCCESS(f"Successfully loaded {data_file}!")
