@@ -1,9 +1,15 @@
 from django.contrib import admin
 
-from tasks.models import Task
+from tasks.models import Task, TaskMeta
 
 
 @admin.register(Task)
 class TaskAdmin(admin.ModelAdmin):
     list_display = ('id', 'meta_id', 'owner', 'params', 'content_object')
     search_fields = ['meta_id', 'owner__username', 'params']
+
+
+@admin.register(TaskMeta)
+class TaskMetaAdmin(admin.ModelAdmin):
+    list_display = ('pk', 'task_id', 'status', 'date_done')
+    search_fields = ['id', 'task_id', 'status']

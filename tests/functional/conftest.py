@@ -53,9 +53,6 @@ def openlcs_setup(redis_nooproc):
 def django_db_setup(django_db_setup, django_db_blocker):
     # Note: Look at README.md how to properly create the database dump
     with django_db_blocker.unblock():
-        # make sure celery meta tables exist before loaddata
-        with connection.cursor() as cursor:
-            cursor.execute(open(join(TESTDIR, "celery_meta.sql"), "r").read())
         call_command(
             'loaddata',
             join(dirname(__file__), 'database_data.json'))

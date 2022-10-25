@@ -6,6 +6,18 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import models
 
 
+class TaskMeta(models.Model):
+    task_id = models.CharField(max_length=155, unique=True)
+    status = models.CharField('state', max_length=50)
+    result = models.BinaryField(null=True, default=None, editable=False)
+    date_done = models.DateTimeField('date_done', auto_now=True, null=True)
+    traceback = models.TextField('traceback', blank=True, null=True)
+
+    class Meta:
+        db_table = 'celery_taskmeta'
+        app_label = 'tasks'
+
+
 class TaskManager(models.Manager):
 
     def create(self, *args, **kwargs):
