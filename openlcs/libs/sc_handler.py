@@ -14,7 +14,7 @@ from libs.common import (  # noqa: E402
     compress_source_to_tarball,
     create_dir,
     get_component_name_version_combination,
-    search_content_according_patterns,
+    search_content_by_patterns,
     uncompress_source_tarball,
     selection_sort_components
 )
@@ -290,6 +290,69 @@ class SourceContainerHandler(object):
                                for extension in ['.tgz', '.tar.gz', '.zip']]
         return search_patterns
 
+    def get_special_component_path(self, component, extra_src_dir):
+        comp_type = component.get('type')
+        comp_version = component.get('version')
+        if comp_type == 'PYPI':
+            comp_type = 'pip'
+        elif comp_type == 'GOLANG':
+            comp_type = 'gomod'
+        else:
+            comp_type = comp_type.lower()
+        dep_dir_pattern = os.path.join(extra_src_dir, '**', 'deps', comp_type)
+        _, name_items, version_items = self.get_component_search_items(
+            component)
+        name_pattern = '/*' + '/'.join(name_items) + '*'
+        version_pattern = '/*' + '*'.join(version_items)
+
+        # For the git commit hash in the component version.
+        # Example:
+        # Component in quay-registry-container-v3.7.7-6
+        # {
+        #     "dev": false,
+        #     "name": "aniso8601",
+        #     "replaces": null,
+        #     "type": "pip",
+        #     "version": "git+https://github.com/DevTable/aniso8601-fake.git@bd7762c7dea0498706d3f57db60cd8a8af44ba90"  # noqa
+        # }
+        # Component in console-api-container-v2.1.2-2
+        # {
+        #     "dev": false,
+        #     "name": "security-middleware",
+        #     "replaces": null,
+        #     "type": "npm",
+        #     "version": "github:open-cluster-management/security-middleware#f88cdf9595326722109baac72e7af1f543014683"  # noqa
+        # },
+        for char in ['@', '#']:
+            if char in comp_version and re.match(r'[0-9a-f]{40}', (
+                    comp_commit := comp_version.split(char)[-1])):
+                version_pattern = '/*' + comp_commit
+        # For sha256 string in the component version.
+        # Component in quay-registry-container-v3.7.7-6
+        # {
+        #     "dev": false,
+        #     "name": "PyPDF2",
+        #     "replaces": null,
+        #     "type": "pip",
+        #     "version": "https://files.pythonhosted.org/packages/3d/48/0966606e08dd93a77e839803789151ff81ac27ec6767957af8afb9588501/PyPDF2-1.27.6.tar.gz#egg=PyPDF2&cachito_hash=sha256:3a3c0585678279b93a4c0fa31fb6f6217cfbdac3f6d3dcd1dfc9888579f3e858"  # noqa
+        # },
+        if ':' in comp_version and re.match(r'[0-9a-f]{64}', (
+                comp_commit := comp_version.split(':')[-1])):
+            version_pattern = '/*' + comp_commit
+        # Using name pattern and version pattern to search source path.
+        search_patterns = [
+            dep_dir_pattern + "/**" + name_pattern + version_pattern + extension  # noqa
+            for extension in ['.tgz', '.tar.gz', '.zip']
+        ]
+        # Only use version pattern to search source path.
+        search_patterns.extend([
+            dep_dir_pattern + "/**" + version_pattern + extension
+            for extension in ['.tgz', '.tar.gz', '.zip']
+        ])
+
+        paths = search_content_by_patterns(search_patterns)
+        return paths[0] if paths else None
+
     def get_remote_source_path(self, component, extra_src_dir):
         """
         Get source tarball path of the remote source component.
@@ -298,7 +361,7 @@ class SourceContainerHandler(object):
             component, extra_src_dir)
 
         # Search remote source path.
-        paths = search_content_according_patterns(search_patterns)
+        paths = search_content_by_patterns(search_patterns)
         source_path = None
         if paths:
             # Find the correct source path.
@@ -333,6 +396,12 @@ class SourceContainerHandler(object):
                     else:
                         source_path = path
                         break
+        else:
+            # Add patterns for some special components that name, version
+            # mismatch with source path in source container. More detail,
+            # check PELC-4511, CLOUDBLD-3809, and OLCS-292.
+            source_path = self.get_special_component_path(
+                component, extra_src_dir)
         return source_path
 
     def get_container_remote_source(self, components):
