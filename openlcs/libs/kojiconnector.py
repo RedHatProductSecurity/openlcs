@@ -145,6 +145,9 @@ class KojiConnector:
         osbs_build = extra.get('osbs_build') if extra else None
         return osbs_build.get('kind') if osbs_build else None
 
+    def is_source_container_build(self, build):
+        return self.get_osbs_build_kind(build) == "source_container_build"
+
     def get_binary_nvr(self, sc_nvr):
         """
         Accept source container nvr that the brew build info is
