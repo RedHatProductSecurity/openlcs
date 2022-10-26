@@ -9,7 +9,7 @@ from unittest import TestCase
 from kobo.shortcuts import run
 from django.conf import settings
 
-from libs.corgi_handler import ContainerComponentsAsync
+from libs.corgi_handler import ParentComponentsAsync
 from libs.download import KojiBuild
 from libs.parsers import parse_manifest_file
 from libs.scanner import LicenseScanner
@@ -369,12 +369,12 @@ class TestComponents(TestCase):
             ]
         }
         base_url = f"{corgi_api_prod}components"
-        container_nvr = 'grc-ui-api-container-13-v2.4.0'
-        self.container_components = ContainerComponentsAsync(
-            base_url, container_nvr)
+        parent_nvr = 'grc-ui-api-container-13-v2.4.0'
+        self.container_components = ParentComponentsAsync(
+            base_url, parent_nvr)
 
     @mock.patch.object(
-        ContainerComponentsAsync, 'get_component_data_from_corgi')
+        ParentComponentsAsync, 'get_component_data_from_corgi')
     def test_get_component_data_1(
             self, mock_get_component_data_from_corgi):
         mock_get_component_data_from_corgi.return_value = \
@@ -384,8 +384,8 @@ class TestComponents(TestCase):
         self.assertEqual(component, self.components_data[0])
 
     @mock.patch.object(
-        ContainerComponentsAsync, 'get_component_data_from_corgi')
-    @mock.patch.object(ContainerComponentsAsync, 'parse_component_link')
+        ParentComponentsAsync, 'get_component_data_from_corgi')
+    @mock.patch.object(ParentComponentsAsync, 'parse_component_link')
     def test_get_component_data_2(
             self, mock_get_component_data_from_corgi,
             mock_parse_component_link):
@@ -397,8 +397,8 @@ class TestComponents(TestCase):
         self.assertEqual(component, self.components_data[1])
 
     @mock.patch.object(
-        ContainerComponentsAsync, 'get_component_data_from_corgi')
-    @mock.patch.object(ContainerComponentsAsync, 'parse_component_link')
+        ParentComponentsAsync, 'get_component_data_from_corgi')
+    @mock.patch.object(ParentComponentsAsync, 'parse_component_link')
     def test_get_component_data_3(
             self, mock_get_component_data_from_corgi,
             mock_parse_component_link):
@@ -409,15 +409,15 @@ class TestComponents(TestCase):
             self.links[2])
         self.assertEqual(component, self.components_data[2])
 
-    @mock.patch.object(ContainerComponentsAsync, 'get_event_loop')
-    @mock.patch.object(ContainerComponentsAsync, 'get_component_and_links')
+    @mock.patch.object(ParentComponentsAsync, 'get_event_loop')
+    @mock.patch.object(ParentComponentsAsync, 'get_component_and_links')
     def test_get_components_data(self, mock_get_component_and_links,
                                  mock_get_event_loop):
         mock_get_component_and_links.return_value = \
             self.links, self.components_data[3]
         mock_get_event_loop.return_value = self.components_data[:-1]
         self.assertEqual(
-            self.container_components.get_components_data(),
+            self.container_components.get_components_data('CONTAINER_IMAGE'),
             self.group_components_data
         )
 
