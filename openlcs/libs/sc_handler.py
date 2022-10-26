@@ -102,21 +102,6 @@ class SourceContainerHandler(object):
         return srpm_filepath if os.path.isfile(srpm_filepath) else None
 
     @staticmethod
-    def get_source_of_misc_component(misc_dir, nvr):
-        """
-        Compress the metadata files to tar file
-        """
-        # Named the source tar file that unified with misc component
-        tar_file = nvr + '-metadata.tar.gz'
-        # Compress the metadata files to misc nvr tar file
-        try:
-            tar_filepath = os.path.join(os.path.dirname(misc_dir), tar_file)
-            compress_source_to_tarball(tar_filepath, misc_dir)
-        except RuntimeError as err:
-            raise RuntimeError(err) from None
-        return tar_filepath
-
-    @staticmethod
     def get_source_of_remote_source_components(rs_dir, component):
         """
         Get the source tarball for remote source components.

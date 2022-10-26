@@ -6,6 +6,7 @@ import socket
 import tempfile
 from requests.exceptions import HTTPError
 
+from checksumdir import dirhash
 from workflow.patterns.controlflow import IF
 from workflow.patterns.controlflow import IF_ELSE
 from packagedcode.rpm import parse as rpm_parse
@@ -255,6 +256,13 @@ def download_package_archive(context, engine):
     engine.logger.info('Finished downloading source.')
 
 
+def is_metadata_component_source(src_filepath):
+    # based on current approach, the metadata component source for an
+    # image build will be placed in `src_root/metadata` directory
+    return (os.path.isdir(src_filepath)
+            and os.path.basename(src_filepath) == "metadata")
+
+
 def download_component_source(context, engine):
     """
     Download the component src from brew. If the component's src was
@@ -275,14 +283,9 @@ def download_component_source(context, engine):
         if 'rpm_dir' in src_dir:
             source_path = sc_handler.get_source_of_srpm_component(
                 src_dir, nvr)
-        elif 'metadata' in src_dir:
-            try:
-                source_path = sc_handler.get_source_of_misc_component(
-                    src_dir, nvr)
-            except RuntimeError as err:
-                err_msg = f"Failed to get source tarball for metadata: {err}"
-                engine.logger.error(err_msg)
-                raise RuntimeError(err_msg) from None
+        # metadata(miscellaneous) component source from within image
+        elif is_metadata_component_source(src_dir):
+            source_path = src_dir
         elif 'rs_dir' in src_dir:
             component = context.get('rs_comp')
             source_path = sc_handler.get_source_of_remote_source_components(
@@ -310,6 +313,13 @@ def get_source_metadata(context, engine):
 
     engine.logger.info("Start to get source package metadata...")
     src_filepath = context.get('tmp_src_filepath')
+    if is_metadata_component_source(src_filepath):
+        nvr = context.get('package_nvr')
+        source_name = f"{nvr}-metadata"
+        source_checksum = dirhash(src_filepath, "sha256")
+    else:
+        source_name = os.path.basename(src_filepath)
+        source_checksum = sha256sum(src_filepath)
     pom_filepath = context.get('tmp_pom_filepath', None)
     build_type = context.get('build_type')
     build = context.get('build')
@@ -344,8 +354,8 @@ def get_source_metadata(context, engine):
     # TODO: Update metadata for remote source.
     context['source_info'] = {
         "source": {
-            "checksum": sha256sum(src_filepath),
-            "name": os.path.basename(src_filepath),
+            "checksum": source_checksum,
+            "name": source_name,
             "url": context.get("source_url"),
             "archive_type": list(context['build_type'].keys())[0]
         },
@@ -507,9 +517,15 @@ def extract_source(context, engine):
     tmp_src_filepath = context.get('tmp_src_filepath', None)
     engine.logger.info('Start to extract source...')
 
-    ua = UnpackArchive(src_file=tmp_src_filepath, dest_dir=src_dest_dir)
-    mime_type = ua._get_archive_type()
-    ua.extract()
+    if is_metadata_component_source(tmp_src_filepath):
+        # FIXME: what is the correct mimetype for metadata source?
+        # Moreover, is the feeded `archive_mime_type` used at all?
+        mime_type = None
+        shutil.move(tmp_src_filepath, src_dest_dir)
+    else:
+        ua = UnpackArchive(src_file=tmp_src_filepath, dest_dir=src_dest_dir)
+        mime_type = ua._get_archive_type()
+        ua.extract()
     engine.logger.info('Finished extracting source.')
     context['archive_mime_type'] = mime_type
 
