@@ -121,7 +121,7 @@ class KojiConnector:
 
     def get_build_type(self, build_info):
         """
-        Return build for package-nvr.
+        Return build type based on build_info.
         """
         if build_info.get('build_type') == 'rpm':
             return 'rpm'
@@ -411,3 +411,38 @@ class KojiConnector:
             rs_comp_values = grouped_comps.values()
             rs_comps = [values[0] for values in rs_comp_values]
         return group_components(rs_comps) if rs_comps else {}
+
+    def get_latest_source_container_build(self, binary_nvr):
+        """
+        Return a list of builds that match the given parameters
+        Return the latest source container build according the binary NVR.
+
+        Example:
+            'binary_nvr': 'dotnet-21-container-2.1-54'
+            'soruce_container_build':
+                'dotnet-21-container-source-2.1-54.3'
+                'dotnet-21-container-source-2.1-54.2'
+                'dotnet-21-container-source-2.1-54.1'
+            'latest_soruce_container_build:'
+                'dotnet-21-container-source-2.1-54.3'
+        """
+        # 1.Get the possible source image nvr from binary image nvr
+        nvr = koji.parse_NVR(binary_nvr)
+        sc_name = nvr.get('name') + '-source'
+        sc_nvr = "-".join((sc_name, nvr.get('version'), nvr.get('release')))
+        # 2. Get the possible source image package name and package id
+        package_id = self.get_package_id(sc_name)
+        # 3.If the source image exists, list all the mapping source images and
+        # return the latest source image.
+        latest_build = ''
+        if package_id:
+            builds = self.list_builds(
+                    package_id=package_id,
+                    state=1, query_opts={'order': '-completion_time'})
+            for build in builds:
+                if sc_nvr in build.get('nvr'):
+                    if self.get_binary_nvr(
+                            build.get('nvr')) == binary_nvr:
+                        latest_build = build
+                        break
+        return latest_build

@@ -107,7 +107,7 @@ def get_build(context, engine):
             context.get('package_name'),
             context.get('rpm_nvra'),
         )
-        build_type = koji_build.get_build_type(build)
+        build_type = koji_build.koji_connector.get_build_type(build)
         context['build_type'] = build_type
         context['build'] = build
 
@@ -134,7 +134,6 @@ def get_source_container_build(context, engine):
             type info corresponding to that build.
     """
     config = context.get('config')
-    koji_build = KojiBuild(config)
     koji_connector = KojiConnector(config)
     build = context.get('build')
     sc_build = None
@@ -145,7 +144,8 @@ def get_source_container_build(context, engine):
             sc_build = build
     # Get the source container build if the input is a binary container.
     elif package_nvr and 'container' in package_nvr:
-        sc_build = koji_build.get_latest_source_container_build(package_nvr)
+        sc_build = koji_connector.get_latest_source_container_build(
+            package_nvr)
     if sc_build:
         #  Add build id in the json.
         if "id" not in sc_build:
@@ -160,7 +160,7 @@ def get_source_container_build(context, engine):
             binary_build = context.get('build')
         context['binary_build'] = binary_build
         context['build'] = sc_build
-        context['build_type'] = koji_build.get_build_type(sc_build)
+        context['build_type'] = koji_connector.get_build_type(sc_build)
 
     else:
         err_msg = "This binary container has no mapping source container."

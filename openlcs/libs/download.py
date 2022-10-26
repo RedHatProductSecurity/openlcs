@@ -1,4 +1,3 @@
-import koji
 import tempfile
 import os
 import sys
@@ -18,8 +17,9 @@ class KojiBuild:
 
     def get_build(self, package_nvr=None, tag=None, package_name=None,
                   rpm_nvra=None):
-        # FIXME: raise ImproperlyConfigured Error in case we lack of
-        # relevant settings on Hub.
+        """
+        Shortcut to get build using various forms.
+        """
         if package_nvr:
             build = self.koji_connector.get_build(package_nvr)
             params = package_nvr
@@ -37,13 +37,6 @@ class KojiBuild:
             raise RuntimeError(f'No build found for {params} in Brew/Koji.')
         return build
 
-    def get_build_type(self, build_info):
-        """
-        Returns a dictionary whose keys are type names and
-        whose values are the type info corresponding to that type
-        """
-        return self.koji_connector.get_build_type(build_info)
-
     def download_source(self, build):
         """
         Download package build source from Brew/Koji.
@@ -57,38 +50,3 @@ class KojiBuild:
             err_msg = f'Failed to download source. Reason: {err}'
             raise RuntimeError(err_msg) from None
         return temp_dir
-
-    def get_latest_source_container_build(self, binary_nvr):
-        """
-        Return a list of builds that match the given parameters
-        Return the latest source container build according the binary NVR.
-
-        Example:
-            'binary_nvr': 'dotnet-21-container-2.1-54'
-            'soruce_container_build':
-                'dotnet-21-container-source-2.1-54.3'
-                'dotnet-21-container-source-2.1-54.2'
-                'dotnet-21-container-source-2.1-54.1'
-            'latest_soruce_container_build:'
-                'dotnet-21-container-source-2.1-54.3'
-        """
-        # 1.Get the possible source image nvr from binary image nvr
-        nvr = koji.parse_NVR(binary_nvr)
-        sc_name = nvr.get('name') + '-source'
-        sc_nvr = "-".join((sc_name, nvr.get('version'), nvr.get('release')))
-        # 2. Get the possible source image package name and package id
-        package_id = self.koji_connector.get_package_id(sc_name)
-        # 3.If the source image exists, list all the mapping source images and
-        # return the latest source image.
-        latest_build = ''
-        if package_id:
-            builds = self.koji_connector.list_builds(
-                    package_id=package_id,
-                    state=1, query_opts={'order': '-completion_time'})
-            for build in builds:
-                if sc_nvr in build.get('nvr'):
-                    if self.koji_connector.get_binary_nvr(
-                            build.get('nvr')) == binary_nvr:
-                        latest_build = build
-                        break
-        return latest_build

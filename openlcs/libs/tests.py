@@ -11,6 +11,7 @@ from django.conf import settings
 
 from libs.corgi_handler import ParentComponentsAsync
 from libs.download import KojiBuild
+from libs.kojiconnector import KojiConnector
 from libs.parsers import parse_manifest_file
 from libs.scanner import LicenseScanner
 from libs.scanner import CopyrightScanner
@@ -436,7 +437,7 @@ class TestMapSourceImage(TestCase):
 
     def test_get_latest_source_container_build(self):
         binary_nvr = self.binary_nvr
-        koji_build = KojiBuild(self.context.get('config'))
-        source_image = koji_build.get_latest_source_container_build(
+        connector = KojiConnector(self.context.get('config'))
+        source_image = connector.get_latest_source_container_build(
                 binary_nvr)
         self.assertEqual(source_image.get('nvr'), self.source_nvr)
