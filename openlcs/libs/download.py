@@ -44,19 +44,6 @@ class KojiBuild:
         """
         return self.koji_connector.get_build_type(build_info)
 
-    def list_tagged(self, tag):
-        """
-        Returns a dictionary whose keys are type names and
-        whose values are the type info corresponding to that type
-        """
-        return self.koji_connector.list_tagged(tag)
-
-    def get_task_request(self, task_id):
-        """
-        Returns a list that contain the task request parameters.
-        """
-        return self.koji_connector.get_task_request(task_id)
-
     def download_source(self, build):
         """
         Download package build source from Brew/Koji.
@@ -70,20 +57,6 @@ class KojiBuild:
             err_msg = f'Failed to download source. Reason: {err}'
             raise RuntimeError(err_msg) from None
         return temp_dir
-
-    def list_build_tags(self, build):
-        """
-        Returns a list that contain all the tags info
-        corresponding to that build
-        """
-        return self.koji_connector.list_build_tags(build)
-
-    def list_packages(self, tag_id, inherited=False):
-        """
-        Return a list that contain all the packages info
-        corresponding to that tag id and inherited tag(if giving)
-        """
-        return self.koji_connector.list_packages(tag_id, inherited)
 
     def get_latest_source_container_build(self, binary_nvr):
         """
