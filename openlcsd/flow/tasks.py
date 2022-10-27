@@ -135,12 +135,13 @@ def get_source_container_build(context, engine):
     """
     config = context.get('config')
     koji_build = KojiBuild(config)
+    koji_connector = KojiConnector(config)
     build = context.get('build')
     sc_build = None
     package_nvr = context.get('package_nvr')
     # Use the build directly if the build is for source container.
     if package_nvr and 'container-source' in package_nvr:
-        if koji_build.is_source_container_build(build):
+        if koji_connector.is_source_container_build(build):
             sc_build = build
     # Get the source container build if the input is a binary container.
     elif package_nvr and 'container' in package_nvr:
@@ -150,7 +151,6 @@ def get_source_container_build(context, engine):
         if "id" not in sc_build:
             sc_build["id"] = sc_build.get("build_id")
         # Get the binary build for the import source container nvr.
-        koji_connector = KojiConnector(config)
         if package_nvr == sc_build.get('nvr'):
             msg = 'Found source container build %s for %s in Brew/Koji'
             engine.logger.info(msg % (sc_build.get('nvr'), package_nvr))
