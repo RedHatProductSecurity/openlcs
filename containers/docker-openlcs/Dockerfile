@@ -53,7 +53,9 @@ RUN cd /etc/pki/ca-trust/source/anchors/ && \
     mkdir -p /var/openlcs/static /var/log/openlcs/ /var/cache/ && \
     chmod a+rwX -R /var/log/openlcs/ /var/cache/ /var/openlcs/static "${HOME}" /etc/passwd && \
     chmod a+x -R "${HOME}"/containers/docker-openlcs/bin/* && \
-    chown -R 1001:0 "${HOME}"
+    chown -R 1001:0 "${HOME}" && \
+    # Fix the corgi ssl certificate verification
+    ln -sf /etc/pki/tls/certs/ca-bundle.crt /opt/app-root/lib64/python3.8/site-packages/certifi/cacert.pem
 
 # Apply patch for typecode, extractcode, packagedcode
 COPY ./containers/patches/* /opt/app-root/lib64/python3.8/site-packages/

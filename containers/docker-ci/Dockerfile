@@ -53,7 +53,9 @@ RUN cd /etc/pki/ca-trust/source/anchors/ && \
     # '/usr/local/lib/python3.8/site-packages', '/usr/lib64/python3.8/site-packages',
     # '/usr/lib/python3.8/site-packages'] as site packages path
     mkdir -p /usr/local/lib64/python3.8/ && \
-    ln -s /opt/app-root/lib64/python3.8/site-packages /usr/local/lib64/python3.8/
+    ln -s /opt/app-root/lib64/python3.8/site-packages /usr/local/lib64/python3.8/ && \
+    # Fix the corgi ssl certificate verification
+    ln -sf /etc/pki/tls/certs/ca-bundle.crt /opt/app-root/lib64/python3.8/site-packages/certifi/cacert.pem
 
 # Apply patch for typecode, extractcode, packagedcode
 COPY ./containers/patches/* /opt/app-root/lib64/python3.8/site-packages/
