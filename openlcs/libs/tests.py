@@ -10,7 +10,6 @@ from kobo.shortcuts import run
 from django.conf import settings
 
 from libs.corgi_handler import ParentComponentsAsync
-from libs.download import KojiBuild
 from libs.kojiconnector import KojiConnector
 from libs.parsers import parse_manifest_file
 from libs.scanner import LicenseScanner
@@ -125,11 +124,11 @@ class TestDownloadFromBrew(TestCase):
         )
         result = None
         try:
-            koji_build = KojiBuild(self.context.get('config'))
-            build = koji_build.get_build(
+            koji_connector = KojiConnector(self.context.get('config'))
+            build = koji_connector.get_build_extended(
                 package_nvr=self.context.get('package_nvr')
             )
-            result = koji_build.download_source(build)
+            result = koji_connector.download_source(build)
             test_file_name = self.test_package_nvr + '.src.rpm'
             test_file_path = os.path.join(result, test_file_name)
             self.assertTrue(os.path.exists(test_file_path))

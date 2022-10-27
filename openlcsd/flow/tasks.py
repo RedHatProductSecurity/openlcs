@@ -16,7 +16,6 @@ from openlcsd.celery import app
 from openlcsd.flow.task_wrapper import WorkflowWrapperTask
 from openlcs.libs.common import get_nvr_list_from_components
 from openlcs.libs.corgi_handler import ParentComponentsAsync
-from openlcs.libs.download import KojiBuild
 from openlcs.libs.driver import OpenlcsClient
 from openlcs.libs.kojiconnector import KojiConnector
 from openlcs.libs.logger import get_task_logger
@@ -100,14 +99,14 @@ def get_build(context, engine):
                 'type': rs_type,
             }
     else:
-        koji_build = KojiBuild(config)
-        build = koji_build.get_build(
+        koji_connector = KojiConnector(config)
+        build = koji_connector.get_build_extended(
             context.get('package_nvr'),
             context.get('brew_tag'),
             context.get('package_name'),
             context.get('rpm_nvra'),
         )
-        build_type = koji_build.koji_connector.get_build_type(build)
+        build_type = koji_connector.get_build_type(build)
         context['build_type'] = build_type
         context['build'] = build
 

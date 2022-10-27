@@ -137,6 +137,29 @@ class KojiConnector:
         """
         return self._service.getBuild(build_info)
 
+    def get_build_extended(self, package_nvr=None, tag=None,
+                           package_name=None, rpm_nvra=None):
+        """
+        Extended version of `get_build`, serves as a shortcut to get build
+        using various forms.
+        """
+        if package_nvr:
+            build = self.get_build(package_nvr)
+            params = package_nvr
+        elif rpm_nvra:
+            build = self.get_build_from_nvra(rpm_nvra)
+            params = rpm_nvra
+        elif tag and package_name:
+            build = self.get_latest_build(tag, package_name)
+            params = f"{tag} & {package_name}"
+        else:
+            err_msg = "Package NVR or brew tag & package name are required."
+            raise ValueError(err_msg)
+
+        if not build:
+            raise RuntimeError(f'No build found for {params} in Brew/Koji.')
+        return build
+
     def get_osbs_build_kind(self, build):
         """
         Get the osbs build type from build extra.
@@ -446,3 +469,17 @@ class KojiConnector:
                         latest_build = build
                         break
         return latest_build
+
+    def download_source(self, build):
+        """
+        Download package build source from Brew/Koji.
+        """
+        temp_dir = tempfile.mkdtemp(prefix='download_')
+        try:
+            self.download_build_source(
+                build.get('id'),
+                dest_dir=temp_dir)
+        except RuntimeError as err:
+            err_msg = f'Failed to download source. Reason: {err}'
+            raise RuntimeError(err_msg) from None
+        return temp_dir
