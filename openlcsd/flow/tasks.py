@@ -123,18 +123,6 @@ def get_build(context, engine):
     context['comp_type'] = comp_type
 
 
-def is_source_container_build(context, build):
-    """
-    Check whether the build is a source container build.
-    @requires: `build`, dictionary, the build got via API.
-    @feeds: True, False
-    """
-    config = context.get('config')
-    koji_connector = KojiConnector(config)
-    container_type = koji_connector.get_osbs_build_kind(build)
-    return container_type == 'source_container_build'
-
-
 def get_source_container_build(context, engine):
     """
     Get Source container build with brew/koji API.
@@ -152,7 +140,7 @@ def get_source_container_build(context, engine):
     package_nvr = context.get('package_nvr')
     # Use the build directly if the build is for source container.
     if package_nvr and 'container-source' in package_nvr:
-        if is_source_container_build(context, build):
+        if koji_build.is_source_container_build(build):
             sc_build = build
     # Get the source container build if the input is a binary container.
     elif package_nvr and 'container' in package_nvr:
