@@ -275,7 +275,7 @@ class SaveScanResultMixin:
                             continue
 
 
-class SaveGroupComponentsMixin:
+class SaveComponentsMixin:
     def __init__(self):
         self.components = None
         self.release = None
@@ -283,38 +283,25 @@ class SaveGroupComponentsMixin:
     @staticmethod
     def create_component(component_data):
         summary_license = component_data.pop('summary_license')
-        if component_data.get('type') == "CONTAINER_IMAGE":
-            is_source = component_data.pop("is_source")
-            component, _ = Component.objects.update_or_create(
-                name=component_data.get('name'),
-                version=component_data.get('version'),
-                release=component_data.get('release'),
-                arch=component_data.get('arch'),
-                type=component_data.get('type'),
-                defaults={
-                    'is_source': is_source,
-                    "summary_license": summary_license,
-                },
-            )
-        else:
-            component, _ = Component.objects.update_or_create(
-                name=component_data.get('name'),
-                version=component_data.get('version'),
-                release=component_data.get('release'),
-                arch=component_data.get('arch'),
-                type=component_data.get('type'),
-                defaults={
-                    "summary_license": summary_license,
-                },
-            )
+        defaults = {"summary_license": summary_license}
+        if "is_source" in component_data:
+            defaults.update({
+                'is_source': component_data.pop("is_source")
+            })
+        component, _ = Component.objects.update_or_create(
+            name=component_data.get('name'),
+            version=component_data.get('version'),
+            release=component_data.get('release'),
+            arch=component_data.get('arch'),
+            type=component_data.get('type'),
+            defaults=defaults
+        )
         return component
 
     def build_release_node(self, parent_component):
         """
-        Build release node. For container/module, if exit release data, will
-        create release product tree node, then create a parent product tree
-        node, then create some child component product tree node. The parent
-        and child components will be component instances.
+        Build release tree nodes, each component in a release will be a node,
+        for a container/module, the release will be its parent node.
         """
         # Create release node
         release_ctype = ContentType.objects.get_for_model(Release)
@@ -332,9 +319,8 @@ class SaveGroupComponentsMixin:
 
     def build_component_node(self, parent_component):
         """
-        Build container/module node. For container/module, will create a
-        parent component tree node, then create some child component tree
-        node. The parent and child components will be component instances.
+        Build container/module component nodes. For container/module, the nodes
+        include a parent node and its children nodes.
         """
         # Create container/module node
         component_ctype = ContentType.objects.get_for_model(Component)

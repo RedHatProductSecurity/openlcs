@@ -8,7 +8,7 @@ from libs.parsers import parse_manifest_file
 from packages.mixins import (
     PackageImportTransactionMixin,
     SaveScanResultMixin,
-    SaveGroupComponentsMixin
+    SaveComponentsMixin
 )
 from packages.models import Component, File, Path, Source
 from packages.serializers import (
@@ -1038,7 +1038,7 @@ class ComponentViewSet(ModelViewSet, PackageImportTransactionMixin):
         return super().retrieve(request, *args, **kwargs)
 
 
-class SaveGroupComponentsView(APIView, SaveGroupComponentsMixin):
+class SaveComponentsView(APIView, SaveComponentsMixin):
     """
     Save container data to database
     """

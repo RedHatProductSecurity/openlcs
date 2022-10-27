@@ -76,8 +76,8 @@ urlpatterns = [
     path(f'{DRF_ROOT}/check_source_status/',
          package_views.CheckSourceStatus.as_view(),
          name='check_source_status'),
-    path(f'{DRF_ROOT}/savegroupcomponents/',
-         package_views.SaveGroupComponentsView.as_view(),
+    path(f'{DRF_ROOT}/savecomponents/',
+         package_views.SaveComponentsView.as_view(),
          name='save_group_components'),
     path(f'{DRF_ROOT}/obtain_config/',
          ObtainConfigView.as_view(), name='obtain_config')

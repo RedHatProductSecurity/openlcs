@@ -758,7 +758,7 @@ def copyright_scan(context, engine):
     context['scan_result'] = scan_result
 
 
-def send_scan_result(context, engine):
+def save_scan_result(context, engine):
     """
     Equivalent of the former "post"/"post_adhoc", which sends/posts
     scan results to hub.
@@ -900,11 +900,11 @@ def get_container_remote_source(context, engine):
         engine.logger.info(msg)
 
 
-def save_group_components(context, engine):
+def save_components(context, engine):
     """
     Send container/module components to hub, then store the components.
     """
-    url = 'savegroupcomponents'
+    url = 'savecomponents'
     cli = context.pop('client')
     package_nvr = context.get('package_nvr')
     if 'image' in context.get('build_type'):
@@ -919,7 +919,7 @@ def save_group_components(context, engine):
     msg = f'Start to save components in {component_type} {package_nvr}...'
     engine.logger.info(msg)
     fd, tmp_file_path = tempfile.mkstemp(
-        prefix='scan_group_components_', dir=context.get('post_dir'))
+        prefix='save_components_', dir=context.get('post_dir'))
     with os.fdopen(fd, 'w') as destination:
         json.dump(data, destination, cls=DateEncoder)
     resp = cli.post(url, data={"file_path": tmp_file_path})
@@ -1046,7 +1046,7 @@ flow_default = [
             download_source_image,
             unpack_container_source_archive,
             get_container_components,
-            save_group_components,
+            save_components,
             get_container_remote_source,
             fork_components_imports,
         ],
@@ -1056,7 +1056,7 @@ flow_default = [
                 # Task flow for module
                 [
                     get_module_components_from_corgi,
-                    save_group_components,
+                    save_components,
                 ],
                 # Task flow for source scan
                 [
@@ -1077,7 +1077,7 @@ flow_default = [
                                 lambda o, e: o.get('copyright_scan_req'),
                                 copyright_scan,
                             ),
-                            send_scan_result,
+                            save_scan_result,
                         ],
                     )
                  ]
@@ -1096,7 +1096,7 @@ flow_retry = [
         lambda o, e: o.get('copyright_scan'),
         copyright_scan,
     ),
-    send_scan_result,
+    save_scan_result,
 ]
 
 
