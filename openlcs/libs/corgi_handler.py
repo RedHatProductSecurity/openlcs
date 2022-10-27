@@ -129,11 +129,12 @@ class ParentComponentsAsync:
         Get component data from the response of corgi component link.
         """
         component = {}
-        with httpx.Client(timeout=None) as client:
-            cert = os.getenv("REQUESTS_CA_BUNDLE")
-            response = client.get(
-                component_link,
-                params={'cert': cert})
+        # Explicitly pass in the ssl context for httpx client. See also
+        # https://www.python-httpx.org/advanced/#ssl-certificates
+        cert = os.getenv("REQUESTS_CA_BUNDLE")
+        context = httpx.create_ssl_context(verify=cert)
+        with httpx.Client(timeout=None, verify=context) as client:
+            response = client.get(component_link)
             if response.status_code == 200:
                 content = response.json()
                 component = self.get_component_flat(content)
