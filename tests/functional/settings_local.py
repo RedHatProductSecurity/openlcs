@@ -27,10 +27,11 @@ LOGGER_DIR = 'logs'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'openlcs',
-        'USER': 'postgres',
-        'PASSWORD': 'test',
-        'HOST': 'postgres',
+        'NAME': os.getenv('OLCS_TEST_DB_NAME', 'openlcs'),
+        'USER': os.getenv('OLCS_TEST_DB_USER', 'postgres'),
+        'PASSWORD': os.getenv('OLCS_TEST_DB_PASSWORD', 'test'),
+        'HOST': os.getenv('OLCS_TEST_DB_HOST', 'postgres'),
+        'PORT': os.getenv('OLCS_TEST_DB_PORT', '5432'),
     }
 }
 

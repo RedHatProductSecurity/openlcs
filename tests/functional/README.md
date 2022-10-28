@@ -2,6 +2,19 @@
 
 Test cases are using tox and pytest for running the tests.
 
+## Configure environment variables for test cases
+
+Depending on the local configuration, you may need to update some of below variables for the tests to succeed:
+
+- OLCS_SCANCODE_CLI: full path to the `scancode` executable
+- OLCS_EXTRACTCODE_CLI: full path to the `extractcode` executable
+- OLCS_TEST_DB_NAME: test database name
+- OLCS_TEST_DB_HOST: test database host
+- OLCS_TEST_DB_PORT: test database port
+- OLCS_TEST_DB_USER: test database username
+- OLCS_TEST_DB_HOST: test database password
+
+>Note: each of the variable above has a default value, only update those that are inconsistent with the default.
 
 ## Run the tests
 There are a few methods how you can run test cases. Always run the commands from
