@@ -18,7 +18,7 @@ CORGI_API_ENDPIONTS = {
 
 CORGI_COMPONENT_TYPES = [
     "CONTAINER_IMAGE",
-    "RHEL_MODULE",
+    "RPMMOD",
     "GOLANG",
     "MAVEN",
     "NPM",
@@ -112,7 +112,7 @@ class Command(BaseCommand):
         }
         for result in page["results"]:
             component_type = result.get("type")
-            if component_type in ["CONTAINER_IMAGE", "RHEL_MODULE"]:
+            if component_type in ["CONTAINER_IMAGE", "RPMMOD"]:
                 component_data = self.get_component_flat(result)
                 # Deal with container or rhel module provides
                 provides = []

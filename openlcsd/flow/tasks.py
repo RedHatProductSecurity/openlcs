@@ -910,7 +910,7 @@ def save_components(context, engine):
     if 'image' in context.get('build_type'):
         component_type = 'CONTAINER_IMAGE'
     else:
-        component_type = 'RHEL_MODULE'
+        component_type = 'RPMMOD'
     data = {
         'components': context.get('components'),
         'product_release': context.get('product_release'),
@@ -944,7 +944,7 @@ def get_module_components_from_corgi(context, engine):
     engine.logger.info("Start to get module components data...")
     mc = ParentComponentsAsync(
         config.get('CORGI_API_PROD'), context.get('package_nvr'))
-    context['components'] = mc.get_components_data('RHEL_MODULE')
+    context['components'] = mc.get_components_data('RPMMOD')
     engine.logger.info("Finished getting module components data.")
 
 
@@ -959,9 +959,9 @@ def get_module_srpm(context, engine):
     srpms = []
     for rpm in rpm_components:
         if rpm.get('arch') == 'src':
-            nvr = [rpm.get('name'), '-', rpm.get('version'), '-',
-                   rpm.get('release')]
-            srpms.append(''.join(nvr))
+            nvr = "-".join([rpm.get('name'), rpm.get('version'),
+                           rpm.get('release')])
+            srpms.append(nvr)
     engine.logger.info("Finish to get srpm builds of the module.")
     context['nvr_list'] = srpms
 

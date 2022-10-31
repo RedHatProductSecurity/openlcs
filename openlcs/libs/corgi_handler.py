@@ -41,7 +41,7 @@ class ParentComponentsAsync:
 
     def get_component_and_links(self, nvr, component_type):
         """
-        Get component links in one of "CONTAINER_IMAGE" type or "RHEL_MODULE"
+        Get component links in one of "CONTAINER_IMAGE" type or "RPMMOD"
         component with nvr.
         """
         component_links = []

@@ -74,7 +74,7 @@ class Command(BaseCommand):
 
             ctype = component_data.get("type")
             # Create provided component and build component tree
-            if ctype in ["CONTAINER_IMAGE", "RHEL_MODULE"]:
+            if ctype in ["CONTAINER_IMAGE", "RPMMOD"]:
                 provides = component_data.get("provides", [])
                 self.build_component_node(component, provides)
 
@@ -103,7 +103,7 @@ class Command(BaseCommand):
             for component_data in components:
                 component = self.create_component(component_data)
                 ctype = component_data.get("type")
-                if ctype in ["CONTAINER_IMAGE", "RHEL_MODULE"]:
+                if ctype in ["CONTAINER_IMAGE", "RPMMOD"]:
                     provides = component_data.get("provides", [])
                     self.build_component_node(component, provides)
 
