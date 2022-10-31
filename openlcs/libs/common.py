@@ -130,14 +130,14 @@ def get_nvr_list_from_components(components, comp_type):
     return nvr_list
 
 
-def search_content_according_patterns(search_patterns):
+def search_content_by_patterns(search_patterns):
     """
-    Search content according the giving patterns.
+    Search content by the giving patterns.
     """
     paths = []
     if search_patterns:
         for search_pattern in search_patterns:
-            paths = glob.glob(search_pattern)
+            paths = glob.glob(search_pattern, recursive=True)
             if paths:
                 break
     return paths
