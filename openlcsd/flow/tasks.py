@@ -948,23 +948,44 @@ def get_module_components_from_corgi(context, engine):
     engine.logger.info("Finished getting module components data.")
 
 
+def get_module_srpm(context, engine):
+    """
+    The get_module_components_from_corgi gets the RPM components that includes
+    the rpms and srpms. This function gets the srpm builds for rhel module.
+    """
+    components = context.get('components')
+    rpm_components = components.get('RPM')
+    engine.logger.info("Start to get srpm builds of the module...")
+    srpms = []
+    for rpm in rpm_components:
+        if rpm.get('arch') == 'src':
+            nvr = [rpm.get('name'), '-', rpm.get('version'), '-',
+                   rpm.get('release')]
+            srpms.append(''.join(nvr))
+    engine.logger.info("Finish to get srpm builds of the module.")
+    context['nvr_list'] = srpms
+
+
 def fork_detail_type_components_imports(
         context, engine, nvr_list, src_dir, comp_type):
     """
     In a source container, it has different type of component. The different
-    components have different src_dir. This function will be defined the post
-    data for the different type component.
+    components have different src dir. This function will be defined the post
+    data for the source container srpm components' tasks. It could also be
+    same with rhel module srpm components except the src dir.
     """
     cli = context.get('client')
     url = '/sources/import/'
     msg = 'Start to fork imports for {} components...'.format(len(nvr_list))
     data = {
         'component_type': comp_type,
-        'src_dir': src_dir,
         'package_nvrs': nvr_list,
         'license_scan': context.get('license_scan'),
         'copyright_scan': context.get('copyright_scan')
     }
+    # For source container's srpm components
+    if src_dir:
+        data.update({'src_dir': src_dir})
     engine.logger.info(msg)
     cli.post(url, data=data)
     msg = '-- Forked import tasks for below source components:{}'.format(
@@ -1005,10 +1026,14 @@ def fork_components_imports(context, engine):
     Fork components tasks
     """
     components = context.get('components')
-    srpm_nvr_list = get_nvr_list_from_components(components, 'SRPM')
-
-    # Fork source RPM component tasks.
+    srpm_nvr_list = context.get('nvr_list')
+    # Fork tasks for rhel module
     if srpm_nvr_list:
+        fork_detail_type_components_imports(
+            context, engine, srpm_nvr_list, context.get('srpm_dir'), 'RPM')
+    else:
+        srpm_nvr_list = get_nvr_list_from_components(components, 'SRPM')
+    # Fork source RPM component tasks for source container.
         fork_detail_type_components_imports(
             context, engine, srpm_nvr_list, context.get('srpm_dir'), 'SRPM')
 
@@ -1057,6 +1082,8 @@ flow_default = [
                 [
                     get_module_components_from_corgi,
                     save_components,
+                    get_module_srpm,
+                    fork_components_imports,
                 ],
                 # Task flow for source scan
                 [
