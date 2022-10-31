@@ -243,7 +243,7 @@ EMAIL_REALM = 'REDHAT.COM'
 
 # Give superuser permission to these users.
 OPENLCS_ADMIN_LIST = ['jzhao', 'yuwang', 'huiwang', 'qduanmu', 'yulwang',
-                      'chhan']
+                      'chhan', 'wbu', 'axuan']
 
 # CSRF setting
 # https://docs.djangoproject.com/zh-hans/3.2/ref/settings/#csrf-cookie-domain
