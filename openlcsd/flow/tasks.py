@@ -449,6 +449,7 @@ def prepare_dest_dir(context, engine):
     build = context.get('build')
     release = context.get('product_release')
     component_type = context.get('component_type')
+    rs_types = config.get('RS_TYPES')
     engine.logger.info('Start to prepare destination directory...')
     if component_type and component_type in ['SRPM', 'CONTAINER_IMAGE']:
         # TODO: Currently we don't store product and release data. so the
@@ -481,13 +482,17 @@ def prepare_dest_dir(context, engine):
             raise RuntimeError(msg) from None
     # Remote source archives will be stored in a separate directory under
     # "SRC_ROOT_DIR".
-    else:
+    elif component_type in rs_types:
         src_root = config.get('RS_SRC_ROOT_DIR')
         # `src_root` for remote source archives may not exist for the first
         # time unless explicitly created.
         if not os.path.exists(src_root):
             os.makedirs(src_root)
         src_dir = tempfile.mkdtemp(prefix='rs_', dir=src_root)
+    else:
+        src_dir = tempfile.mkdtemp(
+            prefix='src_', dir=context.get('tmp_root_dir'))
+
     engine.logger.info('Finished preparing destination directory.')
     context['src_dest_dir'] = src_dir
 
@@ -872,11 +877,12 @@ def get_container_remote_source(context, engine):
     @requires: `components`, components found in the container.
     @requires: `rs_dir`, directory that store remote source after collate.
     """
-    rs_types = ['GOLANG', 'YARN', 'PYPI', 'NPM']
+    config = context.get('config')
+    rs_types = config.get('RS_TYPES')
     components = context.get('components')
+
     if any([True for rs_type in rs_types if rs_type in components.keys()]):
         engine.logger.info('Start to get remote source in source container...')
-        config = context.get('config')
         src_dest_dir = context.get('src_dest_dir')
         sc_handler = SourceContainerHandler(config, dest_dir=src_dest_dir)
         rs_components = []
