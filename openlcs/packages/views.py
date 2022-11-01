@@ -820,17 +820,22 @@ class PackageImportTransactionView(APIView, PackageImportTransactionMixin):
             max_retries = settings.SAVE_DATA_MAX_RETRIES
             for i in range(max_retries):
                 try:
+                    file_objs = []
                     # Query files that need to be created.
-                    exist_files = File.objects.in_bulk(
-                        id_list=list(swhids), field_name='swhid').keys()
-                    file_objs = [File(swhid=swhid) for swhid in swhids
-                                 if swhid not in exist_files]
+                    if swhids:
+                        exist_files = File.objects.in_bulk(
+                            id_list=list(swhids), field_name='swhid').keys()
+                        file_objs = [File(swhid=swhid) for swhid in swhids
+                                     if swhid not in exist_files]
 
                     with transaction.atomic():
                         source_obj = Source.objects.create(**source)
-                        self.create_files(file_objs)
-                        self.create_paths(source_obj, paths)
-                        self.create_component(source_obj, component)
+                        if file_objs:
+                            self.create_files(file_objs)
+                        if paths:
+                            self.create_paths(source_obj, paths)
+                        if component:
+                            self.create_component(source_obj, component)
                     break
                 except IntegrityError as err:
                     if i == max_retries - 1:

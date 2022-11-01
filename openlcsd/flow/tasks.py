@@ -641,9 +641,7 @@ def deduplicate_source(context, engine):
                             os.remove(path)
                 else:
                     swhids = list(set(swhids))
-
-                if swhids:
-                    context['source_info']['swhids'] = swhids
+                context['source_info']['swhids'] = swhids if swhids else []
 
                 # All the paths need to be stored. because even if file exist,
                 # that's not mean the path object exist.
