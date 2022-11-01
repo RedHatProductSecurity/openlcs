@@ -38,14 +38,21 @@ When you are creating a dump for the tests it is necessary to create it with
 `--natural-foreign` parameter otherwise the tests will fail due to inconsistent
 IDs of `django_content_type` and others.
 
-More info: https://docs.djangoproject.com/en/dev/topics/serialization/#natural-keys
+Warning:
+
+You should `never` include automatically generated objects in a fixture or other serialized data.
+By chance, the primary keys in the fixture may match those in the database and loading the fixture will have no effect.
+In the more likely case that they don’t match, the fixture loading will fail with an IntegrityError.
+
+More info: https://docs.djangoproject.com/en/3.2/topics/serialization/#topics-serialization-natural-keys
 
 Use this command to dump the DB:
 ```
 python openlcs/manage.py dumpdata \
-    packages auth.user auth.group adhoc comments history notifications \
-    packages products reviews tasks utils authentications \
-    --natural-foreign  -o database_data.json
+    auth.user packages.file packages.source packages.path tasks \
+    --natural-foreign -o database_data.json --indent 4
 ```
 Note: Do not forget to fill other tables (models) that you need
 (e.g. newly created).
+
+More info: https://docs.djangoproject.com/en/3.2/ref/django-admin/#dumpdata 

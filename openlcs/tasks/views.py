@@ -4,10 +4,22 @@ from django_filters import rest_framework as filters
 from tasks.models import Task, TaskMeta
 from tasks.serializers import TaskSerializer
 
+# task status list for DRF’s browsable API
+TASK_STATUS_CHOICES = (
+    ('PENDING', 'PENDING'),
+    ('STARTED', 'STARTED'),
+    ('FAILURE', 'FAILURE'),
+    ('SUCCESS', 'SUCCESS'),
+    ('RECEIVED', 'RECEIVED'),
+    ('REVOKED', 'REVOKED'),
+    ('RETRY', 'RETRY')
+)
+
 
 class TaskFilter(filters.FilterSet):
-    status = filters.CharFilter(
-        field_name='status', method='filter_status', label='status'
+    status = filters.ChoiceFilter(
+        field_name='status', method='filter_status', label='status',
+        choices=TASK_STATUS_CHOICES
     )
     # input is date format, %Y-%m-%d
     date_done = filters.DateTimeFilter(
@@ -16,12 +28,18 @@ class TaskFilter(filters.FilterSet):
     traceback = filters.CharFilter(
         field_name='traceback', method="filter_traceback", label='traceback'
     )
-    params = filters.CharFilter(field_name='params', lookup_expr='contains')
+    params = filters.CharFilter(
+        field_name='params', lookup_expr='contains', label='params'
+    )
+    owner__username = filters.CharFilter(
+        field_name='owner__username', label='owner__username'
+    )
+    meta_id = filters.CharFilter(field_name='meta_id', label='meta_id')
 
     class Meta:
         model = Task
-        fields = ('meta_id', 'params', 'owner__username',
-                  'status', 'date_done', 'traceback')
+        fields = ('meta_id', 'owner__username', 'status',
+                  'params', 'date_done', 'traceback')
 
     def filter_status(self, queryset, name, value):
         if not value:
@@ -67,6 +85,13 @@ class TaskViewSet(ModelViewSet):
 
             curl -X GET -H "Content-Type: application/json" \
 %(HOST_NAME)s/%(API_PATH)s/tasks/ -H 'Authorization: Token your_token'
+
+        with query params
+        
+            curl -X GET -H "Content-Type: application/json" \
+%(HOST_NAME)s/%(API_PATH)s/tasks/?meta_id=&owner__username=&status=&params=&date_done=&traceback= \
+ -H 'Authorization: Token your_token'        
+
 
         ####__Supported query params__####
 

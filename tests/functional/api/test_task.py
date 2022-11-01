@@ -1,46 +1,81 @@
 
 
-def test_tasks(openlcs_client):
+def test_list_tasks(openlcs_client):
     """
-    Test for retrieving tasks
+    Test for list tasks
     """
     url = '/tasks/?meta_id=&params=&owner__username=&status=SUCCESS&date_done=&traceback='
     get_success_response = openlcs_client.api_call(url, 'GET')
     success_expected = [
         {
-            "id": 4,
-            "meta_id": "8d43f692-e3c6-4924-8b3c-2cb362a4fe01",
-            "owner": "admin",
-            "params": "{\"package_nvr\": \"fio-3.1-2.el7\", \"license_scan\": true, \"copyright_scan\": true, \"product_release\": \"satellite-6.9.0\"}",
-            "status": "SUCCESS",
-            "date_done": "2022-11-01T08:04:39.502104Z",
-            "traceback": None
-        },
-        {
-            "id": 3,
-            "meta_id": "8f01a79b-4cfd-47e8-a15f-acc7e8288b7d",
-            "owner": "admin",
-            "params": "{\"package_nvr\": \"ansible-2.4.2.0-2.el7\", \"license_scan\": true, \"copyright_scan\": true, \"product_release\": \"satellite-6.9.0\"}",
-            "status": "SUCCESS",
-            "date_done": "2022-11-01T08:35:25.695500Z",
-            "traceback": None
+            'id': 4,
+            'meta_id': '9f2008cc-78d4-4eaf-97b4-2455d70c4420',
+            'owner': 'admin',
+            'params': '{"package_nvr": "fio-3.1-2.el7", "license_scan": true, "copyright_scan": true, "product_release": "satellite-6.9.0"}',
+            'status': 'SUCCESS',
+            'date_done': '2022-11-02T11:42:51.971000Z',
+            'traceback': None
         }
     ]
 
     assert get_success_response.get("results") == success_expected
 
-    url = '/tasks/?meta_id=8d43f692-e3c6-4924-8b3c-2cb362a4fe01&params=&owner__username=&status=SUCCESS&date_done=&traceback='
-    get_target_task_id_response = openlcs_client.api_call(url, 'GET')
-    target_task_id_expected = [
+    url = '/tasks/?meta_id=ce369f13-b9ec-4a10-9670-0a3647e2770b&' \
+          'params=ansible&owner__username=admin&status=STARTED&date_done=&traceback='
+    combine_query_response = openlcs_client.api_call(url, 'GET')
+    combine_query_expected = [
         {
-            "id": 4,
-            "meta_id": "8d43f692-e3c6-4924-8b3c-2cb362a4fe01",
-            "owner": "admin",
-            "params": "{\"package_nvr\": \"fio-3.1-2.el7\", \"license_scan\": true, \"copyright_scan\": true, \"product_release\": \"satellite-6.9.0\"}",
-            "status": "SUCCESS",
-            "date_done": "2022-11-01T08:04:39.502104Z",
-            "traceback": None
+            'id': 1,
+            'meta_id': 'ce369f13-b9ec-4a10-9670-0a3647e2770b',
+            'owner': 'admin',
+            'params': '{"package_nvr": "ansible-2.4.2.0-2.el7", "license_scan": true, "copyright_scan": true, "product_release": "satellite-6.9.0"}',
+            'status': 'STARTED',
+            'date_done': None,
+            'traceback': None
         }
     ]
 
-    assert get_target_task_id_response.get("results") == target_task_id_expected
+    assert combine_query_response.get("results") == combine_query_expected
+
+    url = '/tasks/'
+    list_response = openlcs_client.api_call(url, 'GET')
+    list_expected = [
+        {
+            'id': 1,
+            'meta_id': 'ce369f13-b9ec-4a10-9670-0a3647e2770b',
+            'owner': 'admin',
+            'params': '{"package_nvr": "ansible-2.4.2.0-2.el7", "license_scan": true, "copyright_scan": true, "product_release": "satellite-6.9.0"}',
+            'status': 'STARTED',
+            'date_done': None,
+            'traceback': None
+        },
+        {
+            'id': 2,
+            'meta_id': 'e647c67c-7941-45a7-8712-97c4ac9d9a01',
+            'owner': 'admin',
+            'params': '{"package_nvr": "fio-3.1-2.el7", "license_scan": true, "copyright_scan": true, "product_release": "satellite-6.9.0"}',
+            'status': 'STARTED',
+            'date_done': None,
+            'traceback': None
+        },
+        {
+            'id': 3,
+            'meta_id': 'b0693b20-9190-4ebc-93ac-3dccd57a7718',
+            'owner': 'admin',
+            'params': '{"package_nvr": "ansible-2.4.2.0-2.el7", "license_scan": true, "copyright_scan": true, "product_release": "satellite-6.9.0"}',
+            'status': 'STARTED',
+            'date_done': None,
+            'traceback': None
+        },
+        {
+            'id': 4,
+            'meta_id': '9f2008cc-78d4-4eaf-97b4-2455d70c4420',
+            'owner': 'admin',
+            'params': '{"package_nvr": "fio-3.1-2.el7", "license_scan": true, "copyright_scan": true, "product_release": "satellite-6.9.0"}',
+            'status': 'SUCCESS',
+            'date_done': '2022-11-02T11:42:51.971000Z',
+            'traceback': None
+        }
+    ]
+
+    assert list_response.get("results") == list_expected
