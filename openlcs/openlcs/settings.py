@@ -247,7 +247,8 @@ OPENLCS_ADMIN_LIST = ['jzhao', 'yuwang', 'huiwang', 'qduanmu', 'yulwang',
 
 # CSRF setting
 # https://docs.djangoproject.com/zh-hans/3.2/ref/settings/#csrf-cookie-domain
-CSRF_COOKIE_DOMAIN = ['.redhat.com', '127.0.0.1']
+# CSRF_COOKIE_DOMAIN = ['.redhat.com', '127.0.0.1']
+CSRF_COOKIE_DOMAIN = '127.0.0.1'
 
 
 # Corgi setting
