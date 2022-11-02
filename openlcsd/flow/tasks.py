@@ -689,7 +689,7 @@ def send_package_data(context, engine):
         # http://docs.python-requests.org/en/master/user/quickstart/#response-status-codes  # noqa
         resp.raise_for_status()
     except HTTPError:
-        err_msg = f"Failed to save {package_nvr} data to db: {resp.text}"
+        err_msg = f"Failed to save {component} data to db: {resp.text}"
         engine.logger.error(err_msg)
         raise RuntimeError(err_msg) from None
     finally:
