@@ -174,6 +174,20 @@ build-release-image:
    - pelc-shell-runner
   stage: release
   script:
-    - docker build -t $OPENLCS_IMAGE:$CI_COMMIT_TAG -f containers/docker-openlcs/Dockerfile .;
+    - >
+      docker build
+      --build-arg PRODSEC_DEV_OPENLCS_MAIL=${PRODSEC_DEV_OPENLCS_MAIL}
+      --build-arg ROOT_CA_URL=${ROOT_CA_URL}
+      --build-arg ENG_CA_URL=${ENG_CA_URL}
+      --build-arg OPENSHIFT_CLI_URL=${OPENSHIFT_CLI_URL}
+      --build-arg RHEL8_REPO_URL=${RHEL8_REPO_URL}
+      --build-arg TITO_REPO_URL=${TITO_REPO_URL}
+      --build-arg CORGI_API_STAGE=${CORGI_API_STAGE}
+      --build-arg CORGI_API_PROD=${CORGI_API_PROD}
+      --build-arg KOJI_WEBSERVICE=${KOJI_WEBSERVICE}
+      --build-arg KOJI_WEBURL=${KOJI_WEBURL}
+      --build-arg KOJI_DOWNLOAD=${KOJI_DOWNLOAD}
+      --build-arg LDAP_URI=${LDAP_URI}
+      -t $OPENLCS_IMAGE:$CI_COMMIT_TAG -f containers/docker-openlcs/Dockerfile .;
     - docker login -u="$PELC_CI_USER" -p=$PELC_CI_PASSWORD quay.io
     - docker push $OPENLCS_IMAGE:$CI_COMMIT_TAG
