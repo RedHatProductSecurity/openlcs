@@ -11,7 +11,11 @@ class WorkflowWrapperTask(celery.Task):
         """Handler called after the task returns."""
         tmp_src_filepath = args[0].get('tmp_src_filepath')
         if tmp_src_filepath and os.path.exists(tmp_src_filepath):
-            os.remove(tmp_src_filepath)
+            # The container misc is not an archive but a directory
+            if os.path.isdir(tmp_src_filepath):
+                shutil.rmtree(tmp_src_filepath, ignore_errors=True)
+            else:
+                os.remove(tmp_src_filepath)
 
         src_dir = args[0].get('src_dest_dir')
         if src_dir and os.path.exists(src_dir):
