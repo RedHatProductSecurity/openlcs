@@ -1,15 +1,81 @@
-from rest_framework.filters import SearchFilter
 from rest_framework.viewsets import ModelViewSet
+from django_filters import rest_framework as filters
 
-from tasks.models import Task
+from tasks.models import Task, TaskMeta
 from tasks.serializers import TaskSerializer
+
+# task status list for DRF’s browsable API
+TASK_STATUS_CHOICES = (
+    ('PENDING', 'PENDING'),
+    ('STARTED', 'STARTED'),
+    ('FAILURE', 'FAILURE'),
+    ('SUCCESS', 'SUCCESS'),
+    ('RECEIVED', 'RECEIVED'),
+    ('REVOKED', 'REVOKED'),
+    ('RETRY', 'RETRY')
+)
+
+
+class TaskFilter(filters.FilterSet):
+    status = filters.ChoiceFilter(
+        field_name='status', method='filter_status', label='status',
+        choices=TASK_STATUS_CHOICES
+    )
+    # input is date format, %Y-%m-%d
+    date_done = filters.DateTimeFilter(
+        field_name='date_done', method="filter_date_done", label='date_done'
+    )
+    traceback = filters.CharFilter(
+        field_name='traceback', method="filter_traceback", label='traceback'
+    )
+    params = filters.CharFilter(
+        field_name='params', lookup_expr='contains', label='params'
+    )
+    owner__username = filters.CharFilter(
+        field_name='owner__username', label='owner__username'
+    )
+    meta_id = filters.CharFilter(field_name='meta_id', label='meta_id')
+
+    class Meta:
+        model = Task
+        fields = ('meta_id', 'owner__username', 'status',
+                  'params', 'date_done', 'traceback')
+
+    def filter_status(self, queryset, name, value):
+        if not value:
+            return queryset
+
+        meta_ids = TaskMeta.objects.filter(
+            status=value).values_list('task_id', flat=True)
+        return queryset.filter(meta_id__in=meta_ids)
+
+    def filter_date_done(self, queryset, name, value):
+        """
+        get someday data according input
+        """
+        if not value:
+            return queryset
+
+        meta_ids = TaskMeta.objects.filter(
+            date_done__year=value.year,
+            date_done__month=value.month,
+            date_done__day=value.day).values_list('task_id', flat=True)
+
+        return queryset.filter(meta_id__in=meta_ids)
+
+    def filter_traceback(self, queryset, name, value):
+        if not value:
+            return queryset
+
+        meta_ids = TaskMeta.objects.filter(
+            traceback__icontains=value).values_list('task_id', flat=True)
+        return queryset.filter(meta_id__in=meta_ids)
 
 
 class TaskViewSet(ModelViewSet):
     queryset = Task.objects.all()
     serializer_class = TaskSerializer
-    filter_backends = [SearchFilter]
-    search_fields = ['=meta_id', '=owner__username', '$params']
+    filterset_class = TaskFilter
 
     def list(self, request, *args, **kwargs):
         """
@@ -20,6 +86,30 @@ class TaskViewSet(ModelViewSet):
             curl -X GET -H "Content-Type: application/json" \
 %(HOST_NAME)s/%(API_PATH)s/tasks/ -H 'Authorization: Token your_token'
 
+        with query params
+        
+            curl -X GET -H "Content-Type: application/json" \
+%(HOST_NAME)s/%(API_PATH)s/tasks/?meta_id=&owner__username=&status=&params=&date_done=&traceback= \
+ -H 'Authorization: Token your_token'        
+
+
+        ####__Supported query params__####
+
+        ``meta_id``, string, task meta id.
+
+        ``owner__username``, string, username of the task owner.
+
+        ``status``, string, Status of the task, possible values can be \
+``PENDING``, ``STARTED``, ``FAILURE``, ``SUCCESS``, ``RECEIVED``, ``REVOKED``, ``RETRY``.
+
+        ``params``, string, Params of the task, can use part of this field \
+to search.
+
+        ``date_done``, string, the day you want to filter the task, format: ``%%Y-%%m-%%d``.
+
+        ``traceback``, string, task traceback, can use part of this field to search
+
+
         ####__Response__####
 
             HTTP 200 OK
@@ -27,22 +117,27 @@ class TaskViewSet(ModelViewSet):
 
             [
                 {
-                    "id": 1,
-                    "meta_id": "1e234842-0993-4e3a-8bb7-7dd9bed6f28c",
-                    "owner": "qduanmu",
-                    "params": "{\"package_nvr\": \"a2ps-4.14-23.el7\", \
-\"license_scan\": true, \"copyright_scan\": true}"
+                    "id": 20,
+                    "meta_id": "82b02650-5d36-4430-876a-c8401266b438",
+                    "owner": "admin",
+                    "params": "{\"package_nvr\": \"fio-3.1-2.el7\", \"license_scan\": true,
+                    \"copyright_scan\": true, \"product_release\": \"satellite-6.9.0\"}",
+                    "status": "SUCCESS",
+                    "date_done": "2022-10-24T09:17:07.406133",
+                    "traceback": null
                 },
                 {
-                    "id": 2,
-                    "meta_id": "c0e0fff0-1ab6-4f2b-851c-eaf969988df3",
-                    "owner": "qduanmu",
-                    "params": "{\"package_nvr\": \"ansible-2.4.2.0-2.el7\", \
-\"license_scan\": false, \"copyright_scan\": true, \"product_release\": \
-\"satellite-6.9.0\"}"
-                },
+                    "id": 19,
+                    "meta_id": "3808b332-45df-4fa2-a4ca-3225549adc2a",
+                    "owner": "admin",
+                    "params": "{\"package_nvr\": \"ansible-2.4.2.0-2.el7\", \"license_scan\": true,
+                     \"copyright_scan\": true, \"product_release\": \"satellite-6.9.0\"}",
+                    "status": "STARTED",
+                    "date_done": null,
+                    "traceback": null
+                }
             ]
-        """
+        """ # noqa
         return super().list(request, *args, **kwargs)
 
     def retrieve(self, request, *args, **kwargs):
@@ -57,6 +152,12 @@ class TaskViewSet(ModelViewSet):
 
         ``params``: string, task parameters.
 
+        ``status``: string, task status.
+
+        ``date_done``: string, task done datetime.
+
+        ``traceback``: string, task traceback.
+
         ####__Request__####
 
             curl -X GET -H "Content-Type: application/json" -H \
@@ -68,11 +169,14 @@ class TaskViewSet(ModelViewSet):
             Content-Type: application/json
 
             {
-                "id": 1,
-                "meta_id": "1e234842-0993-4e3a-8bb7-7dd9bed6f28c",
-                "owner": "qduanmu",
-                "params": "{\"package_nvr\": \"a2ps-4.14-23.el7\", \
-\"license_scan\": true, \"copyright_scan\": true}"
+                "id": 20,
+                "meta_id": "82b02650-5d36-4430-876a-c8401266b438",
+                "owner": "admin",
+                "params": "{\"package_nvr\": \"fio-3.1-2.el7\", \"license_scan\": true,
+                \"copyright_scan\": true, \"product_release\": \"satellite-6.9.0\"}",
+                "status": "SUCCESS",
+                "date_done": "2022-10-24T09:17:07.406133",
+                "traceback": null
             }
-        """
+        """ # noqa
         return super().retrieve(request, *args, **kwargs)

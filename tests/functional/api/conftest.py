@@ -111,7 +111,7 @@ class OpenlcsTestClient:
 
 
 @pytest.fixture
-def openlcs_client(live_server, openlcs_setup):
+def openlcs_client(django_db_setup, live_server, openlcs_setup):
     openlcs_client = OpenlcsTestClient(live_server.url)
     openlcs_client.login()
     return openlcs_client
