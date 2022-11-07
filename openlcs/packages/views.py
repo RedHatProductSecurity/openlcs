@@ -6,7 +6,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import Q
 from libs.parsers import parse_manifest_file
 from packages.mixins import (
-    PackageImportTransactionMixin,
+    SourceImportMixin,
     SaveScanResultMixin,
     SaveComponentsMixin
 )
@@ -33,7 +33,7 @@ from rest_framework.viewsets import ModelViewSet
 
 
 # Create your views here.
-class FileViewSet(ModelViewSet, PackageImportTransactionMixin):
+class FileViewSet(ModelViewSet, SourceImportMixin):
     """
     API endpoint that allows files to be viewed or edited.
     """
@@ -235,7 +235,7 @@ already exists.\\n"
                         status=status.HTTP_400_BAD_REQUEST)
 
 
-class SourceViewSet(ModelViewSet, PackageImportTransactionMixin):
+class SourceViewSet(ModelViewSet):
     """
     API endpoint that allows sources to be imported, viewed or edited.
     """
@@ -505,7 +505,7 @@ file first, it should contain the following parameters:
         return Response(data=resp)
 
 
-class PathViewSet(ModelViewSet, PackageImportTransactionMixin):
+class PathViewSet(ModelViewSet, SourceImportMixin):
     """
     API endpoint that allows Paths to be viewed or edited.
     """
@@ -758,12 +758,15 @@ Key (id)=(5) already exists.\\n"]
                         status=status.HTTP_400_BAD_REQUEST)
 
 
-class PackageImportTransactionView(APIView, PackageImportTransactionMixin):
+class PackageImportTransactionView(APIView,
+                                   SourceImportMixin,
+                                   SaveComponentsMixin):
     """
     Package import transaction
 
     data example:  # noqa
     {
+        "product_release": "rhel-8.9",
         "swhids": [
             "swh:1:cnt:1fa0d32c021a24447540ab6dca496948de8088aa",
             "swh:1:cnt:1fa0d32c021a24447540ab6dca496948de8088bb"
@@ -808,6 +811,7 @@ class PackageImportTransactionView(APIView, PackageImportTransactionMixin):
         source = data.get('source')
         paths = data.get('paths')
         component = data.get('component')
+        product_release = data.get('product_release')
         if not any([swhids, source, paths, component]):
             return Response(
                 data={'message': 'No data provided.'},
@@ -835,7 +839,13 @@ class PackageImportTransactionView(APIView, PackageImportTransactionMixin):
                         if paths:
                             self.create_paths(source_obj, paths)
                         if component:
-                            self.create_component(source_obj, component)
+                            component_obj = self.create_component(component)
+                            component_obj.source = source_obj
+                            component_obj.save()
+                            if product_release:
+                                self.release = Release.objects.filter(
+                                    name=product_release)[0]
+                                self.build_release_node(component_obj)
                     break
                 except IntegrityError as err:
                     if i == max_retries - 1:
@@ -971,7 +981,7 @@ class ComponentFilter(django_filters.FilterSet):
         )
 
 
-class ComponentViewSet(ModelViewSet, PackageImportTransactionMixin):
+class ComponentViewSet(ModelViewSet):
     """
     API endpoint that allows components to be viewed.
     """
