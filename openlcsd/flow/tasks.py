@@ -340,6 +340,7 @@ def get_source_metadata(context, engine):
 
     # TODO: Update metadata for remote source.
     context['source_info'] = {
+        'product_release': context.get('product_release'),
         "source": {
             "checksum": source_checksum,
             "name": source_name,
@@ -951,7 +952,7 @@ def get_module_components_from_corgi(context, engine):
     engine.logger.info("Finished getting module components data.")
 
 
-def fork_detail_type_components_imports(
+def fork_specified_type_imports(
         context, engine, nvr_list, src_dir, comp_type):
     """
     In a source container, it has different type of component. The different
@@ -1012,12 +1013,12 @@ def fork_components_imports(context, engine):
 
     # Fork source RPM component tasks.
     if srpm_nvr_list:
-        fork_detail_type_components_imports(
+        fork_specified_type_imports(
             context, engine, srpm_nvr_list, context.get('srpm_dir'), 'SRPM')
 
     # Fork container-component tasks with the misc metadata files.
     if components.get('CONTAINER_IMAGE'):
-        fork_detail_type_components_imports(
+        fork_specified_type_imports(
             context, engine, [context.get('package_nvr')],
             context.get('misc_dir'), 'CONTAINER_IMAGE')
 

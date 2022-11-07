@@ -28,7 +28,7 @@ from reports.models import (
 )
 
 
-class PackageImportTransactionMixin:
+class SourceImportMixin:
     """
     Package import transaction mixin
     """
@@ -59,27 +59,6 @@ class PackageImportTransactionMixin:
             return serializer.data
         else:
             return {'message': 'No paths created.'}
-
-    @staticmethod
-    def create_component(source, component_data):
-        """
-        Create source component.
-        """
-        # FIXME: similar functions already available, re-use if possible.
-        summary_license = component_data.pop("summary_license")
-        is_source = component_data.pop("is_source")
-        component, _ = Component.objects.update_or_create(
-            name=component_data.get('name'),
-            version=component_data.get('version'),
-            release=component_data.get('release'),
-            arch=component_data.get('arch'),
-            type=component_data.get('type'),
-            defaults={
-                'is_source': is_source,
-                'summary_license': summary_license,
-            })
-        component.source = source
-        component.save()
 
     @staticmethod
     def create_product(product_name, description=""):
@@ -113,6 +92,85 @@ class PackageImportTransactionMixin:
                 version=product_release,
                 notes=description,
             )
+
+
+class SaveComponentsMixin:
+    def __init__(self):
+        self.components = None
+        self.release = None
+
+    @staticmethod
+    def create_component(component_data):
+        summary_license = component_data.pop('summary_license')
+        defaults = {"summary_license": summary_license}
+        if "is_source" in component_data:
+            defaults.update({
+                'is_source': component_data.pop("is_source")
+            })
+        component, _ = Component.objects.update_or_create(
+            name=component_data.get('name'),
+            version=component_data.get('version'),
+            release=component_data.get('release'),
+            arch=component_data.get('arch'),
+            type=component_data.get('type'),
+            defaults=defaults
+        )
+        return component
+
+    def build_release_node(self, release_component):
+        """
+        Build release tree nodes, each component in a release will be a node,
+        for a container/module, the release will be its parent node.
+        """
+        # Create release node
+        release_ctype = ContentType.objects.get_for_model(Release)
+        release_node, _ = ProductTreeNode.objects.get_or_create(
+            name=self.release.name,
+            content_type=release_ctype,
+            object_id=self.release.id,
+            parent=None,
+        )
+        # Create release component node
+        release_component.release_nodes.get_or_create(
+            name=release_component.name,
+            parent=release_node,
+        )
+
+    def build_component_node(self, parent_component):
+        """
+        Build container/module component nodes. For container/module, the nodes
+        include a parent node and its children nodes.
+        """
+        # Create container/module node
+        component_ctype = ContentType.objects.get_for_model(Component)
+        cnode, _ = ComponentTreeNode.objects.get_or_create(
+            name=parent_component.name,
+            content_type=component_ctype,
+            object_id=parent_component.id,
+            parent=None,
+        )
+        # Create child components
+        for _, components in self.components.items():
+            for component_data in components:
+                component = self.create_component(component_data)
+                component.component_nodes.get_or_create(
+                    name=component.name,
+                    parent=cnode,
+                )
+
+    def save_group_components(self, **kwargs):
+        self.components = kwargs.get('components')
+        product_release = kwargs.get('product_release')
+        component_type = kwargs.get('component_type')
+
+        # Create container/module parent components
+        parent_component_data = self.components.pop(component_type)[0]
+        parent_component = self.create_component(parent_component_data)
+
+        if product_release:
+            self.release = Release.objects.filter(name=product_release)[0]
+            self.build_release_node(parent_component)
+        self.build_component_node(parent_component)
 
 
 class SaveScanResultMixin:
@@ -273,82 +331,3 @@ class SaveScanResultMixin:
                         else:
                             time.sleep(1 << i)
                             continue
-
-
-class SaveComponentsMixin:
-    def __init__(self):
-        self.components = None
-        self.release = None
-
-    @staticmethod
-    def create_component(component_data):
-        summary_license = component_data.pop('summary_license')
-        defaults = {"summary_license": summary_license}
-        if "is_source" in component_data:
-            defaults.update({
-                'is_source': component_data.pop("is_source")
-            })
-        component, _ = Component.objects.update_or_create(
-            name=component_data.get('name'),
-            version=component_data.get('version'),
-            release=component_data.get('release'),
-            arch=component_data.get('arch'),
-            type=component_data.get('type'),
-            defaults=defaults
-        )
-        return component
-
-    def build_release_node(self, parent_component):
-        """
-        Build release tree nodes, each component in a release will be a node,
-        for a container/module, the release will be its parent node.
-        """
-        # Create release node
-        release_ctype = ContentType.objects.get_for_model(Release)
-        release_node, _ = ProductTreeNode.objects.get_or_create(
-            name=self.release.name,
-            content_type=release_ctype,
-            object_id=self.release.id,
-            parent=None,
-        )
-        # Create parent node
-        parent_component.release_nodes.get_or_create(
-            name=parent_component.name,
-            parent=release_node,
-        )
-
-    def build_component_node(self, parent_component):
-        """
-        Build container/module component nodes. For container/module, the nodes
-        include a parent node and its children nodes.
-        """
-        # Create container/module node
-        component_ctype = ContentType.objects.get_for_model(Component)
-        cnode, _ = ComponentTreeNode.objects.get_or_create(
-            name=parent_component.name,
-            content_type=component_ctype,
-            object_id=parent_component.id,
-            parent=None,
-        )
-        # Create child components
-        for _, components in self.components.items():
-            for component_data in components:
-                component = self.create_component(component_data)
-                component.component_nodes.get_or_create(
-                    name=component.name,
-                    parent=cnode,
-                )
-
-    def save_group_components(self, **kwargs):
-        self.components = kwargs.get('components')
-        product_release = kwargs.get('product_release')
-        component_type = kwargs.get('component_type')
-
-        # Create container/module parent components
-        parent_component_data = self.components.pop(component_type)[0]
-        parent_component = self.create_component(parent_component_data)
-
-        if product_release:
-            self.release = Release.objects.filter(name=product_release)[0]
-            self.build_release_node(parent_component)
-        self.build_component_node(parent_component)
