@@ -16,6 +16,7 @@ class TaskMeta(models.Model):
     class Meta:
         db_table = 'celery_taskmeta'
         app_label = 'tasks'
+        managed = False
 
 
 class TaskManager(models.Manager):
