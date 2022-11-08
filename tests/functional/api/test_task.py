@@ -13,7 +13,7 @@ def test_list_tasks(openlcs_client):
             'owner': 'admin',
             'params': '{"package_nvr": "fio-3.1-2.el7", "license_scan": true, "copyright_scan": true, "product_release": "satellite-6.9.0"}',
             'status': 'SUCCESS',
-            'date_done': '2022-11-02T11:42:51.971000Z',
+            'date_done': '2022-11-02T11:42:51.971000',
             'traceback': None
         }
     ]
@@ -73,7 +73,7 @@ def test_list_tasks(openlcs_client):
             'owner': 'admin',
             'params': '{"package_nvr": "fio-3.1-2.el7", "license_scan": true, "copyright_scan": true, "product_release": "satellite-6.9.0"}',
             'status': 'SUCCESS',
-            'date_done': '2022-11-02T11:42:51.971000Z',
+            'date_done': '2022-11-02T11:42:51.971000',
             'traceback': None
         }
     ]
