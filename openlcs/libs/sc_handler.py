@@ -61,7 +61,7 @@ class SourceContainerHandler(object):
         The value of srpm component from corgi is as following:
         {
             'uuid': 'uuid',
-            'type': 'SRPM',
+            'type': 'RPM',
             'name': 'libcom_err',
             'version': '1.45.6',
             'release': '2.el8',
@@ -80,7 +80,7 @@ class SourceContainerHandler(object):
                 nvra = koji.parse_NVRA(srpm)
                 component = {
                     'uuid': str(uuid.uuid4()),
-                    'type': 'SRPM',
+                    'type': 'RPM',
                     'name': nvra.get('name'),
                     'version': nvra.get('version'),
                     'release': nvra.get('release'),
