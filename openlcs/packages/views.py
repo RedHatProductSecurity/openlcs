@@ -1016,7 +1016,7 @@ class ComponentViewSet(ModelViewSet):
                         "name": "rpm-libs-4.14.3-23.el8",
                         "url": "https://www.redhat.com/",
                         "state": 0,
-                        "archive_type": "SRPM",
+                        "archive_type": "rpm",
                         "scan_flag": \
 "license(scancode-toolkit 30.1.0),copyright(scancode-toolkit 30.1.0)",
                         "component_set": [
@@ -1111,7 +1111,7 @@ source__state=&source__archive_type=&source__scan_flag=
                             "(c) 2002 William Lee Irwin III",
                         ]
                     },
-                    "type": "{'rpm': None}",
+                    "type": "RPM",
                     "name": "fio",
                     "version": "3.1",
                     "release": "2.el7",
@@ -1169,7 +1169,7 @@ source__state=&source__archive_type=&source__scan_flag=
                     "name": "rpm-libs-4.14.3-23.el8",
                     "url": "https://www.redhat.com/",
                     "state": 0,
-                    "archive_type": "SRPM",
+                    "archive_type": "rpm",
                     "scan_flag": \
 "license(scancode-toolkit 30.1.0),copyright(scancode-toolkit 30.1.0)",
                     "component_set": [

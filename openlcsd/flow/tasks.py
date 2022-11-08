@@ -117,8 +117,7 @@ def get_build(context, engine):
     elif context.get('rs_comp'):
         comp_type = context.get('rs_comp')['type']
     else:
-        build_type = context.get('build_type')
-        comp_type = "SRPM" if build_type == 'rpm' else build_type
+        comp_type = list(context['build_type'].keys())[0].upper()
     context['comp_type'] = comp_type
 
 
@@ -451,7 +450,7 @@ def prepare_dest_dir(context, engine):
     component_type = context.get('component_type')
     rs_types = config.get('RS_TYPES')
     engine.logger.info('Start to prepare destination directory...')
-    if component_type and component_type in ['SRPM', 'CONTAINER_IMAGE']:
+    if component_type and component_type in ['RPM', 'CONTAINER_IMAGE']:
         # TODO: Currently we don't store product and release data. so the
         #  import should not contain "product_release" or add it manually
         #  in database.
@@ -1014,7 +1013,7 @@ def fork_components_imports(context, engine):
     # Fork source RPM component tasks.
     if srpm_nvr_list:
         fork_specified_type_imports(
-            context, engine, srpm_nvr_list, context.get('srpm_dir'), 'SRPM')
+            context, engine, srpm_nvr_list, context.get('srpm_dir'), 'RPM')
 
     # Fork container-component tasks with the misc metadata files.
     if components.get('CONTAINER_IMAGE'):
