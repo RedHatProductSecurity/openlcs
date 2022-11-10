@@ -41,8 +41,7 @@ class ParentComponentsAsync:
 
     def get_component_and_links(self, nvr, component_type):
         """
-        Get component links in one of "CONTAINER_IMAGE" type or "RHEL_MODULE"
-        component with nvr.
+        Get links in Corgi for components in "OCI" or "RPMMOD".
         """
         component_links = []
         parent_component = {}
@@ -57,8 +56,9 @@ class ParentComponentsAsync:
                         # This part is only for contianer, won't share this
                         # condition with Module
                         # Currently, we only need arch='src' components.
+
                         if result.get('arch') != 'src' and\
-                                component_type == "CONTAINER_IMAGE":
+                                component_type == "OCI":
                             continue
                         else:
                             parent_component = self.get_component_flat(result)
