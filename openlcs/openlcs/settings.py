@@ -254,6 +254,20 @@ CSRF_COOKIE_DOMAIN = '127.0.0.1'
 # Corgi setting
 CORGI_API_STAGE = os.getenv("CORGI_API_STAGE", "")
 CORGI_API_PROD = os.getenv("CORGI_API_PROD", "")
+# https://github.com/RedHatProductSecurity/component-registry/blob/main/corgi/core/models.py#L721    # noqa
+CORGI_COMPONENT_TYPES = [
+    "CARGO",
+    "OCI",
+    "GEM",
+    "GENERIC",
+    "GITHUB",
+    "GOLANG",
+    "MAVEN",
+    "NPM",
+    "RPMMOD",
+    "RPM",
+    "PYPI"
+]
 
 try:
     # pylint:disable=wildcard-import,unused-wildcard-import

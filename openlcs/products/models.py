@@ -81,9 +81,9 @@ class Release(models.Model):
             })
         return component
 
-    def add_components_from_nvrs(self, nvrs, type="SRPM", arch="src"):
+    def add_components_from_nvrs(self, nvrs, type="RPM", arch="src"):
         release_node, _ = self.get_or_create_release_node()
-        # Not add container nvr as "SRPM" component.
+        # Not add container nvr as "RPM" component.
         nvrs = [nvr for nvr in nvrs if 'container-source' not in nvr]
         for nvr in nvrs:
             nvr_dict = koji.parse_NVR(nvr)

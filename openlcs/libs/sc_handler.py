@@ -51,7 +51,7 @@ class SourceContainerHandler(object):
         Get container component.
         """
         nvr = koji.parse_NVR(sc_nvr)
-        container_component = [self.get_component_flat(nvr, 'CONTAINER_IMAGE')]
+        container_component = [self.get_component_flat(nvr, 'OCI')]
         return container_component
 
     def get_srpm_components(self, srpm_dir):
@@ -123,7 +123,7 @@ class SourceContainerHandler(object):
         container_component = self.get_container_component(sc_nvr)
         components = {
             'SRPM': srpm_components,
-            'CONTAINER_IMAGE': container_component
+            'OCI': container_component
         }
         return components
 

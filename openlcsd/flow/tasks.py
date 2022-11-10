@@ -144,6 +144,7 @@ def get_source_container_build(context, engine):
     elif package_nvr and 'container' in package_nvr:
         sc_build = koji_connector.get_latest_source_container_build(
             package_nvr)
+
     if sc_build:
         #  Add build id in the json.
         if "id" not in sc_build:
@@ -450,7 +451,7 @@ def prepare_dest_dir(context, engine):
     component_type = context.get('component_type')
     rs_types = config.get('RS_TYPES')
     engine.logger.info('Start to prepare destination directory...')
-    if component_type and component_type in ['RPM', 'CONTAINER_IMAGE']:
+    if component_type and component_type in ['RPM', 'OCI']:
         # TODO: Currently we don't store product and release data. so the
         #  import should not contain "product_release" or add it manually
         #  in database.
@@ -464,7 +465,7 @@ def prepare_dest_dir(context, engine):
 
         # Create source container metadata destination source directory.
         src_root = config.get('SRC_ROOT_DIR')
-        if component_type == 'CONTAINER_IMAGE':
+        if component_type == 'OCI':
             metadata_dir = build.get('nvr') + '-metadata'
             src_dir = os.path.join(src_root, short_name, metadata_dir)
         else:
@@ -821,7 +822,7 @@ def get_components_product_from_corgi(context, engine):
     config = context.get('config')
     cc = ParentComponentsAsync(
         config.get('CORGI_API_PROD'), context.get('package_nvr'))
-    return cc.get_components_data("CONTAINER_IMAGE")
+    return cc.get_components_data("OCI")
 
 
 def get_remote_source_components(context, engine):
@@ -911,9 +912,9 @@ def save_components(context, engine):
     cli = context.pop('client')
     package_nvr = context.get('package_nvr')
     if 'image' in context.get('build_type'):
-        component_type = 'CONTAINER_IMAGE'
+        component_type = 'OCI'
     else:
-        component_type = 'RHEL_MODULE'
+        component_type = 'RPMMOD'
     data = {
         'components': context.get('components'),
         'product_release': context.get('product_release'),
@@ -1016,10 +1017,10 @@ def fork_components_imports(context, engine):
             context, engine, srpm_nvr_list, context.get('srpm_dir'), 'RPM')
 
     # Fork container-component tasks with the misc metadata files.
-    if components.get('CONTAINER_IMAGE'):
+    if components.get('OCI'):
         fork_specified_type_imports(
             context, engine, [context.get('package_nvr')],
-            context.get('misc_dir'), 'CONTAINER_IMAGE')
+            context.get('misc_dir'), 'OCI')
 
     # Fork remote source component tasks.
     config = context.get('config')

@@ -34,7 +34,7 @@ class ReleaseSerializer(serializers.ModelSerializer):
         # There should be only one root node for each release
         release_node = obj.release_nodes.get()
         container_nodes = release_node.get_descendants().filter(
-            component__type='CONTAINER_IMAGE'
+            component__type='OCI'
         )
         # To avoid circular imports
         from packages.models import Component
@@ -50,12 +50,15 @@ class ReleaseSerializer(serializers.ModelSerializer):
         # https://code.djangoproject.com/ticket/26261
         other_nodes = release_node.get_descendants().filter(
             component__type__in=[
-                'RPM',
-                'SRPM',
-                'GOLANG',
-                'NPM',
-                'PYPI',
-                'MAVEN',
+                "CARGO",
+                "GEM",
+                "GENERIC",
+                "GITHUB",
+                "GOLANG",
+                "MAVEN",
+                "NPM",
+                "RPM",
+                "PYPI"
             ]
         )
         other_components = Component.objects.filter(

@@ -6,6 +6,7 @@ import time
 import requests
 from django.core.management.base import BaseCommand
 from django.core.exceptions import ImproperlyConfigured
+from django.conf import settings
 
 
 corgi_api_stage = os.getenv("CORGI_API_STAGE")
@@ -15,19 +16,6 @@ CORGI_API_ENDPIONTS = {
     "stage": corgi_api_stage,
     "prod": corgi_api_prod,
 }
-
-CORGI_COMPONENT_TYPES = [
-    "CONTAINER_IMAGE",
-    "RHEL_MODULE",
-    "GOLANG",
-    "MAVEN",
-    "NPM",
-    "RPM",
-    "SRPM",
-    "PYPI",
-    "UNKNOWN",
-    "UPSTREAM",
-]
 
 
 def load_json_from_url(url, session=None):
@@ -70,7 +58,7 @@ class Command(BaseCommand):
             "-t",
             "--component-type",
             dest="component_type",
-            choices=CORGI_COMPONENT_TYPES,
+            choices=settings.CORGI_COMPONENT_TYPES,
             help="Type of component to query.",
         )
         parser.add_argument(
@@ -112,7 +100,7 @@ class Command(BaseCommand):
         }
         for result in page["results"]:
             component_type = result.get("type")
-            if component_type in ["CONTAINER_IMAGE", "RHEL_MODULE"]:
+            if component_type in ["OCI", "RPMMOD"]:
                 component_data = self.get_component_flat(result)
                 # Deal with container or rhel module provides
                 provides = []
