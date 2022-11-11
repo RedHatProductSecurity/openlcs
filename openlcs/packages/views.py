@@ -12,8 +12,6 @@ from packages.mixins import (
 )
 from packages.models import Component, File, Path, Source
 from packages.serializers import (
-    BulkCreateFileSerializer,
-    BulkCreatePathSerializer,
     ComponentSerializer,
     FileSerializer,
     NVRImportSerializer,
@@ -39,7 +37,6 @@ class FileViewSet(ModelViewSet, SourceImportMixin):
     """
     queryset = File.objects.all()
     serializer_class = FileSerializer
-    bulk_create_file_serializer = BulkCreateFileSerializer
 
     def list(self, request, *args, **kwargs):
         """
@@ -80,32 +77,6 @@ class FileViewSet(ModelViewSet, SourceImportMixin):
         """
         return super().list(request, *args, **kwargs)
 
-    def create(self, request, *args, **kwargs):
-        """
-        Create a new file.
-
-        ####__Request__####
-
-            curl -X POST -H "Content-Type: application/json" \
-%(HOST_NAME)s/%(API_PATH)s/files/ \
--d '{"swhid": "swh:1:cnt:1fa0d32c021a24447540ab6dca496948de8088cc"}' \
--H 'Authorization: Token your_token'
-
-        ####__Response__####
-
-            {
-                "id": 5,
-                "swhid": "swh:1:cnt:1fa0d32c021a24447540ab6dca496948de8088cc"
-            }
-
-            or
-
-            {
-                "swhid": ["file with this SWH ID already exists."]
-            }
-        """
-        return super().create(request, *args, **kwargs)
-
     def retrieve(self, request, *args, **kwargs):
         """
         Get a specific file.
@@ -126,113 +97,6 @@ Token your_token'
             }
         """
         return super().retrieve(request, *args, **kwargs)
-
-    def update(self, request, *args, **kwargs):
-        """
-        Update file from command line.
-
-        ####__Request__####
-
-            curl -X PATCH -H "Content-Type: application/json" \
-%(HOST_NAME)s/%(API_PATH)s/files/instance_pk/ -d \
-'{"swhid": "swh:1:cnt:1fa0d32c021a24447540ab6dca496948de8088ac"}' \
--H 'Authorization: Token your_token'
-
-        ####__Response__####
-
-            HTTP 200 OK
-        """
-        return super().update(request, *args, **kwargs)
-
-    @action(methods=['POST', 'GET'], detail=False)
-    def bulk_create_files(self, request, *args, **kwargs):
-        """
-        Bulk create files from command line.
-
-        ####__Request__####
-
-            curl -X POST -H "Content-Type: application/json" \
-%(HOST_NAME)s/%(API_PATH)s/files/bulk_create_files/ -d \
-'{"swhids": ["swh:1:cnt:1fa0d32c021a24447540ab6dca496948de8088ac", \
-"swh:1:cnt:1fa0d32c021a24447540ab6dca496948de8088ad"]}' \
--H 'Authorization: Token your_token'
-
-        ####__Response__####
-            Success: HTTP 200 OK
-            Error: HTTP 400 BAD REQUEST
-
-        ####__JSON Response__####
-            Success:
-
-                {
-                    "swhids":
-                        {
-                            \
-'swh:1:cnt:1fa0d32c021a24447540ab6dca496948de8088ac',
-                            \
-'swh:1:cnt:1fa0d32c021a24447540ab6dca496948de8088ad'
-                        }
-                }
-
-                or
-
-                {
-                    "swhids":
-                        {
-                            \
-'swh:1:cnt:1fa0d32c021a24447540ab6dca496948de8088ac'
-                        }
-                }
-
-                or
-
-                {"message":"No files created."}
-
-            Error:
-
-            {
-                "message": {
-                    "swhids": [
-                        "Expected a list of items but got type \"str\"."
-                    ]
-                }
-            }
-
-            or
-
-            {
-                "message": [
-                    "Error while bulk create files. Reason: duplicate key \
-value violates unique constraint \"packages_file_swhid_key\"\\nDETAIL:  \
-Key (swhid)=(swh:1:cnt:1fa0d32c021a24447540ab6dca496948de8088ad) \
-already exists.\\n"
-                ]
-            }
-
-            or
-
-            {
-                "message": [
-                    "Procedure request time out"
-                ]
-            }
-        """
-        data = request.data
-        serializer = self.bulk_create_file_serializer(data=data)
-        if serializer.is_valid():
-            try:
-                swhids = data.get('swhids')
-                exist_files = File.objects.in_bulk(
-                    id_list=list(swhids), field_name='swhid').keys()
-                file_objs = [File(swhid=swhid) for swhid in swhids
-                             if swhid not in exist_files]
-                res_data = self.create_files(file_objs)
-                return Response(data=res_data, status=status.HTTP_200_OK)
-            except IntegrityError as err:
-                return Response(data={'message': err.args},
-                                status=status.HTTP_400_BAD_REQUEST)
-        return Response(data={'message': serializer.errors},
-                        status=status.HTTP_400_BAD_REQUEST)
 
 
 class SourceViewSet(ModelViewSet):
@@ -287,50 +151,6 @@ class SourceViewSet(ModelViewSet):
         """
         return super().list(request, *args, **kwargs)
 
-    def create(self, request, *args, **kwargs):
-        """
-        Create a new source.
-
-        ####__Request__####
-
-            curl -X POST -H "Content-Type: application/json" \
-%(HOST_NAME)s/%(API_PATH)s/sources/ \
--d '{"name": "xtab.doc.tar.xz", "checksum": \
-"597cf23c7b32beaee76dc7ec42f6f04903a3d8239a4b820adf3a3350b93cd65e", \
-"archive_type": "rpm"}' \
--H 'Authorization: Token your_token'
-
-        ####__Response__####
-            Success: HTTP 200 OK
-
-            Error:
-                HTTP 400 BAD REQUEST,
-
-                HTTP 500, Key (name, checksum)=(xtab.doc.tar.xz, \
-597cf23c7b32beaee76dc7ec42f6f04903a3d8239a4b820adf3a3350b93cd65e) \
-already exists.
-
-        ####__JSON Response__####
-            Success:
-
-                {
-                    "id": 8,
-                    "checksum": \
-"597cf23c7b32beaee76dc7ec42f6f04903a3d8239a4b820adf3a3350b93cd65e",
-                    "name": "xtab.doc.tar.xz",
-                    "url": null,
-                    "state": 0,
-                    "archive_type": "rpm"
-                }
-
-            Error:
-
-                {"archive_type":["This field is required."]}
-
-                Server Error (500)
-        """
-        return super().create(request, *args, **kwargs)
-
     def retrieve(self, request, *args, **kwargs):
         """
         Get a specific source.
@@ -366,25 +186,6 @@ Token your_token'
 
         """
         return super().retrieve(request, *args, **kwargs)
-
-    def update(self, request, *args, **kwargs):
-        """
-        Update source from command line.
-
-        ####__Request__####
-
-            curl -X PATCH -H "Content-Type: application/json" \
-%(HOST_NAME)s/%(API_PATH)s/sources/instance_pk/ -d \
-'{"name": "xtab.doc.tar.xz", "checksum": \
-"597cf23c7b32beaee76dc7ec42f6f04903a3d8239a4b820adf3a3350b93cd65e", \
-"archive_type": "rpm"}' \
--H 'Authorization: Token your_token'
-
-        ####__Response__####
-
-            HTTP 200 OK
-        """
-        return super().update(request, *args, **kwargs)
 
     @action(methods=['post', 'put'], detail=False, url_path='import')
     def import_package(self, request, *args, **kwargs):
@@ -511,7 +312,6 @@ class PathViewSet(ModelViewSet, SourceImportMixin):
     """
     queryset = Path.objects.all()
     serializer_class = PathSerializer
-    bulk_create_path_serializer = BulkCreatePathSerializer
 
     def list(self, request, *args, **kwargs):
         """
@@ -616,146 +416,6 @@ Token your_token'
             }
         """
         return super().retrieve(request, *args, **kwargs)
-
-    def update(self, request, *args, **kwargs):
-        """
-        Update path from command line.
-
-        ####__Request__####
-
-            curl -X PATCH -H "Content-Type: application/json" \
-%(HOST_NAME)s/%(API_PATH)s/paths/instance_pk/ -d \
-'{"file": "swh:1:cnt:1fa0d32c021a24447540ab6dca496948de8088aa", \
-"source": "ab7cf23c7b32beaee76dc7ec42f6f04903a3d8239a4b820adf3a3ss0b93cd652", \
-"path": "/test5"}' -H 'Authorization: Token your_token'
-
-        ####__Response__####
-
-            HTTP 200 OK
-        """
-        return super().update(request, *args, **kwargs)
-
-    @action(methods=['POST', 'GET'], detail=False)
-    def bulk_create_paths(self, request, *args, **kwargs):
-        """
-        Bulk create paths from command line.
-
-        ####__Request__####
-
-            curl -X POST -H "Content-Type: application/json" \
-%(HOST_NAME)s/%(API_PATH)s/paths/bulk_create_paths/ -d \
-'{"paths":[{"file": "swh:1:cnt:1fa0d32c021a24447540ab6dca496948de8088aa", \
-"source": "ab7cf23c7b32beaee76dc7ec42f6f04903a3d8239a4b820adf3a3ss0b93cd652", \
-"path": "/test5"}, {"file": \
-"swh:1:cnt:1fa0d32c021a24447540ab6dca496948de8088ff", "source": \
-"e01fb480caaa7c7963dcb3328a4700e631bef6070db0e8b685816d220e685f6c", \
-"path": "/test6"}]}' \
--H 'Authorization: Token your_token'
-
-        ####__Response__####
-            Success: HTTP 200 OK
-            Error: HTTP 400 BAD REQUEST
-
-        ####__JSON Response__####
-            Success:
-
-                {
-                    "paths": [
-                        {
-                            "id": 5,
-                            "source": {
-                                "id": 5,
-                                "checksum": \
-"597cf23c7b32beaee76dc7ec42f6f04903a3d8239a4b820adf3a3350b93cd652",
-                                "name": "xtab.doc.tar.xz",
-                                "url": null,
-                                "state": 0,
-                                "archive_type": "rpm"
-                            },
-                            "file": {
-                                "id": 5,
-                                "swhid": \
-"swh:1:cnt:1fa0d32c021a24447540ab6dca496948de8088ee"
-                            },
-                            "path": "/test5"
-                        },
-                        {
-                            "id": 6,
-                            "source": {
-                                "id": 6,
-                                "checksum": \
-"e01fb480caaa7c7963dcb3328a4700e631bef6070db0e8b685816d220e685f6c",
-                                "name": "XStatic-Font-Awesome-4.7.0.0.tar.gz",
-                                "url": null,
-                                "state": 0,
-                                "archive_type": "rpm"
-                            },
-                            "file": {
-                                "id": 6,
-                                "swhid": \
-"swh:1:cnt:1fa0d32c021a24447540ab6dca496948de8088ff"
-                            },
-                            "path": "/test6"
-                        }
-                    ]
-                }
-
-                or
-
-                {
-                    "paths": [
-                        {
-                            "id": 5,
-                            "source": {
-                                "id": 5,
-                                "checksum": \
-"597cf23c7b32beaee76dc7ec42f6f04903a3d8239a4b820adf3a3350b93cd652",
-                                "name": "xtab.doc.tar.xz",
-                                "url": null,
-                                "state": 0,
-                                "archive_type": "rpm"
-                            },
-                            "file": {
-                                "id": 5,
-                                "swhid": \
-"swh:1:cnt:1fa0d32c021a24447540ab6dca496948de8088ee"
-                            },
-                            "path": "/test5"
-                        }
-                    ]
-                }
-
-                or
-
-                {"message": "No paths created."}
-
-            Error:
-
-               {
-                   "message":[\
-"Error while create paths. Reason: duplicate key \
-value violates unique constraint \"packages_path_pkey\"\\nDETAIL: \
-Key (id)=(5) already exists.\\n"]
-                }
-
-                or
-
-               Server Error (500)
-        """
-        data = request.data
-        serializer = self.bulk_create_path_serializer(data=data)
-        if serializer.is_valid():
-            try:
-                source_checksum = data.get("source")
-                paths = data.get("paths")
-                source = Source.objects.get(checksum=source_checksum)
-                res_data = self.create_paths(source, paths)
-                return Response(data=res_data, status=status.HTTP_200_OK)
-            except IntegrityError as err:
-                return Response(data={'message': err.args},
-                                status=status.HTTP_400_BAD_REQUEST)
-        return Response(data=serializer.errors,
-                        status=status.HTTP_400_BAD_REQUEST)
 
 
 class PackageImportTransactionView(APIView,
