@@ -15,7 +15,7 @@ from packagedcode.maven import parse as maven_parse
 from openlcsd.celery import app
 from openlcsd.flow.task_wrapper import WorkflowWrapperTask
 from openlcs.libs.common import get_nvr_list_from_components
-from openlcs.libs.corgi import ParentComponentsAsync
+from openlcs.libs.corgi import CorgiConnector
 from openlcs.libs.driver import OpenlcsClient
 from openlcs.libs.kojiconnector import KojiConnector
 from openlcs.libs.logger import get_task_logger
@@ -829,7 +829,7 @@ def get_components_product_from_corgi(context, engine):
              components information of the container.
     """
     config = context.get('config')
-    cc = ParentComponentsAsync(
+    cc = CorgiConnector(
         config.get('CORGI_API_PROD'), context.get('package_nvr'))
     return cc.get_components_data("OCI")
 
@@ -957,7 +957,7 @@ def get_module_components_from_corgi(context, engine):
     """
     config = context.get('config')
     engine.logger.info("Start to get module components data...")
-    mc = ParentComponentsAsync(
+    mc = CorgiConnector(
         config.get('CORGI_API_PROD'), context.get('package_nvr'))
     context['components'] = mc.get_components_data('RPMMOD')
     engine.logger.info("Finished getting module components data.")
