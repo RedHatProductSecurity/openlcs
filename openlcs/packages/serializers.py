@@ -237,7 +237,7 @@ class ComponentSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-class ContainerComponentsSerializer(ComponentSerializer):
+class GroupComponentsSerializer(ComponentSerializer):
     provides = serializers.SerializerMethodField()
 
     class Meta:
