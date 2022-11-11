@@ -829,8 +829,8 @@ def get_remote_source_components(context, engine):
     """
     Get remote source components in source container
     @requires: `config`, configurations from Hub.
-    @requires: `package_nvr`, nvr of the container.
-    @feeds: `rs_components`, remote source components in source container.
+    @requires: `binary_build`, nvr of the container.
+    @returns: `rs_components`, remote source components in source container.
     """
     config = context.get('config')
     koji_connector = KojiConnector(config)
