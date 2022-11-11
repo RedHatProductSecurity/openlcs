@@ -21,9 +21,8 @@ class CorgiConnector:
     """
     Get parent component data list from Corgi
     """
-    def __init__(self, base_url, parent_nvr):
+    def __init__(self, base_url):
         self.base_url = base_url
-        self.parent_nvr = parent_nvr
         self.endpoint = f"{self.base_url}components"
 
     @staticmethod
@@ -161,14 +160,14 @@ class CorgiConnector:
         ]
         return await asyncio.gather(*futures)
 
-    def get_components_data(self, component_type):
+    def get_components_data(self, nvr, component_type):
         # Create a limited thread pool
         executor = ThreadPoolExecutor(max_workers=5,)
         asyncio.set_event_loop(asyncio.new_event_loop())
         event_loop = asyncio.get_event_loop()
         components = []
         component_links, parent_component = self.get_component_and_links(
-            self.parent_nvr, component_type)
+            nvr, component_type)
         if component_links and parent_component:
             try:
                 components = event_loop.run_until_complete(
