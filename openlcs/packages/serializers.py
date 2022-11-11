@@ -49,22 +49,6 @@ class BulkFileSerializer(AbstractSerializerMixin):
     files = FileSerializer(many=True)
 
 
-class BulkCreateFileSerializer(AbstractSerializerMixin):
-    """
-    Bulk create file serializer, use to validate request files data.
-    """
-
-    swhids = serializers.ListField(
-        child=serializers.CharField(), allow_empty=False
-    )
-
-    def validate(self, attrs):
-        attrs = super(BulkCreateFileSerializer, self).validate(attrs)
-        for swhid in attrs.get('swhids'):
-            swhid_check(swhid)
-        return attrs
-
-
 class SourceSerializer(serializers.ModelSerializer):
     """
     Source serializer.
@@ -134,20 +118,6 @@ class CreatePathSerializer(AbstractSerializerMixin):
         required=True,
     )
     path = serializers.CharField(required=True)
-
-
-class BulkCreatePathSerializer(AbstractSerializerMixin):
-    """
-    Bulk path serializer, use to validate request paths data.
-    """
-
-    source = serializers.SlugRelatedField(
-        queryset=Source.objects.all(),
-        slug_field='checksum',
-        allow_null=False,
-        required=True,
-    )
-    paths = CreatePathSerializer(many=True)
 
 
 def release_validator(value):

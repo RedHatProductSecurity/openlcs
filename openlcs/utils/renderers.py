@@ -38,8 +38,6 @@ class ReadOnlyBrowsableAPIRenderer(BrowsableAPIRenderer):
         'destroy',
         'partial_update',
         'import_package',
-        'bulk_create_files',
-        'bulk_create_paths',
         'report'
     )
 
