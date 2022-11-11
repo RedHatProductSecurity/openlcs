@@ -128,6 +128,8 @@ def get_source_container_build(context, engine):
     @requires: `build`, dictionary, including meta info with the build.
     @feeds: `build`, dictionary, including meta info with the build of
             source image.
+    @feeds: `binary_build`, dict, the brew build corresponding to the
+            binary nvr.
     @feeds: `build_type`, dict, with keys as build type names and values as
             type info corresponding to that build.
     """
@@ -829,7 +831,7 @@ def get_remote_source_components(context, engine):
     """
     Get remote source components in source container
     @requires: `config`, configurations from Hub.
-    @requires: `binary_build`, nvr of the container.
+    @requires: `binary_build`, brew build for the binary NVR.
     @returns: `rs_components`, remote source components in source container.
     """
     config = context.get('config')
@@ -852,7 +854,7 @@ def get_components_from_source_container(context, engine):
     @requires: `config`, configurations from Hub.
     @requires: `package_nvr`, nvr of the container.
     @requires: `srpm_dir`, directory that store source RPMs.
-    @feeds: `components`, components found in the container.
+    @returns: `components`, components found in the container.
     """
     config = context.get('config')
     sc_nvr = context.get('package_nvr')
@@ -875,6 +877,8 @@ def get_container_remote_source(context, engine):
     @requires: `config`, configurations from Hub.
     @requires: `src_dest_dir`, destination source directory.
     @requires: `components`, components found in the container.
+    @feeds: `missing_components`, components not found in the container,
+            if there is any.
     @requires: `rs_dir`, directory that store remote source after collate.
     """
     config = context.get('config')
