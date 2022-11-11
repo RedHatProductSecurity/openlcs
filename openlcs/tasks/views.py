@@ -1,3 +1,5 @@
+from celery.states import SUCCESS, STARTED, FAILURE,\
+    RECEIVED, REVOKED, RETRY, PENDING
 from rest_framework.viewsets import ModelViewSet
 from django_filters import rest_framework as filters
 
@@ -6,13 +8,13 @@ from tasks.serializers import TaskSerializer
 
 # task status list for DRF’s browsable API
 TASK_STATUS_CHOICES = (
-    ('PENDING', 'PENDING'),
-    ('STARTED', 'STARTED'),
-    ('FAILURE', 'FAILURE'),
-    ('SUCCESS', 'SUCCESS'),
-    ('RECEIVED', 'RECEIVED'),
-    ('REVOKED', 'REVOKED'),
-    ('RETRY', 'RETRY')
+    (PENDING, PENDING),
+    (STARTED, STARTED),
+    (FAILURE, FAILURE),
+    (SUCCESS, SUCCESS),
+    (RECEIVED, RECEIVED),
+    (REVOKED, REVOKED),
+    (RETRY, RETRY)
 )
 
 
@@ -117,24 +119,26 @@ to search.
 
             [
                 {
-                    "id": 20,
-                    "meta_id": "82b02650-5d36-4430-876a-c8401266b438",
-                    "owner": "admin",
-                    "params": "{\"package_nvr\": \"fio-3.1-2.el7\", \"license_scan\": true,
-                    \"copyright_scan\": true, \"product_release\": \"satellite-6.9.0\"}",
-                    "status": "SUCCESS",
-                    "date_done": "2022-10-24T09:17:07.406133",
-                    "traceback": null
-                },
-                {
-                    "id": 19,
-                    "meta_id": "3808b332-45df-4fa2-a4ca-3225549adc2a",
+                    "id": 5,
+                    "meta_id": "60747ba3-653f-4669-b37e-08eb8b3ae14f",
                     "owner": "admin",
                     "params": "{\"package_nvr\": \"ansible-2.4.2.0-2.el7\", \"license_scan\": true,
                      \"copyright_scan\": true, \"product_release\": \"satellite-6.9.0\"}",
-                    "status": "STARTED",
-                    "date_done": null,
-                    "traceback": null
+                    "status": "SUCCESS",
+                    "date_done": "2022-11-10T05:39:45.746881",
+                    "traceback": null,
+                    "object_url": "%(HOST_NAME)s/rest/v1/sources/2/"
+                },
+                {
+                    "id": 6,
+                    "meta_id": "ddc8d40a-3c85-4a14-ace8-440c7e69ad55",
+                    "owner": "admin",
+                    "params": "{\"package_nvr\": \"fio-3.1-2.el7\", \"license_scan\": true,
+                     \"copyright_scan\": true, \"product_release\": \"satellite-6.9.0\"}",
+                    "status": "SUCCESS",
+                    "date_done": "2022-11-10T05:38:50.461372",
+                    "traceback": null,
+                    "object_url": "%(HOST_NAME)s/rest/v1/sources/1/"
                 }
             ]
         """ # noqa
@@ -157,6 +161,8 @@ to search.
         ``date_done``: string, task done datetime.
 
         ``traceback``: string, task traceback.
+        
+        ``object_url``: string, source object url.
 
         ####__Request__####
 
@@ -176,7 +182,8 @@ to search.
                 \"copyright_scan\": true, \"product_release\": \"satellite-6.9.0\"}",
                 "status": "SUCCESS",
                 "date_done": "2022-10-24T09:17:07.406133",
-                "traceback": null
+                "traceback": null,
+                "object_url": "%(HOST_NAME)s/rest/v1/sources/1/"
             }
         """ # noqa
         return super().retrieve(request, *args, **kwargs)

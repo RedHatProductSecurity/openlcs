@@ -680,7 +680,11 @@ def send_package_data(context, engine):
     fd, tmp_file_path = tempfile.mkstemp(prefix='send_package_',
                                          dir=context.get('post_dir'))
     with os.fdopen(fd, 'w') as destination:
-        json.dump(context.get("source_info"), destination, cls=DateEncoder)
+        file_content = {
+            'source_info': context.get("source_info"),
+            'task_id': context.get('task_id')
+        }
+        json.dump(file_content, destination, cls=DateEncoder)
     resp = cli.post(url, data={"file_path": tmp_file_path})
     context['client'] = cli
     try:
