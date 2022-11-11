@@ -948,7 +948,7 @@ def get_module_components_from_corgi(context, engine):
     engine.logger.info("Start to get module components data...")
     mc = ParentComponentsAsync(
         config.get('CORGI_API_PROD'), context.get('package_nvr'))
-    context['components'] = mc.get_components_data('RHEL_MODULE')
+    context['components'] = mc.get_components_data('RPMMOD')
     engine.logger.info("Finished getting module components data.")
 
 
