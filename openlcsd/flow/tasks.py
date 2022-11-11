@@ -10,6 +10,7 @@ from checksumdir import dirhash
 from workflow.patterns.controlflow import IF
 from workflow.patterns.controlflow import IF_ELSE
 from packagedcode.rpm import parse as rpm_parse
+from packagedcode.pypi import parse_sdist
 from packagedcode.maven import parse as maven_parse
 
 from openlcsd.celery import app
@@ -19,6 +20,8 @@ from openlcs.libs.corgi import CorgiConnector
 from openlcs.libs.driver import OpenlcsClient
 from openlcs.libs.kojiconnector import KojiConnector
 from openlcs.libs.logger import get_task_logger
+from openlcs.libs.metadata import GolangMeta
+from openlcs.libs.metadata import NpmMeta
 from openlcs.libs.parsers import sha256sum
 from openlcs.libs.scanner import LicenseScanner
 from openlcs.libs.scanner import CopyrightScanner
@@ -316,6 +319,12 @@ def get_source_metadata(context, engine):
     try:
         if 'rpm' in build_type:
             package = rpm_parse(src_filepath)
+        elif 'PYPI' in build_type:
+            package = parse_sdist(src_filepath)
+        elif 'GOLANG' in build_type:
+            package = GolangMeta(src_filepath).parse_metadata()
+        elif 'NPM' in build_type or 'YARN' in build_type:
+            package = NpmMeta(src_filepath).parse_metadata()
         elif pom_filepath is not None:
             package = maven_parse(pom_filepath)
         # TODO: Add support for other package types.
