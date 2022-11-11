@@ -371,7 +371,7 @@ class TestComponents(TestCase):
                 }
             ]
         }
-        base_url = f"{corgi_api_prod}components"
+        base_url = corgi_api_prod
         self.nvr = 'grc-ui-api-container-13-v2.4.0'
         self.corgi_connector = CorgiConnector(base_url)
 

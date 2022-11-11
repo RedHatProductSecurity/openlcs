@@ -21,9 +21,11 @@ class CorgiConnector:
     """
     Get parent component data list from Corgi
     """
-    def __init__(self, base_url):
+    def __init__(self, base_url=None):
+        if base_url is None:
+            # corgi api endpoint available in environment variable
+            base_url = os.getenv("CORGI_API_PROD")
         self.base_url = base_url
-        self.endpoint = f"{self.base_url}components"
 
     @staticmethod
     def get_component_flat(data):
@@ -42,12 +44,13 @@ class CorgiConnector:
         """
         Get links in Corgi for components in "OCI" or "RPMMOD".
         """
+        route = "components"
         component_links = []
         parent_component = {}
         if nvr:
             params = {'type': component_type, 'nvr': nvr}
             response = requests.get(
-                self.endpoint, params=params)
+                f"{self.base_url}{route}", params=params)
             if response.status_code == 200:
                 try:
                     results = response.json().get('results')
