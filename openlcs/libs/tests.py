@@ -9,7 +9,7 @@ from unittest import TestCase
 from kobo.shortcuts import run
 from django.conf import settings
 
-from libs.corgi_handler import ParentComponentsAsync
+from libs.corgi import ParentComponentsAsync
 from libs.kojiconnector import KojiConnector
 from libs.parsers import parse_manifest_file
 from libs.scanner import LicenseScanner

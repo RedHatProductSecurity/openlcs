@@ -6,7 +6,7 @@ from django.db import transaction
 from django.db.models import Q
 from django.db.utils import IntegrityError
 
-from libs.corgi_handler import ProductVersion
+from libs.corgi import ProductVersion
 from packages.models import (
     Component,
     File,
