@@ -824,14 +824,15 @@ def get_container_components(context, engine):
 def get_components_product_from_corgi(context, engine):
     """
     Get components information from Corgi.
-    @requires: `nvr`, string, the container nvr.
+    @requires: `package_nvr`, string, the container nvr.
     @feeds: `components`, list of dictionary,
              components information of the container.
     """
-    config = context.get('config')
+    config = context.get("config")
     cc = CorgiConnector(
-        config.get('CORGI_API_PROD'), context.get('package_nvr'))
-    return cc.get_components_data("OCI")
+        config.get("CORGI_API_PROD"))
+    nvr = context.get("package_nvr")
+    return cc.get_components_data(nvr, "OCI")
 
 
 def get_remote_source_components(context, engine):
@@ -955,11 +956,12 @@ def get_module_components_from_corgi(context, engine):
     """
     Get module components from corgi
     """
-    config = context.get('config')
+    config = context.get("config")
     engine.logger.info("Start to get module components data...")
     mc = CorgiConnector(
-        config.get('CORGI_API_PROD'), context.get('package_nvr'))
-    context['components'] = mc.get_components_data('RPMMOD')
+        config.get('CORGI_API_PROD'))
+    nvr = context.get("package_nvr")
+    context['components'] = mc.get_components_data(nvr, 'RPMMOD')
     engine.logger.info("Finished getting module components data.")
 
 

@@ -372,9 +372,8 @@ class TestComponents(TestCase):
             ]
         }
         base_url = f"{corgi_api_prod}components"
-        parent_nvr = 'grc-ui-api-container-13-v2.4.0'
-        self.container_components = CorgiConnector(
-            base_url, parent_nvr)
+        self.nvr = 'grc-ui-api-container-13-v2.4.0'
+        self.corgi_connector = CorgiConnector(base_url)
 
     @mock.patch.object(
         CorgiConnector, 'get_component_data_from_corgi')
@@ -382,7 +381,7 @@ class TestComponents(TestCase):
             self, mock_get_component_data_from_corgi):
         mock_get_component_data_from_corgi.return_value = \
             self.components_data[0]
-        component = self.container_components.get_component_data(
+        component = self.corgi_connector.get_component_data(
             self.links[0])
         self.assertEqual(component, self.components_data[0])
 
@@ -395,7 +394,7 @@ class TestComponents(TestCase):
         mock_get_component_data_from_corgi.return_value = {}
         mock_parse_component_link.return_value = \
             self.components_data[1]
-        component = self.container_components.get_component_data(
+        component = self.corgi_connector.get_component_data(
             self.links[1])
         self.assertEqual(component, self.components_data[1])
 
@@ -408,7 +407,7 @@ class TestComponents(TestCase):
         mock_get_component_data_from_corgi.return_value = {}
         mock_parse_component_link.return_value = \
             self.components_data[2]
-        component = self.container_components.get_component_data(
+        component = self.corgi_connector.get_component_data(
             self.links[2])
         self.assertEqual(component, self.components_data[2])
 
@@ -420,7 +419,9 @@ class TestComponents(TestCase):
             self.links, self.components_data[3]
         mock_get_event_loop.return_value = self.components_data[:-1]
         self.assertEqual(
-            self.container_components.get_components_data('OCI'),
+            self.corgi_connector.get_components_data(
+                self.nvr,
+                'OCI'),
             self.group_components_data
         )
 
