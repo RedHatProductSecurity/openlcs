@@ -314,7 +314,7 @@ class TestComponents(TestCase):
             },
             {
                 'uuid': 'bb7e0e10-0a68-4bae-a490-3ff491cb1b78',
-                'type': 'CONTAINER_IMAGE',
+                'type': 'OCI',
                 'name': "grc-ui-api-container",
                 'version': '13',
                 'release': 'v2.4.0',
@@ -358,10 +358,10 @@ class TestComponents(TestCase):
                     'synced': True
                 }
             ],
-            'CONTAINER_IMAGE': [
+            'OCI': [
                 {
                     'uuid': 'bb7e0e10-0a68-4bae-a490-3ff491cb1b78',
-                    'type': 'CONTAINER_IMAGE',
+                    'type': 'OCI',
                     'name': "grc-ui-api-container",
                     'version': '13',
                     'release': 'v2.4.0',
@@ -420,7 +420,7 @@ class TestComponents(TestCase):
             self.links, self.components_data[3]
         mock_get_event_loop.return_value = self.components_data[:-1]
         self.assertEqual(
-            self.container_components.get_components_data('CONTAINER_IMAGE'),
+            self.container_components.get_components_data('OCI'),
             self.group_components_data
         )
 
