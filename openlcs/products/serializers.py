@@ -3,7 +3,7 @@ from rest_framework import serializers
 from products.models import Product, Release
 from packages.serializers import (
     ComponentSerializer,
-    ContainerComponentsSerializer,
+    GroupComponentsSerializer,
 )
 
 
@@ -33,19 +33,18 @@ class ReleaseSerializer(serializers.ModelSerializer):
             return retval
         # There should be only one root node for each release
         release_node = obj.release_nodes.get()
-        container_nodes = release_node.get_descendants().filter(
-            component__type='OCI'
+        group_nodes = release_node.get_descendants().filter(
+            component__type__in=['OCI', 'RPMMOD']
         )
         # To avoid circular imports
         from packages.models import Component
-        container_components = Component.objects.filter(
-            id__in=container_nodes.values_list('object_id', flat=True)
+        group_components = Component.objects.filter(
+            id__in=group_nodes.values_list('object_id', flat=True)
         )
-        serializer = ContainerComponentsSerializer(
-            container_components, many=True
+        serializer = GroupComponentsSerializer(
+            group_components, many=True
         )
         retval.append(serializer.data)
-        # FIXME: rhel module build
         # Note: `exclude` won't work for reverse generic relations
         # https://code.djangoproject.com/ticket/26261
         other_nodes = release_node.get_descendants().filter(
