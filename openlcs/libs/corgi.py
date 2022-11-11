@@ -184,25 +184,17 @@ class CorgiConnector:
             components.append(parent_component)
         return group_components(components) if components else {}
 
-
-class ProductVersion:
-    """
-    Handle container product name and release
-    """
-    def __init__(self, base_url, product_release):
-        self.base_url = base_url
-        self.product_release = product_release
-
-    def get_product_version(self, fields=None) -> dict:
-        endpoint = f"{self.base_url}product_versions"
-        params = {'name': self.product_release}
+    def get_product_version(self, name, fields=None) -> dict:
+        # API route for corgi product_versions endpoint
+        route = "product_versions"
+        params = {"name": name}
         if fields is None:
-            fields = ['name', 'ofuri', 'description', 'products', 'components']
-        data = requests.get(endpoint, params=params).json()
+            fields = ["name", "ofuri", "description", "products", "components"]
+        data = requests.get(f"{self.base_url}{route}", params=params).json()
         # 0 or 1 result for product version name query
         retval = dict()
-        if data['count'] > 0:
-            product_data = data['results'][0]
+        if data["count"] > 0:
+            product_data = data["results"][0]
             for field in fields:
                 retval[field] = product_data[field]
         return retval

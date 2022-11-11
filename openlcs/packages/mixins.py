@@ -6,7 +6,7 @@ from django.db import transaction
 from django.db.models import Q
 from django.db.utils import IntegrityError
 
-from libs.corgi import ProductVersion
+from libs.corgi import CorgiConnector
 from packages.models import (
     Component,
     File,
@@ -72,12 +72,12 @@ class SourceImportMixin:
         )
         return p
 
-    def create_product_release(self, product_release):
+    def create_product_release(self, name):
         """
         Create product and release.
         """
-        cp = ProductVersion(settings.CORGI_API_PROD, product_release)
-        product_data = cp.get_product_version()
+        connector = CorgiConnector(settings.CORGI_API_PROD)
+        product_data = connector.get_product_version(name)
         if product_data:
             product_name = product_data.get('products')[0].get('name')
             product_name_release = product_data.get("name")
