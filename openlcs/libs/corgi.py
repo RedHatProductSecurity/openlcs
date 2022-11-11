@@ -17,7 +17,7 @@ from libs.common import group_components  # noqa: E402
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 
-class ParentComponentsAsync:
+class CorgiConnector:
     """
     Get parent component data list from Corgi
     """
