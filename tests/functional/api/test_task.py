@@ -1,3 +1,4 @@
+from django.conf import settings
 
 
 def test_list_tasks(openlcs_client):
@@ -8,13 +9,24 @@ def test_list_tasks(openlcs_client):
     get_success_response = openlcs_client.api_call(url, 'GET')
     success_expected = [
         {
-            'id': 4,
-            'meta_id': '9f2008cc-78d4-4eaf-97b4-2455d70c4420',
+            'id': 2,
+            'meta_id': 'e88aaa64-eeb6-4e8a-84fa-a4087c0cba1c',
             'owner': 'admin',
             'params': '{"package_nvr": "fio-3.1-2.el7", "license_scan": true, "copyright_scan": true, "product_release": "satellite-6.9.0"}',
             'status': 'SUCCESS',
-            'date_done': '2022-11-02T11:42:51.971000',
-            'traceback': None
+            'date_done': '2022-11-11T04:28:59.961000',
+            'traceback': None,
+            'object_url': 'http://{}/rest/v1/sources/1/'.format(settings.HOSTNAME)
+        },
+        {
+            'id': 1,
+            'meta_id': '723b6b43-d10e-4f6e-bd01-ddc1f1928b27',
+            'owner': 'admin',
+            'params': '{"package_nvr": "ansible-2.4.2.0-2.el7", "license_scan": true, "copyright_scan": true, "product_release": "satellite-6.9.0"}',
+            'status': 'SUCCESS',
+            'date_done': '2022-11-11T05:18:34.601000',
+            'traceback': None,
+            'object_url': 'http://{}/rest/v1/sources/2/'.format(settings.HOSTNAME)
         }
     ]
 
@@ -23,17 +35,7 @@ def test_list_tasks(openlcs_client):
     url = '/tasks/?meta_id=ce369f13-b9ec-4a10-9670-0a3647e2770b&' \
           'params=ansible&owner__username=admin&status=STARTED&date_done=&traceback='
     combine_query_response = openlcs_client.api_call(url, 'GET')
-    combine_query_expected = [
-        {
-            'id': 1,
-            'meta_id': 'ce369f13-b9ec-4a10-9670-0a3647e2770b',
-            'owner': 'admin',
-            'params': '{"package_nvr": "ansible-2.4.2.0-2.el7", "license_scan": true, "copyright_scan": true, "product_release": "satellite-6.9.0"}',
-            'status': 'STARTED',
-            'date_done': None,
-            'traceback': None
-        }
-    ]
+    combine_query_expected = []
 
     assert combine_query_response.get("results") == combine_query_expected
 
@@ -42,39 +44,23 @@ def test_list_tasks(openlcs_client):
     list_expected = [
         {
             'id': 1,
-            'meta_id': 'ce369f13-b9ec-4a10-9670-0a3647e2770b',
+            'meta_id': '723b6b43-d10e-4f6e-bd01-ddc1f1928b27',
             'owner': 'admin',
             'params': '{"package_nvr": "ansible-2.4.2.0-2.el7", "license_scan": true, "copyright_scan": true, "product_release": "satellite-6.9.0"}',
-            'status': 'STARTED',
-            'date_done': None,
-            'traceback': None
+            'status': 'SUCCESS',
+            'date_done': '2022-11-11T05:18:34.601000',
+            'traceback': None,
+            'object_url': 'http://{}/rest/v1/sources/2/'.format(settings.HOSTNAME)
         },
         {
             'id': 2,
-            'meta_id': 'e647c67c-7941-45a7-8712-97c4ac9d9a01',
-            'owner': 'admin',
-            'params': '{"package_nvr": "fio-3.1-2.el7", "license_scan": true, "copyright_scan": true, "product_release": "satellite-6.9.0"}',
-            'status': 'STARTED',
-            'date_done': None,
-            'traceback': None
-        },
-        {
-            'id': 3,
-            'meta_id': 'b0693b20-9190-4ebc-93ac-3dccd57a7718',
-            'owner': 'admin',
-            'params': '{"package_nvr": "ansible-2.4.2.0-2.el7", "license_scan": true, "copyright_scan": true, "product_release": "satellite-6.9.0"}',
-            'status': 'STARTED',
-            'date_done': None,
-            'traceback': None
-        },
-        {
-            'id': 4,
-            'meta_id': '9f2008cc-78d4-4eaf-97b4-2455d70c4420',
+            'meta_id': 'e88aaa64-eeb6-4e8a-84fa-a4087c0cba1c',
             'owner': 'admin',
             'params': '{"package_nvr": "fio-3.1-2.el7", "license_scan": true, "copyright_scan": true, "product_release": "satellite-6.9.0"}',
             'status': 'SUCCESS',
-            'date_done': '2022-11-02T11:42:51.971000',
-            'traceback': None
+            'date_done': '2022-11-11T04:28:59.961000',
+            'traceback': None,
+            'object_url': 'http://{}/rest/v1/sources/1/'.format(settings.HOSTNAME)
         }
     ]
 

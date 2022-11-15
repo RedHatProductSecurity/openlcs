@@ -20,6 +20,7 @@ from packages.serializers import (
     SourceSerializer
 )
 from products.models import Product, Release
+from tasks.models import Task
 from reports.models import FileCopyrightScan, FileLicenseScan
 from rest_framework import status
 from rest_framework.decorators import action
@@ -426,34 +427,37 @@ class PackageImportTransactionView(APIView,
 
     data example:  # noqa
     {
-        "product_release": "rhel-8.9",
-        "swhids": [
-            "swh:1:cnt:1fa0d32c021a24447540ab6dca496948de8088aa",
-            "swh:1:cnt:1fa0d32c021a24447540ab6dca496948de8088bb"
-        ],
-        "source": {
-            "name": "xtab.doc.tar.xz",
-            "checksum": "597cf23c7b32beaee76dc7ec42f6f04903a3d8239a4b820adf3a3350b93cd65e",
-            "archive_type": "rpm"
-        },
-        "paths": [
-            {
-                "file": "swh:1:cnt:1fa0d32c021a24447540ab6dca496948de8088aa",
-                "path": "/test5"
+        "task_id": "7030f5da-7282-4960-a716-7d8d8328b9c2",
+        "source_info":{
+            "product_release": "rhel-8.9",
+            "swhids":[
+                "swh:1:cnt:1fa0d32c021a24447540ab6dca496948de8088aa",
+                "swh:1:cnt:1fa0d32c021a24447540ab6dca496948de8088bb"
+            ],
+            "source":{
+                "name":"xtab.doc.tar.xz",
+                "checksum":"597cf23c7b32beaee76dc7ec42f6f04903a3d8239a4b820adf3a3350b93cd65e",
+                "archive_type":"rpm"
             },
-            {
-                "file": "swh:1:cnt:1fa0d32c021a24447540ab6dca496948de8088bb",
-                "path": "/test6"
+            "paths":[
+                {
+                    "file":"swh:1:cnt:1fa0d32c021a24447540ab6dca496948de8088aa",
+                    "path":"/test5"
+                },
+                {
+                    "file":"swh:1:cnt:1fa0d32c021a24447540ab6dca496948de8088bb",
+                    "path":"/test6"
+                }
+            ],
+            "component":{
+                "name":"jquery",
+                "version":"3.5.1",
+                "release":"",
+                "arch":"",
+                "type":"YARN",
+                "summary_license":"",
+                "is_source":true
             }
-        ],
-        "component": {
-            "name": "jquery",
-            "version": "3.5.1",
-            "release": "",
-            "arch": "",
-            "type": YARN,
-            "summary_license": "",
-            "is_source": True
         }
     }
     """
@@ -467,15 +471,20 @@ class PackageImportTransactionView(APIView,
                 data={'message': err.args},
                 status=status.HTTP_400_BAD_REQUEST)
 
-        swhids = data.get('swhids')
-        source = data.get('source')
-        paths = data.get('paths')
-        component = data.get('component')
-        product_release = data.get('product_release')
+        task_id = data.get('task_id')
+        source_info = data.get('source_info')
+        swhids = source_info.get('swhids')
+        source = source_info.get('source')
+        paths = source_info.get('paths')
+        component = source_info.get('component')
+        product_release = source_info.get('product_release')
         if not any([swhids, source, paths, component]):
             return Response(
                 data={'message': 'No data provided.'},
                 status=status.HTTP_400_BAD_REQUEST)
+
+        # get task object for update
+        task_obj = Task.objects.get(meta_id=task_id)
 
         source_checksum = source.get('checksum')
         qs = Source.objects.filter(checksum=source_checksum)
@@ -506,6 +515,11 @@ class PackageImportTransactionView(APIView,
                                 self.release = Release.objects.filter(
                                     name=product_release)[0]
                                 self.build_release_node(component_obj)
+
+                        # link task to Source object
+                        task_obj.content_object = source_obj
+                        task_obj.save()
+
                     break
                 except IntegrityError as err:
                     if i == max_retries - 1:
@@ -515,6 +529,11 @@ class PackageImportTransactionView(APIView,
                     else:
                         time.sleep(1 << i)
                         continue
+
+        # link task to exist Source object
+        task_obj.content_object = qs[0]
+        task_obj.save()
+
         return Response()
 
 
