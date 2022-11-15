@@ -73,10 +73,17 @@ class ReleaseViewSet(ModelViewSet):
             [
                 {
                     "id": 1,
+                    "product": {
+                        "id": 1,
+                        "name": "product",
+                        "display_name": "",
+                        "description": "",
+                        "family": ""
+                    },
+                    "components": [],
                     "version": "6.9.0",
                     "name": "satellite-6.9.0",
-                    "notes": "The most authoritative list comes from Errata..",
-                    "product": 1
+                    "notes": "The most authoritative list comes from Errata.."
                 }
             ]
         """
@@ -99,10 +106,17 @@ class ReleaseViewSet(ModelViewSet):
 
             {
                 "id": 1,
+                "product": {
+                    "id": 1,
+                    "name": "product",
+                    "display_name": "",
+                    "description": "",
+                    "family": ""
+                },
+                "components": [],
                 "version": "6.9.0",
                 "name": "satellite-6.9.0",
-                "notes": "The most authoritative list comes from Errata..",
-                "product": 1
+                "notes": "The most authoritative list comes from Errata.."
             }
         """
         return super().retrieve(request, *args, **kwargs)
