@@ -300,8 +300,8 @@ def get_source_metadata(context, engine):
 
     engine.logger.info("Start to get source package metadata...")
     src_filepath = context.get('tmp_src_filepath')
+    nvr = context.get('package_nvr')
     if is_metadata_component_source(src_filepath):
-        nvr = context.get('package_nvr')
         source_name = f"{nvr}-metadata"
         source_checksum = dirhash(src_filepath, "sha256")
     else:
@@ -357,6 +357,9 @@ def get_source_metadata(context, engine):
             "is_source": True
         }
     }
+    if source_name == f"{nvr}-metadata":
+        context['source_info']['source']['archive_type'] = 'tar'
+
     engine.logger.info("Done")
 
 
