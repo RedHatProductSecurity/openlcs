@@ -22,19 +22,35 @@ class TaskSerializer(serializers.ModelSerializer):
                   'date_done', 'traceback', 'object_url')
 
     def get_status(self, obj):
-        return TaskMeta.objects.get(task_id=obj.meta_id).status
+        try:
+            taskmeta = TaskMeta.objects.get(task_id=obj.meta_id)
+        except TaskMeta.DoesNotExist:
+            return None
+        return taskmeta.status
 
     def get_date_done(self, obj):
-        return TaskMeta.objects.get(task_id=obj.meta_id).date_done
+        try:
+            taskmeta = TaskMeta.objects.get(task_id=obj.meta_id)
+        except TaskMeta.DoesNotExist:
+            return None
+        return taskmeta.date_done
 
     def get_traceback(self, obj):
-        return TaskMeta.objects.get(task_id=obj.meta_id).traceback
+        try:
+            taskmeta = TaskMeta.objects.get(task_id=obj.meta_id)
+        except TaskMeta.DoesNotExist:
+            return None
+        return taskmeta.traceback
 
     def get_object_url(self, obj):
         if obj.content_object is None:
             return obj.content_object
 
-        taskmeta_obj = TaskMeta.objects.get(task_id=obj.meta_id)
+        try:
+            taskmeta_obj = TaskMeta.objects.get(task_id=obj.meta_id)
+        except TaskMeta.DoesNotExist:
+            return None
+
         if taskmeta_obj.status == SUCCESS:
             return "http://{}{}".format(
                 settings.HOSTNAME,
