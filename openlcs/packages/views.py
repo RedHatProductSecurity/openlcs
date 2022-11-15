@@ -704,6 +704,7 @@ class ComponentViewSet(ModelViewSet):
                         "license_detections": [],
                         "copyright_detections": []
                     },
+                    "provides": [],
                     "type": "RPM",
                     "name": "rpm-libs",
                     "version": "4.14.3",
@@ -791,6 +792,7 @@ source__state=&source__archive_type=&source__scan_flag=
                         ]
                     },
                     "type": "RPM",
+                    "provides": [],
                     "name": "fio",
                     "version": "3.1",
                     "release": "2.el7",
@@ -858,6 +860,7 @@ source__state=&source__archive_type=&source__scan_flag=
                     "copyright_detections": []
                 },
                 "type": "RPM",
+                "provides": [],
                 "name": "rpm-libs",
                 "version": "4.14.3",
                 "release": "23.el8",

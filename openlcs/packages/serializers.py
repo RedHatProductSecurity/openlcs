@@ -231,13 +231,6 @@ class RSImportSerializer(ImportScanOptionsMixin, ReleaseImportMixin):
 
 class ComponentSerializer(serializers.ModelSerializer):
     source = SourceSerializer(required=False)
-
-    class Meta:
-        model = Component
-        fields = '__all__'
-
-
-class GroupComponentsSerializer(ComponentSerializer):
     provides = serializers.SerializerMethodField()
 
     class Meta:
@@ -245,11 +238,13 @@ class GroupComponentsSerializer(ComponentSerializer):
         fields = '__all__'
 
     def get_provides(self, obj):
-        node = obj.component_nodes.get()
-        component_nodes = node.get_descendants()
-        components = Component.objects.filter(
-            id__in=component_nodes.values_list('object_id', flat=True)
-        )
-
-        serializer = ComponentSerializer(components, many=True)
-        return serializer.data
+        provides = []
+        if obj.type in ['OCI', 'RPMMOD']:
+            node = obj.component_nodes.get()
+            descendant_nodes = node.get_descendants()
+            descendant_components = Component.objects.filter(
+                id__in=descendant_nodes.values_list('object_id', flat=True)
+            )
+            serializer = ComponentSerializer(descendant_components, many=True)
+            provides = serializer.data
+        return provides
