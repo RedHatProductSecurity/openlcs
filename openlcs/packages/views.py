@@ -289,18 +289,16 @@ file first, it should contain the following parameters:
 
         data = manifest_data if manifest_data else request.data
         # Import packages based on "API bulk package nvrs import".
-        if 'package_nvrs' in request.data:
+        if 'package_nvrs' in data:
             serializer = self.nvr_import_serializer(data=data)
         # Import packages for remote source import.
-        elif 'rs_comps' in request.data:
-            serializer = self.rs_import_serializer(data=request.data)
+        elif 'rs_comps' in data:
+            serializer = self.rs_import_serializer(data=data)
         else:
             return Response("Missing arguments in request.",
                             status=status.HTTP_400_BAD_REQUEST)
-
-        user_id = request.data.get('owner_id') or request.user.id
         if serializer.is_valid():
-            resp = serializer.fork_import_tasks(user_id)
+            resp = serializer.fork_import_tasks(request.user.id)
         else:
             return Response(data=serializer.errors,
                             status=status.HTTP_400_BAD_REQUEST)
