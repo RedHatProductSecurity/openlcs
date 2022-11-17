@@ -5,7 +5,7 @@ def test_list_tasks(openlcs_client):
     """
     Test for list tasks
     """
-    url = '/tasks/?meta_id=&params=&owner__username=&status=SUCCESS&date_done=&traceback='
+    url = '/tasks/?meta_id=&params=&owner__username=&status=SUCCESS&date_done=&traceback=&parent_task_id='
     get_success_response = openlcs_client.api_call(url, 'GET')
     success_expected = [
         {
@@ -16,7 +16,8 @@ def test_list_tasks(openlcs_client):
             'status': 'SUCCESS',
             'date_done': '2022-11-11T04:28:59.961000',
             'traceback': None,
-            'object_url': 'http://{}/rest/v1/sources/1/'.format(settings.HOSTNAME)
+            'object_url': 'http://{}/rest/v1/sources/1/'.format(settings.HOSTNAME),
+            'parent_task_id': ''
         },
         {
             'id': 1,
@@ -26,14 +27,15 @@ def test_list_tasks(openlcs_client):
             'status': 'SUCCESS',
             'date_done': '2022-11-11T05:18:34.601000',
             'traceback': None,
-            'object_url': 'http://{}/rest/v1/sources/2/'.format(settings.HOSTNAME)
+            'object_url': 'http://{}/rest/v1/sources/2/'.format(settings.HOSTNAME),
+            'parent_task_id': ''
         }
     ]
 
     assert get_success_response.get("results") == success_expected
 
     url = '/tasks/?meta_id=ce369f13-b9ec-4a10-9670-0a3647e2770b&' \
-          'params=ansible&owner__username=admin&status=STARTED&date_done=&traceback='
+          'params=ansible&owner__username=admin&status=STARTED&date_done=&traceback=&parent_task_id='
     combine_query_response = openlcs_client.api_call(url, 'GET')
     combine_query_expected = []
 
@@ -50,7 +52,8 @@ def test_list_tasks(openlcs_client):
             'status': 'SUCCESS',
             'date_done': '2022-11-11T05:18:34.601000',
             'traceback': None,
-            'object_url': 'http://{}/rest/v1/sources/2/'.format(settings.HOSTNAME)
+            'object_url': 'http://{}/rest/v1/sources/2/'.format(settings.HOSTNAME),
+            'parent_task_id': ''
         },
         {
             'id': 2,
@@ -60,7 +63,8 @@ def test_list_tasks(openlcs_client):
             'status': 'SUCCESS',
             'date_done': '2022-11-11T04:28:59.961000',
             'traceback': None,
-            'object_url': 'http://{}/rest/v1/sources/1/'.format(settings.HOSTNAME)
+            'object_url': 'http://{}/rest/v1/sources/1/'.format(settings.HOSTNAME),
+            'parent_task_id': ''
         }
     ]
 

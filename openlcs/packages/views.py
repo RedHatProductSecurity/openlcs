@@ -298,7 +298,9 @@ file first, it should contain the following parameters:
             return Response("Missing arguments in request.",
                             status=status.HTTP_400_BAD_REQUEST)
         if serializer.is_valid():
-            resp = serializer.fork_import_tasks(request.user.id)
+            parent_task_id = request.data.get('parent_task_id')
+            resp = serializer.fork_import_tasks(
+                    request.user.id, parent_task_id)
         else:
             return Response(data=serializer.errors,
                             status=status.HTTP_400_BAD_REQUEST)

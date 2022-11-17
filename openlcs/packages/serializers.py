@@ -144,7 +144,7 @@ class ImportSerializer(AbstractSerializerMixin):
         """
         return {}
 
-    def fork_import_tasks(self, user_id):
+    def fork_import_tasks(self, user_id, parent_task_id):
         result = {}
         task_flow = self.get_task_flow()
         for key, task_params in self.get_tasks_params():
@@ -156,6 +156,7 @@ class ImportSerializer(AbstractSerializerMixin):
                 meta_id=celery_task.task_id,
                 task_flow=task_flow,
                 params=task_params,
+                parent_task_id=parent_task_id
             )
             result[key] = {'task_id': task.id}
         return result

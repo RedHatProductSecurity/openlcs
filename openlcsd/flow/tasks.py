@@ -978,7 +978,8 @@ def fork_specified_type_imports(
         'src_dir': src_dir,
         'package_nvrs': nvr_list,
         'license_scan': context.get('license_scan'),
-        'copyright_scan': context.get('copyright_scan')
+        'copyright_scan': context.get('copyright_scan'),
+        'parent_task_id': context.get('task_id')
     }
     engine.logger.info(msg)
     cli.post(url, data=data)
@@ -1002,7 +1003,8 @@ def fork_remote_source_components_imports(context, engine, rs_comps, src_dir):
         'src_dir': src_dir,
         'rs_comps': rs_comps,
         'license_scan': context.get('license_scan'),
-        'copyright_scan': context.get('copyright_scan')
+        'copyright_scan': context.get('copyright_scan'),
+        'parent_task_id': context.get('task_id')
     }
     engine.logger.info(msg)
     cli.post(url, data=data)
