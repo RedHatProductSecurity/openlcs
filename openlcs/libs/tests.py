@@ -1,35 +1,38 @@
-import os
-from io import StringIO
 import json
+import os
 import shutil
 import tempfile
 import warnings
-from unittest import mock
-from unittest import TestCase
-from kobo.shortcuts import run
-from django.conf import settings
+from io import StringIO
+from pathlib import Path
+from unittest import TestCase, mock
 
 from libs.corgi import CorgiConnector
+from django.conf import settings
+from kobo.shortcuts import run
 from libs.kojiconnector import KojiConnector
+from libs.metadata import GolangMeta, NpmMeta
 from libs.parsers import parse_manifest_file
-from libs.scanner import LicenseScanner
-from libs.scanner import CopyrightScanner
+from libs.scanner import CopyrightScanner, LicenseScanner
 from libs.unpack import UnpackArchive
+from packagedcode.golang import GolangPackage
+from packagedcode.npm import NpmPackage
+from packagedcode.pypi import PythonPackage, parse_sdist
 
 
 class TestUnpack(TestCase):
-
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
         cls.config = {
             # Update below path to your virtualenv path in local
-            'EXTRACTCODE_CLI': os.getenv("OLCS_EXTRACTCODE_CLI",
-                                         "/opt/app-root/bin/extractcode"),
+            'EXTRACTCODE_CLI': os.getenv(
+                "OLCS_EXTRACTCODE_CLI", "/opt/app-root/bin/extractcode"
+            ),
         }
         cls.koji_download = os.getenv(
-            'KOJI_DOWNLOAD',
-            'https://kojipkgs.fedoraproject.org/')
+            'KOJI_DOWNLOAD', 'https://kojipkgs.fedoraproject.org/'
+        )
         warnings.simplefilter('ignore', ResourceWarning)
 
     def test_extract(self):
@@ -48,9 +51,8 @@ class TestUnpack(TestCase):
         src_filepath = os.path.join(tmp_dir, archive_name)
         dest_dir = tempfile.mkdtemp(prefix='unpack_')
         ua = UnpackArchive(
-            config=TestUnpack.config,
-            src_file=src_filepath,
-            dest_dir=dest_dir)
+            config=TestUnpack.config, src_file=src_filepath, dest_dir=dest_dir
+        )
         ua.extract()
         shutil.rmtree(tmp_dir, ignore_errors=True)
         extracted_files = os.listdir(dest_dir)
@@ -67,9 +69,8 @@ class TestUnpack(TestCase):
         run(cmd, stdout=False, can_fail=True, workdir=tmp_dir)
         src_filepath = os.path.join(tmp_dir, archive_name)
         ua = UnpackArchive(
-            config=TestUnpack.config,
-            src_file=src_filepath,
-            dest_dir=tmp_dir)
+            config=TestUnpack.config, src_file=src_filepath, dest_dir=tmp_dir
+        )
         ua.unpack_archives_using_extractcode(tmp_dir)
 
         unpacked_sources = os.listdir(tmp_dir)
@@ -80,8 +81,10 @@ class TestUnpack(TestCase):
 
     def test_unpack_archives_using_atool(self):
         archive_name = 'vertx-unit-4.1.5.redhat-00002-docs.zip'
-        archive_path = '/packages/io.vertx-vertx-unit/4.1.5.redhat_00002/' + \
-                       '1/maven/io/vertx/vertx-unit/4.1.5.redhat-00002/'
+        archive_path = (
+            '/packages/io.vertx-vertx-unit/4.1.5.redhat_00002/'
+            + '1/maven/io/vertx/vertx-unit/4.1.5.redhat-00002/'
+        )
         archive_url = TestUnpack.koji_download + archive_path + archive_name
 
         tmp_dir = tempfile.mkdtemp(prefix='download_')
@@ -89,9 +92,8 @@ class TestUnpack(TestCase):
         run(cmd, stdout=False, can_fail=True, workdir=tmp_dir)
         src_filepath = os.path.join(tmp_dir, archive_name)
         ua = UnpackArchive(
-            config=TestUnpack.config,
-            src_file=src_filepath,
-            dest_dir=tmp_dir)
+            config=TestUnpack.config, src_file=src_filepath, dest_dir=tmp_dir
+        )
         ua.unpack_archives_using_atool(tmp_dir, top_dir=True)
 
         unpacked_sources = os.listdir(tmp_dir)
@@ -102,17 +104,19 @@ class TestUnpack(TestCase):
 
 
 class TestDownloadFromBrew(TestCase):
-
     def setUp(self):
         os.environ.setdefault(
-                'DJANGO_SETTINGS_MODULE', 'openlcs.openlcs.settings')
+            'DJANGO_SETTINGS_MODULE', 'openlcs.openlcs.settings'
+        )
         self.test_package_nvr = 'python-futures-3.1.1-5.el7'
-        self.context = {'config': {'KOJI_DOWNLOAD': settings.KOJI_DOWNLOAD,
-                                   'KOJI_WEBSERVICE': settings.KOJI_WEBSERVICE,
-                                   'KOJI_WEBURL': settings.KOJI_WEBURL
-                                   },
-                        'package_nvr': self.test_package_nvr
-                        }
+        self.context = {
+            'config': {
+                'KOJI_DOWNLOAD': settings.KOJI_DOWNLOAD,
+                'KOJI_WEBSERVICE': settings.KOJI_WEBSERVICE,
+                'KOJI_WEBURL': settings.KOJI_WEBURL,
+            },
+            'package_nvr': self.test_package_nvr,
+        }
 
     def test_download_build_source(self):
         """
@@ -138,7 +142,6 @@ class TestDownloadFromBrew(TestCase):
 
 
 class TestParseManifestFile(TestCase):
-
     def setUp(self):
         # data with valid form
         valid_data = {
@@ -147,19 +150,16 @@ class TestParseManifestFile(TestCase):
                 'version': '1.0.0',
                 'notes': 'sample notes',
                 'containers': [],
-                'src_packages': [
-                    'nvr1', 'nvr2', 'nvr3'
-                ]}
+                'src_packages': ['nvr1', 'nvr2', 'nvr3'],
+            }
         }
         # missing required field 'release'
-        invalid_data1 = {
-            'product': 'foo'
-        }
+        invalid_data1 = {'product': 'foo'}
         # missing required field 'version'
         invalid_data2 = {
             'release': {
                 'productname': 'testproduct',
-                'src_packages': ['nvr1', 'nvr2', 'nvr3']
+                'src_packages': ['nvr1', 'nvr2', 'nvr3'],
             }
         }
         # 'src_packages' is of incorrect type(should be array)
@@ -181,7 +181,7 @@ class TestParseManifestFile(TestCase):
             parse_manifest_file(self.non_existent_file)
             self.assertEqual(
                 str(exception_context.exception),
-                f'{self.non_existent_file} is not a file'
+                f'{self.non_existent_file} is not a file',
             )
 
     def test_parse_invalid_file(self):
@@ -198,14 +198,14 @@ class TestParseManifestFile(TestCase):
 
 
 class TestLicenseScan(TestCase):
-
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
         cls.config = {
             # Update below path to your virtualenv path in local
-            'SCANCODE_CLI': os.getenv("OLCS_SCANCODE_CLI",
-                                      "/opt/app-root/bin/scancode"),
+            'SCANCODE_CLI': os.getenv(
+                "OLCS_SCANCODE_CLI", "/opt/app-root/bin/scancode"
+            ),
         }
 
     def setUp(self):
@@ -217,8 +217,8 @@ class TestLicenseScan(TestCase):
         with open(license_file, "w", encoding="utf-8") as license_file:
             license_file.write("http://www.gzip.org/zlib/zlib_license.html")
         scanner = LicenseScanner(
-            src_dir=self.src_dir,
-            config=TestLicenseScan.config)
+            src_dir=self.src_dir, config=TestLicenseScan.config
+        )
         (licenses, errors, has_exception) = scanner.scan(scanner='scancode')
 
         self.assertEqual(licenses[0][0], 'license_file')
@@ -234,14 +234,14 @@ class TestLicenseScan(TestCase):
 
 
 class TestCopyrightScan(TestCase):
-
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
         cls.config = {
             # Update below path to your virtualenv path in local
-            'SCANCODE_CLI': os.getenv("OLCS_SCANCODE_CLI",
-                                      "/opt/app-root/bin/scancode"),
+            'SCANCODE_CLI': os.getenv(
+                "OLCS_SCANCODE_CLI", "/opt/app-root/bin/scancode"
+            ),
         }
 
     def setUp(self):
@@ -254,14 +254,15 @@ class TestCopyrightScan(TestCase):
         with open(copyright_file, "w", encoding="utf-8") as copyright_file:
             copyright_file.write(statement)
         scanner = CopyrightScanner(
-            src_dir=self.src_dir,
-            config=TestCopyrightScan.config)
+            src_dir=self.src_dir, config=TestCopyrightScan.config
+        )
         (copyrights, errors, has_exception) = scanner.scan(scanner='scancode')
         detail = copyrights.get('detail_copyrights')
         detail_key = next(iter(detail))
         self.assertEqual(detail_key, 'copyright_file')
-        self.assertEqual(detail[detail_key][0], {
-            'value': statement, 'start_line': 1, 'end_line': 1}
+        self.assertEqual(
+            detail[detail_key][0],
+            {'value': statement, 'start_line': 1, 'end_line': 1},
         )
         self.assertEqual(errors, [])
         self.assertFalse(has_exception)
@@ -274,12 +275,13 @@ class TestComponents(TestCase):
     def setUp(self):
         warnings.simplefilter('ignore', RuntimeWarning)
         os.environ.setdefault(
-                'DJANGO_SETTINGS_MODULE', 'openlcs.openlcs.settings')
+            'DJANGO_SETTINGS_MODULE', 'openlcs.openlcs.settings'
+        )
         corgi_api_prod = os.getenv("CORGI_API_PROD")
         self.links = [
             f'{corgi_api_prod}components?purl=pkg%3Arpm/redhat/glibc-minimal-langpack%402.28-151.el8%3Farch%3Ds390x',  # noqa
             f'{corgi_api_prod}components?purl=pkg%3Arpm/redhat/openssl-libs%401.1.1g-15.el8_3%3Farch%3Ds390x',  # noqa
-            f'{corgi_api_prod}components?purl=pkg:npm/@jest/fake-timers@27.2.0'  # noqa
+            f'{corgi_api_prod}components?purl=pkg:npm/@jest/fake-timers@27.2.0',  # noqa
         ]
         self.components_data = [
             {
@@ -290,7 +292,7 @@ class TestComponents(TestCase):
                 'release': '151.el8',
                 'arch': 's390x',
                 'summary_license': '',
-                'synced': True
+                'synced': True,
             },
             {
                 'uuid': 'fe7f82c1-db81-4045-84d6-c81a9da8d146',
@@ -300,7 +302,7 @@ class TestComponents(TestCase):
                 'release': '15.el8_3',
                 'arch': 's390x',
                 'summary_license': '',
-                'synced': True
+                'synced': True,
             },
             {
                 'uuid': 'fe7f82c1-db81-4045-84d6-c81a9da8d147',
@@ -310,7 +312,7 @@ class TestComponents(TestCase):
                 'release': '',
                 'arch': '',
                 'summary_license': '',
-                'synced': True
+                'synced': True,
             },
             {
                 'uuid': 'bb7e0e10-0a68-4bae-a490-3ff491cb1b78',
@@ -320,8 +322,8 @@ class TestComponents(TestCase):
                 'release': 'v2.4.0',
                 'arch': 's390x',
                 'summary_license': '',
-                'synced': True
-            }
+                'synced': True,
+            },
         ]
         self.group_components_data = {
             'RPM': [
@@ -333,7 +335,7 @@ class TestComponents(TestCase):
                     'release': '151.el8',
                     'arch': 's390x',
                     'summary_license': '',
-                    'synced': True
+                    'synced': True,
                 },
                 {
                     'uuid': 'fe7f82c1-db81-4045-84d6-c81a9da8d146',
@@ -343,8 +345,8 @@ class TestComponents(TestCase):
                     'release': '15.el8_3',
                     'arch': 's390x',
                     'summary_license': '',
-                    'synced': True
-                }
+                    'synced': True,
+                },
             ],
             'NPM': [
                 {
@@ -355,7 +357,7 @@ class TestComponents(TestCase):
                     'release': '',
                     'arch': '',
                     'summary_license': '',
-                    'synced': True
+                    'synced': True,
                 }
             ],
             'OCI': [
@@ -367,9 +369,9 @@ class TestComponents(TestCase):
                     'release': 'v2.4.0',
                     'arch': 's390x',
                     'summary_license': '',
-                    'synced': True
+                    'synced': True,
                 }
-            ]
+            ],
         }
         base_url = corgi_api_prod
         self.nvr = 'grc-ui-api-container-13-v2.4.0'
@@ -389,8 +391,8 @@ class TestComponents(TestCase):
         CorgiConnector, 'get_component_data_from_corgi')
     @mock.patch.object(CorgiConnector, 'parse_component_link')
     def test_get_component_data_2(
-            self, mock_get_component_data_from_corgi,
-            mock_parse_component_link):
+        self, mock_get_component_data_from_corgi, mock_parse_component_link
+    ):
         mock_get_component_data_from_corgi.return_value = {}
         mock_parse_component_link.return_value = \
             self.components_data[1]
@@ -402,8 +404,8 @@ class TestComponents(TestCase):
         CorgiConnector, 'get_component_data_from_corgi')
     @mock.patch.object(CorgiConnector, 'parse_component_link')
     def test_get_component_data_3(
-            self, mock_get_component_data_from_corgi,
-            mock_parse_component_link):
+        self, mock_get_component_data_from_corgi, mock_parse_component_link
+    ):
         mock_get_component_data_from_corgi.return_value = {}
         mock_parse_component_link.return_value = \
             self.components_data[2]
@@ -429,20 +431,22 @@ class TestComponents(TestCase):
 class TestMapSourceImage(TestCase):
     def setUp(self):
         os.environ.setdefault(
-                'DJANGO_SETTINGS_MODULE', 'openlcs.openlcs.settings')
+            'DJANGO_SETTINGS_MODULE', 'openlcs.openlcs.settings'
+        )
         self.binary_nvr = 'dotnet-21-container-2.1-54'
         self.source_nvr = 'dotnet-21-container-source-2.1-54.3'
-        self.context = {'config': {'KOJI_DOWNLOAD': settings.KOJI_DOWNLOAD,
-                                   'KOJI_WEBSERVICE': settings.KOJI_WEBSERVICE,
-                                   'KOJI_WEBURL': settings.KOJI_WEBURL
-                                   },
-                        }
+        self.context = {
+            'config': {
+                'KOJI_DOWNLOAD': settings.KOJI_DOWNLOAD,
+                'KOJI_WEBSERVICE': settings.KOJI_WEBSERVICE,
+                'KOJI_WEBURL': settings.KOJI_WEBURL,
+            },
+        }
 
     def test_get_latest_source_container_build(self):
         binary_nvr = self.binary_nvr
         connector = KojiConnector(self.context.get('config'))
-        source_image = connector.get_latest_source_container_build(
-                binary_nvr)
+        source_image = connector.get_latest_source_container_build(binary_nvr)
         self.assertEqual(source_image.get('nvr'), self.source_nvr)
 
 
@@ -472,3 +476,48 @@ class TestGetModuleMappingSRPMs(TestCase):
         # Check the expected srpm nvr is the gotten result.
         self.assertEqual(len(package_nvr), 1)
         self.assertEqual(self.srpm_nvr, package_nvr[0])
+
+
+class TestParseMetadata(TestCase):
+    def setUp(self):
+        dirname = Path(__file__).resolve().parent.parent.parent
+        testdata_root = dirname / 'tests/functional/data/metadata'
+        self.npm_tarball = testdata_root / 'npm/uuid-3.4.0.tgz'
+        self.pypi_tarball = testdata_root / 'pypi/decorator-5.0.7.tar.gz'
+        self.golang_tarball = testdata_root / 'golang/v1.3.1.zip'
+        self.yarn_tarball = testdata_root / 'yarn/json5-2.1.3.tgz'
+
+    def test_npm(self):
+        parser = NpmMeta(self.npm_tarball)
+        package = parser.parse_metadata()
+        self.assertTrue(isinstance(package, NpmPackage))
+        self.assertEqual(package.declared_license, ['MIT'])
+        self.assertEqual(
+            package.vcs_url, "git+https://github.com/uuidjs/uuid.git"
+        )
+
+    def test_pypi(self):
+        # PosixPath is invalid form for `parse_sdist`
+        package = parse_sdist(str(self.pypi_tarball))
+        self.assertTrue(isinstance(package, PythonPackage))
+        declared_license = {
+            'license': 'new BSD License',
+            'classifiers': ['License :: OSI Approved :: BSD License'],
+        }
+        self.assertEqual(package.declared_license, declared_license)
+        self.assertEqual(
+            package.homepage_url, "https://github.com/micheles/decorator"
+        )
+
+    def test_golang(self):
+        parser = GolangMeta(self.golang_tarball)
+        package = parser.parse_metadata()
+        self.assertTrue(isinstance(package, GolangPackage))
+        self.assertEqual(
+            package.homepage_url,
+            "https://pkg.go.dev/cloud.google.com/go/pubsub",
+        )
+
+    def test_yarn(self):
+        # For now, npm parser is used for yarn as well.
+        pass
