@@ -5,6 +5,7 @@ import os
 import shutil
 import subprocess
 import tarfile
+import uuid
 from collections import defaultdict
 from itertools import groupby
 from operator import itemgetter
@@ -153,3 +154,20 @@ def selection_sort_components(components):
             if components[j].get('name') in components[i].get('name'):
                 components[j], components[i] = components[i], components[j]
     return components
+
+
+def get_component_flat(data, comp_type):
+    component = {
+            'uuid': str(uuid.uuid4()),
+            'type': comp_type,
+            'name': data.get('name'),
+            'version': data.get('version'),
+            'release': data.get('release'),
+            'summary_license': '',
+            'synced': False
+        }
+    if comp_type == 'RPMMOD':
+        component.update({'arch': ''})
+    else:
+        component.update({'arch': 'src', 'is_source': True})
+    return component

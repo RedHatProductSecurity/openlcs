@@ -214,7 +214,6 @@ def download_package_archive(context, engine):
     build = context.get('build')
     koji_connector = KojiConnector(config)
     build_id = build.get('id')
-
     engine.logger.info('Start to download package source from Brew/Koji...')
     try:
         koji_connector.download_build_source(build_id, dest_dir=tmp_dir)
@@ -963,23 +962,42 @@ def get_module_components_from_corgi(context, engine):
     engine.logger.info("Finished getting module components data.")
 
 
+def get_module_components_from_brew(context, engine):
+    """
+    Get module components from brew.
+    @requires: `config`, configurations from Hub.
+    @requires: 'module_nvr', module build nvr
+    @returns: 'components', module and module child components
+    """
+    config = context.get('config')
+    module_nvr = context.get('package_nvr')
+    engine.logger.info("Start to get module components data...")
+    koji_connector = KojiConnector(config)
+    context['components'] = koji_connector.get_module_components(module_nvr)
+    engine.logger.info("Finished getting module components data.")
+
+
 def fork_specified_type_imports(
-        context, engine, nvr_list, src_dir, comp_type):
+        context, engine, nvr_list, comp_type, src_dir=None):
     """
     In a source container, it has different type of component. The different
-    components have different src_dir. This function will be defined the post
-    data for the different type component.
+    components have different src dir. This function will be defined the post
+    data for the source container srpm components' tasks. It could also be
+    same with rhel module srpm components except the src dir.
     """
     cli = context.get('client')
     url = '/sources/import/'
     msg = 'Start to fork imports for {} components...'.format(len(nvr_list))
+    # Fork srpm tasks for module that has no src_dir param
     data = {
         'component_type': comp_type,
-        'src_dir': src_dir,
         'package_nvrs': nvr_list,
         'license_scan': context.get('license_scan'),
         'copyright_scan': context.get('copyright_scan')
     }
+    # Fork srpm tasks for source container that downloaded src in src_dir
+    if src_dir:
+        data.update({'src_dir': src_dir})
     engine.logger.info(msg)
     cli.post(url, data=data)
     msg = '-- Forked import tasks for below source components:{}'.format(
@@ -1020,18 +1038,17 @@ def fork_components_imports(context, engine):
     Fork components tasks
     """
     components = context.get('components')
-    srpm_nvr_list = get_nvr_list_from_components(components, 'SRPM')
-
-    # Fork source RPM component tasks.
+    srpm_nvr_list = get_nvr_list_from_components(components, 'RPM')
+    # Fork rpm tasks for module or container
     if srpm_nvr_list:
         fork_specified_type_imports(
-            context, engine, srpm_nvr_list, context.get('srpm_dir'), 'RPM')
+            context, engine, srpm_nvr_list, 'RPM', context.get('srpm_dir'))
 
     # Fork container-component tasks with the misc metadata files.
     if components.get('OCI'):
         fork_specified_type_imports(
             context, engine, [context.get('package_nvr')],
-            context.get('misc_dir'), 'OCI')
+            'OCI', context.get('misc_dir'))
 
     # Fork remote source component tasks.
     config = context.get('config')
@@ -1070,8 +1087,9 @@ flow_default = [
                 lambda o, e: 'module' in o.get('build_type'),
                 # Task flow for module
                 [
-                    get_module_components_from_corgi,
+                    get_module_components_from_brew,
                     save_components,
+                    fork_components_imports,
                 ],
                 # Task flow for source scan
                 [

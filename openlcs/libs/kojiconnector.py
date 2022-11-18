@@ -13,7 +13,7 @@ from kobo.shortcuts import run
 from urllib.parse import urlparse
 from urllib.request import urlopen
 
-from libs.common import group_components
+from libs.common import get_component_flat, group_components
 
 
 class KojiConnector:
@@ -192,6 +192,12 @@ class KojiConnector:
         return self._service.listBuilds(
                 packageID=package_id, state=state,
                 queryOpts=query_opts)
+
+    def list_tagged(self, tag):
+        """
+        Return a list of builds with the tag.
+        """
+        return self._service.listTagged(tag)
 
     def get_package_id(self, package_name):
         """
@@ -483,3 +489,50 @@ class KojiConnector:
             err_msg = f'Failed to download source. Reason: {err}'
             raise RuntimeError(err_msg) from None
         return temp_dir
+
+    def get_module_mapping_srpms(self, module_nvr):
+        """
+        Return module SRPM NVRs.
+        """
+        build = self.get_build(module_nvr)
+        tag = build.get('extra').get('typeinfo').get('module').get(
+                'content_koji_tag')
+        try:
+            builds = self.list_tagged(tag)
+        except RuntimeError as err_msg:
+            err_msg = f'Failed to get the module {module_nvr} SRPM nvrs'
+            raise RuntimeError(err_msg) from None
+        package_nvrs = []
+        for build in builds:
+            package_nvrs.append(build.get('nvr'))
+        return package_nvrs
+
+    def get_module_component(self, module_nvr):
+        """
+        Return module component itself.
+        """
+        nvr = koji.parse_NVR(module_nvr)
+        return get_component_flat(nvr, 'RPMMOD')
+
+    def get_module_srpm_components(self, module_nvr):
+        """
+        Get module child srpm components.
+        """
+        srpm_nvrs = self.get_module_mapping_srpms(module_nvr)
+        srpm_components = []
+        for srpm_nvr in srpm_nvrs:
+            nvr = koji.parse_NVR(srpm_nvr)
+            srpm_components.append(get_component_flat(nvr, 'RPM'))
+        return srpm_components
+
+    def get_module_components(self, module_nvr):
+        """
+        Return the group of  module components.
+        """
+        srpm_components = self.get_module_srpm_components(module_nvr)
+        module_component = [self.get_module_component(module_nvr)]
+        components = {
+            'RPM': srpm_components,
+            'RPMMOD': module_component
+        }
+        return components
