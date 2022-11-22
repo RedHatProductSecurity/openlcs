@@ -5,8 +5,9 @@ from tasks.models import Task, TaskMeta
 
 @admin.register(Task)
 class TaskAdmin(admin.ModelAdmin):
-    list_display = ('id', 'meta_id', 'owner', 'params', 'content_object')
-    search_fields = ['meta_id', 'owner__username', 'params']
+    list_display = ('id', 'meta_id', 'owner', 'params',
+                    'content_object', 'parent_task_id')
+    search_fields = ['meta_id', 'owner__username', 'params', 'parent_task_id']
 
 
 @admin.register(TaskMeta)

@@ -37,11 +37,13 @@ class TaskFilter(filters.FilterSet):
         field_name='owner__username', label='owner__username'
     )
     meta_id = filters.CharFilter(field_name='meta_id', label='meta_id')
+    parent_task_id = filters.CharFilter(
+        field_name='parent_task_id', label='parent_task_id')
 
     class Meta:
         model = Task
         fields = ('meta_id', 'owner__username', 'status',
-                  'params', 'date_done', 'traceback')
+                  'params', 'date_done', 'traceback', 'parent_task_id')
 
     def filter_status(self, queryset, name, value):
         if not value:
@@ -91,7 +93,8 @@ class TaskViewSet(ModelViewSet):
         with query params
         
             curl -X GET -H "Content-Type: application/json" \
-%(HOST_NAME)s/%(API_PATH)s/tasks/?meta_id=&owner__username=&status=&params=&date_done=&traceback= \
+%(HOST_NAME)s/%(API_PATH)s/tasks/?meta_id=&owner__username=&status= \
+&params=&date_done=&traceback=&parent_task_id= \
  -H 'Authorization: Token your_token'        
 
 
@@ -109,7 +112,9 @@ to search.
 
         ``date_done``, string, the day you want to filter the task, format: ``%%Y-%%m-%%d``.
 
-        ``traceback``, string, task traceback, can use part of this field to search
+        ``traceback``, string, task traceback, can use part of this field to search.
+
+        ``parent_task_id``, string, parent task(meta) id of current task.
 
 
         ####__Response__####
@@ -127,7 +132,8 @@ to search.
                     "status": "SUCCESS",
                     "date_done": "2022-11-10T05:39:45.746881",
                     "traceback": null,
-                    "object_url": "%(HOST_NAME)s/rest/v1/sources/2/"
+                    "object_url": "%(HOST_NAME)s/rest/v1/sources/2/",
+                    "parent_task_id": "e649d203-54dd-4e7b-8352-a5335e3f0a8c"
                 },
                 {
                     "id": 6,
@@ -138,7 +144,8 @@ to search.
                     "status": "SUCCESS",
                     "date_done": "2022-11-10T05:38:50.461372",
                     "traceback": null,
-                    "object_url": "%(HOST_NAME)s/rest/v1/sources/1/"
+                    "object_url": "%(HOST_NAME)s/rest/v1/sources/1/",
+                    "parent_task_id": "e649d203-54dd-4e7b-8352-a5335e3f0a8c"
                 }
             ]
         """ # noqa
@@ -164,6 +171,8 @@ to search.
         
         ``object_url``: string, source object url.
 
+        ``parent_task_id``: string, parent task(meta) id.
+
         ####__Request__####
 
             curl -X GET -H "Content-Type: application/json" -H \
@@ -183,7 +192,8 @@ to search.
                 "status": "SUCCESS",
                 "date_done": "2022-10-24T09:17:07.406133",
                 "traceback": null,
-                "object_url": "%(HOST_NAME)s/rest/v1/sources/1/"
+                "object_url": "%(HOST_NAME)s/rest/v1/sources/1/",
+                "parent_task_id": "e649d203-54dd-4e7b-8352-a5335e3f0a8c"
             }
         """ # noqa
         return super().retrieve(request, *args, **kwargs)

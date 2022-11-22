@@ -43,6 +43,7 @@ class Task(models.Model):
         blank=True, null=True,
         on_delete=models.CASCADE
     )
+    parent_task_id = models.TextField(default='')
     object_id = models.PositiveIntegerField(blank=True, null=True)
     content_object = GenericForeignKey('content_type', 'object_id')
     objects = TaskManager()

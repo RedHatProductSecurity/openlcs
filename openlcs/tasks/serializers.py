@@ -18,8 +18,8 @@ class TaskSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Task
-        fields = ('id', 'meta_id', 'owner', 'params', 'status',
-                  'date_done', 'traceback', 'object_url')
+        fields = ('id', 'meta_id', 'owner', 'params', 'status', 'date_done',
+                  'traceback', 'object_url', 'parent_task_id')
 
     def get_status(self, obj):
         try:
