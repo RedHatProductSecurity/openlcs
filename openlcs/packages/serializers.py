@@ -151,13 +151,15 @@ class ImportSerializer(AbstractSerializerMixin):
             params = copy.deepcopy(task_params)
             params['owner_id'] = user_id
             celery_task = app.send_task(task_flow, [params])
-            task = Task.objects.create(
-                owner_id=user_id,
-                meta_id=celery_task.task_id,
-                task_flow=task_flow,
-                params=task_params,
-                parent_task_id=parent_task_id
-            )
+            task_dict = {
+               'owner_id': user_id,
+               'meta_id': celery_task.task_id,
+               'task_flow': task_flow,
+               'params': task_params
+            }
+            if parent_task_id is not None:
+                task_dict.update({'parent_task_id': parent_task_id})
+            task = Task.objects.create(**task_dict)
             result[key] = {'task_id': task.id}
         return result
 
