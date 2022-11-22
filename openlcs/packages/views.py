@@ -298,7 +298,7 @@ file first, it should contain the following parameters:
             return Response("Missing arguments in request.",
                             status=status.HTTP_400_BAD_REQUEST)
         if serializer.is_valid():
-            parent_task_id = request.data.get('parent_task_id')
+            parent_task_id = request.data.get('parent_task_id', '')
             resp = serializer.fork_import_tasks(
                     request.user.id, parent_task_id)
         else:
@@ -704,7 +704,6 @@ class ComponentViewSet(ModelViewSet):
                         "license_detections": [],
                         "copyright_detections": []
                     },
-                    "provides": [],
                     "type": "RPM",
                     "name": "rpm-libs",
                     "version": "4.14.3",
@@ -792,7 +791,6 @@ source__state=&source__archive_type=&source__scan_flag=
                         ]
                     },
                     "type": "RPM",
-                    "provides": [],
                     "name": "fio",
                     "version": "3.1",
                     "release": "2.el7",
@@ -860,7 +858,6 @@ source__state=&source__archive_type=&source__scan_flag=
                     "copyright_detections": []
                 },
                 "type": "RPM",
-                "provides": [],
                 "name": "rpm-libs",
                 "version": "4.14.3",
                 "release": "23.el8",
