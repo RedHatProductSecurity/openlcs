@@ -444,3 +444,31 @@ class TestMapSourceImage(TestCase):
         source_image = connector.get_latest_source_container_build(
                 binary_nvr)
         self.assertEqual(source_image.get('nvr'), self.source_nvr)
+
+
+class TestGetModuleMappingSRPMs(TestCase):
+
+    def setUp(self):
+        os.environ.setdefault(
+                'DJANGO_SETTINGS_MODULE', 'openlcs.openlcs.settings')
+        # Input the test module build
+        self.test_package_nvr = '389-ds-1.4-8070020220818160455.507c48dc'
+        self.context = {'config': {'KOJI_DOWNLOAD': settings.KOJI_DOWNLOAD,
+                                   'KOJI_WEBSERVICE': settings.KOJI_WEBSERVICE,
+                                   'KOJI_WEBURL': settings.KOJI_WEBURL
+                                   }
+                        }
+        # The expected mapping srpm nvr
+        self.srpm_nvr = '389-ds-base-1.4.3.30-6.module+el8.7.0+16373+1a59bba2'
+
+    def test_get_module_mapping_srpms(self):
+        """
+        Test get the module mapping builds.
+        """
+        module_nvr = self.test_package_nvr
+        koji_connector = KojiConnector(self.context.get('config'))
+        # Get the mapping srpm nvr list
+        package_nvr = koji_connector.get_module_mapping_srpms(module_nvr)
+        # Check the expected srpm nvr is the gotten result.
+        self.assertEqual(len(package_nvr), 1)
+        self.assertEqual(self.srpm_nvr, package_nvr[0])

@@ -13,6 +13,7 @@ if openlcs_dir not in sys.path:
 from libs.common import (  # noqa: E402
     compress_source_to_tarball,
     create_dir,
+    get_component_flat,
     get_component_name_version_combination,
     search_content_by_patterns,
     uncompress_source_tarball,
@@ -32,27 +33,12 @@ class SourceContainerHandler(object):
         self.src_file = src_file
         self.dest_dir = dest_dir
 
-    @staticmethod
-    def get_component_flat(data, comp_type):
-        return {
-            'uuid': str(uuid.uuid4()),
-            'type': comp_type,
-            'name': data.get('name'),
-            'version': data.get('version'),
-            'release': data.get('release'),
-            'summary_license': '',
-            'arch': 'src',
-            'is_source': True,
-            'synced': False
-        }
-
     def get_container_component(self, sc_nvr):
         """
         Get container component.
         """
         nvr = koji.parse_NVR(sc_nvr)
-        container_component = [self.get_component_flat(nvr, 'OCI')]
-        return container_component
+        return get_component_flat(nvr, 'OCI')
 
     def get_srpm_components(self, srpm_dir):
         """
@@ -120,7 +106,7 @@ class SourceContainerHandler(object):
         Get container components.
         """
         srpm_components = self.get_srpm_components(srpm_dir)
-        container_component = self.get_container_component(sc_nvr)
+        container_component = [self.get_container_component(sc_nvr)]
         components = {
             'SRPM': srpm_components,
             'OCI': container_component
