@@ -1,5 +1,6 @@
 import glob
 import os
+import pathlib
 import shutil
 import tarfile
 import tempfile
@@ -10,8 +11,22 @@ from packagedcode.npm import parse
 
 
 class MetaBase:
+
+    SUCCESS = 0
+    FAILURE = -1
+
     def __init__(self, source_tarball):
         self.tarball = source_tarball
+        self.extensions = None
+
+    def _validate_tarball(self):
+        if not os.path.exists(self.tarball):
+            return (self.FAILURE, f"{self.tarball} does not exist.")
+        if self.extensions is not None:
+            extension = pathlib.Path(self.tarball).suffix
+            if extension not in self.extensions:
+                return (self.FAILURE, f"Unsupported file type {extension}")
+        return (self.SUCCESS, "")
 
     def _create_temp_meta_dir(self):
         basename = os.path.basename(self.tarball)
@@ -23,16 +38,21 @@ class MetaBase:
 
 class NpmMeta(MetaBase):
     def __init__(self, source_tarball):
-        self.metafile = "package.json"
         super().__init__(source_tarball)
+        self.metafile = "package.json"
+        self.extensions = (".tgz",)
 
     def get_metadata(self, filepath):
         """
-        Accept the package json filepath, returns an NpmPackage.
+        Accept the package json filepath, returns an NpmPackage, None in case
+        nothing is found.
         """
         # only one `NpmPackage` instance returned from the generator
         packages = parse(filepath)
-        return next(packages)
+        try:
+            return next(packages)
+        except StopIteration:
+            return None
 
     def extract_metafile(self):
         temp_dir = self._create_temp_meta_dir()
@@ -47,6 +67,13 @@ class NpmMeta(MetaBase):
         return temp_dir if found else None
 
     def parse_metadata(self):
+        """
+        Returns an "NpmPackage" instance when succeed,
+        or a string(error message) string in case of failures.
+        """
+        result, message = self._validate_tarball()
+        if result == self.FAILURE:
+            return message
         try:
             package_json_dir = self.extract_metafile()
             if package_json_dir is not None:
@@ -63,8 +90,9 @@ class NpmMeta(MetaBase):
 
 class GolangMeta(MetaBase):
     def __init__(self, source_tarball):
-        self.metafile = "go.mod"
         super().__init__(source_tarball)
+        self.metafile = "go.mod"
+        self.extensions = (".zip",)
 
     def extract_metafile(self):
         temp_dir = self._create_temp_meta_dir()
@@ -79,12 +107,18 @@ class GolangMeta(MetaBase):
         return temp_dir if found else None
 
     def get_metafile_path(self, meta_dir):
-        for path in glob.glob(
-            f"{meta_dir}/**/{self.metafile}", recursive=True
-        ):
+        for path in glob.glob(f"{meta_dir}/**/{self.metafile}",
+                              recursive=True):
             return path
 
     def parse_metadata(self):
+        """
+        Returns a "GolangPackage" instance when succeed,
+        or a string(error message) string in case of failures.
+        """
+        result, message = self._validate_tarball()
+        if result == self.FAILURE:
+            return message
         try:
             meta_dir = self.extract_metafile()
             if meta_dir is not None:

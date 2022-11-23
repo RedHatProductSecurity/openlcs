@@ -322,9 +322,19 @@ def get_source_metadata(context, engine):
         elif 'PYPI' in build_type:
             package = parse_sdist(src_filepath)
         elif 'GOLANG' in build_type:
-            package = GolangMeta(src_filepath).parse_metadata()
+            retval = GolangMeta(src_filepath).parse_metadata()
+            if isinstance(retval, str):
+                engine.logger.warning(f"Failed to get metadata: {retval}")
+                package = None
+            else:
+                package = retval
         elif 'NPM' in build_type or 'YARN' in build_type:
-            package = NpmMeta(src_filepath).parse_metadata()
+            retval = NpmMeta(src_filepath).parse_metadata()
+            if isinstance(retval, str):
+                engine.logger.warning(f"Failed to get metadata: {retval}")
+                package = None
+            else:
+                package = retval
         elif pom_filepath is not None:
             package = maven_parse(pom_filepath)
         # TODO: Add support for other package types.
