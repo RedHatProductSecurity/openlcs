@@ -108,7 +108,7 @@ class SourceContainerHandler(object):
         srpm_components = self.get_srpm_components(srpm_dir)
         container_component = [self.get_container_component(sc_nvr)]
         components = {
-            'SRPM': srpm_components,
+            'RPM': srpm_components,
             'OCI': container_component
         }
         return components
