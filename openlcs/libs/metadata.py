@@ -49,10 +49,7 @@ class NpmMeta(MetaBase):
         """
         # only one `NpmPackage` instance returned from the generator
         packages = parse(filepath)
-        try:
-            return next(packages)
-        except StopIteration:
-            return None
+        return next(packages)
 
     def extract_metafile(self):
         temp_dir = self._create_temp_meta_dir()
@@ -83,6 +80,8 @@ class NpmMeta(MetaBase):
                 return self.get_metadata(package_json_filepath)
             else:
                 return None
+        except StopIteration:
+            return None
         finally:
             if package_json_dir is not None:
                 shutil.rmtree(package_json_dir)
@@ -127,6 +126,8 @@ class GolangMeta(MetaBase):
                 return next(packages)
             else:
                 return None
+        except StopIteration:
+            return None
         finally:
             if meta_dir is not None:
                 shutil.rmtree(meta_dir)
