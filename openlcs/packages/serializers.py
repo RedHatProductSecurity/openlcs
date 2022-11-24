@@ -176,6 +176,7 @@ class ImportScanOptionsMixin(ImportSerializer):
 
 class ReleaseImportMixin(ImportSerializer):
     src_dir = serializers.CharField(required=False)
+    parent = serializers.CharField(required=False)
     component_type = serializers.CharField(required=False)
     product_release = serializers.CharField(
         allow_null=True,
@@ -189,14 +190,16 @@ class ReleaseImportMixin(ImportSerializer):
         data = self.validated_data
         params['license_scan'] = data.get('license_scan', True)
         params['copyright_scan'] = data.get('copyright_scan', True)
-
         src_dir = data.get('src_dir', None)
         component_type = data.get('component_type', None)
         product_release = data.get('product_release')
+        parent = data.get('parent', None)
         if src_dir is not None:
             params['src_dir'] = src_dir
         if component_type is not None:
             params['component_type'] = component_type
+        if parent is not None:
+            params['parent'] = parent
         if product_release:
             params['product_release'] = product_release
         return params
