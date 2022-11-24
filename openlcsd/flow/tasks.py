@@ -15,6 +15,7 @@ from packagedcode.maven import parse as maven_parse
 
 from openlcsd.celery import app
 from openlcsd.flow.task_wrapper import WorkflowWrapperTask
+from openlcs.libs.common import get_component_name_version_combination
 from openlcs.libs.common import get_nvr_list_from_components
 from openlcs.libs.corgi import CorgiConnector
 from openlcs.libs.driver import OpenlcsClient
@@ -113,15 +114,19 @@ def get_build(context, engine):
         context['build_type'] = build_type
         context['build'] = build
 
-    # For forked source RPM task in container.
     if context.get('component_type'):
-        comp_type = context.get('component_type')
-    # For forked remote source task in container, and source RPM import
+        component_type = context.get('component_type')
     elif context.get('rs_comp'):
-        comp_type = context.get('rs_comp')['type']
+        component_type = context.get('rs_comp')['type']
     else:
-        comp_type = list(context['build_type'].keys())[0].upper()
-    context['comp_type'] = comp_type
+        comp_type = list(context['build_type'].keys())[0]
+        if comp_type == 'image':
+            component_type = 'OCI'
+        elif comp_type == 'module':
+            component_type = 'RPMMOD'
+        else:
+            component_type = comp_type.upper()
+    context['component_type'] = component_type
 
 
 def get_source_container_build(context, engine):
@@ -372,7 +377,7 @@ def get_source_metadata(context, engine):
             "version": build.get('version'),
             "release": build.get('release'),
             "arch": 'src',
-            "type": context.get('comp_type'),
+            "type": context.get('component_type'),
             "summary_license": context.get("declared_license", ""),
             "is_source": True
         }
@@ -471,51 +476,44 @@ def prepare_dest_dir(context, engine):
     config = context.get('config')
     build = context.get('build')
     release = context.get('product_release')
+    parent = context.get('parent')
     component_type = context.get('component_type')
     rs_types = config.get('RS_TYPES')
     engine.logger.info('Start to prepare destination directory...')
-    if component_type and component_type in ['RPM', 'OCI']:
-        # TODO: Currently we don't store product and release data. so the
-        #  import should not contain "product_release" or add it manually
-        #  in database.
+    # TODO: Currently we don't store product and release data, so the
+    # release should be added manually if release is needed in import.
+    src_root = config.get('SRC_ROOT_DIR')
+    if src_root:
         if release:
-            if isinstance(release, dict):
-                short_name = release.get('short_name')
-            else:
-                short_name = release
+            dir_name = release.get('short_name') if isinstance(release, dict) \
+                    else release
         else:
-            short_name = config.get('ORPHAN_CATEGORY')
-
-        # Create source container metadata destination source directory.
-        src_root = config.get('SRC_ROOT_DIR')
-        if component_type == 'OCI':
-            metadata_dir = build.get('nvr') + '-metadata'
-            src_dir = os.path.join(src_root, short_name, metadata_dir)
-        else:
-            src_dir = os.path.join(
-                src_root, short_name, build.get('name'), build.get('nvr'))
-
-        if os.path.exists(src_dir):
-            shutil.rmtree(src_dir, ignore_errors=True)
-        try:
-            os.makedirs(src_dir)
-        except OSError as err:
-            msg = f"Failed to create directory {src_dir}: {err}"
-            engine.logger.error(msg)
-            raise RuntimeError(msg) from None
-    # Remote source archives will be stored in a separate directory under
-    # "SRC_ROOT_DIR".
+            dir_name = config.get('ORPHAN_CATEGORY')
+        dest_root = os.path.join(src_root, dir_name)
+    else:
+        dest_root = context.get('tmp_root_dir')
+    if parent:
+        dest_root = os.path.join(dest_root, parent)
+    if component_type == 'RPM':
+        src_dir = os.path.join(dest_root, build.get('nvr'))
     elif component_type in rs_types:
-        src_root = config.get('RS_SRC_ROOT_DIR')
-        # `src_root` for remote source archives may not exist for the first
-        # time unless explicitly created.
-        if not os.path.exists(src_root):
-            os.makedirs(src_root)
-        src_dir = tempfile.mkdtemp(prefix='rs_', dir=src_root)
+        rs_comp = context.get('rs_comp')
+        rs_nv = get_component_name_version_combination(rs_comp)
+        src_dir = os.path.join(dest_root, rs_nv)
+    elif component_type == 'OCI' and parent:
+        metadata_dir = build.get('nvr') + '-metadata'
+        src_dir = os.path.join(dest_root, metadata_dir)
     else:
         src_dir = tempfile.mkdtemp(
             prefix='src_', dir=context.get('tmp_root_dir'))
-
+    if os.path.exists(src_dir):
+        shutil.rmtree(src_dir, ignore_errors=True)
+    try:
+        os.makedirs(src_dir)
+    except OSError as err:
+        msg = f"Failed to create directory {src_dir}: {err}"
+        engine.logger.error(msg)
+        raise RuntimeError(msg) from None
     engine.logger.info('Finished preparing destination directory.')
     context['src_dest_dir'] = src_dir
 
@@ -938,13 +936,10 @@ def save_components(context, engine):
     """
     Send container/module components to hub, then store the components.
     """
-    url = 'savecomponents'
-    cli = context.pop('client')
     package_nvr = context.get('package_nvr')
-    if 'image' in context.get('build_type'):
-        component_type = 'OCI'
-    else:
-        component_type = 'RPMMOD'
+    component_type = context.get('component_type')
+    cli = context.pop('client')
+    url = 'savecomponents'
     data = {
         'components': context.get('components'),
         'product_release': context.get('product_release'),
@@ -1008,9 +1003,9 @@ def fork_specified_type_imports(
     """
     cli = context.get('client')
     url = '/sources/import/'
-    msg = 'Start to fork imports for {} components...'.format(len(nvr_list))
     # Fork srpm tasks for module that has no src_dir param
     data = {
+        'parent': context.get('package_nvr'),
         'component_type': comp_type,
         'package_nvrs': nvr_list,
         'license_scan': context.get('license_scan'),
@@ -1020,6 +1015,7 @@ def fork_specified_type_imports(
     # Fork srpm tasks for source container that downloaded src in src_dir
     if src_dir:
         data.update({'src_dir': src_dir})
+    msg = 'Start to fork imports for {} components...'.format(len(nvr_list))
     engine.logger.info(msg)
     cli.post(url, data=data)
     msg = '-- Forked import tasks for below source components:{}'.format(
@@ -1036,15 +1032,16 @@ def fork_remote_source_components_imports(context, engine, rs_comps, src_dir):
     """
     cli = context.get('client')
     url = '/sources/import/'
-    msg = 'Start to fork imports for {} remote source components...'.format(
-        len(rs_comps))
     data = {
+        'parent': context.get('package_nvr'),
         'src_dir': src_dir,
         'rs_comps': rs_comps,
         'license_scan': context.get('license_scan'),
         'copyright_scan': context.get('copyright_scan'),
         'parent_task_id': context.get('task_id')
     }
+    msg = 'Start to fork imports for {} remote source components...'.format(
+        len(rs_comps))
     engine.logger.info(msg)
     cli.post(url, data=data)
     components = ""
@@ -1094,7 +1091,7 @@ flow_default = [
     get_build,
     # Different workflows could be used for different build types
     IF_ELSE(
-        lambda o, e: 'image' in o.get('build_type') and not o.get('component_type'), # noqa
+        lambda o, e: 'image' in o.get('build_type') and not o.get('parent'),
         # Task flow for image build
         [
             get_source_container_build,
