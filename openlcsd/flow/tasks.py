@@ -4,6 +4,7 @@ import os
 import shutil
 import socket
 import tempfile
+from http import HTTPStatus
 from requests.exceptions import HTTPError
 
 from checksumdir import dirhash
@@ -29,6 +30,7 @@ from openlcs.libs.sc_handler import SourceContainerHandler
 from openlcs.libs.swh_tools import get_swhids_with_paths
 from openlcs.libs.unpack import UnpackArchive
 from openlcs.utils.common import DateEncoder
+from openlcs.libs.encrypt_decrypt import encrypt_with_secret_key
 
 
 def get_config(context, engine):
@@ -49,9 +51,11 @@ def get_config(context, engine):
     # Get config data
     try:
         task_id = context.get('task_id')
-        client = OpenlcsClient(task_id=task_id)
+        token = context.get('token')
+        token_sk = context.get('token_sk')
+        client = OpenlcsClient(task_id=task_id, token=token, token_sk=token_sk)
         resp = client.get('obtain_config')
-        if resp.status_code == 200:
+        if resp.status_code == HTTPStatus.OK:
             config = resp.json()
     except RuntimeError as err:
         err_msg = f'Failed to get config data. Reason: {err}'
@@ -1015,7 +1019,12 @@ def fork_specified_type_imports(
         'package_nvrs': nvr_list,
         'license_scan': context.get('license_scan'),
         'copyright_scan': context.get('copyright_scan'),
-        'parent_task_id': context.get('task_id')
+        'parent_task_id': context.get('task_id'),
+        'token': encrypt_with_secret_key(
+            cli.headers['Authorization'].split()[-1],
+            context['config']['TOKEN_SECRET_KEY']
+        ),
+        'token_sk': context['config']['TOKEN_SECRET_KEY']
     }
     # Fork srpm tasks for source container that downloaded src in src_dir
     if src_dir:
@@ -1043,7 +1052,12 @@ def fork_remote_source_components_imports(context, engine, rs_comps, src_dir):
         'rs_comps': rs_comps,
         'license_scan': context.get('license_scan'),
         'copyright_scan': context.get('copyright_scan'),
-        'parent_task_id': context.get('task_id')
+        'parent_task_id': context.get('task_id'),
+        'token': encrypt_with_secret_key(
+            cli.headers['Authorization'].split()[-1],
+            context['config']['TOKEN_SECRET_KEY']
+        ),
+        'token_sk': context['config']['TOKEN_SECRET_KEY']
     }
     engine.logger.info(msg)
     cli.post(url, data=data)

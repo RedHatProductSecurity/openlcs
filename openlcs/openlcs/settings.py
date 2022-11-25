@@ -13,6 +13,8 @@ import os
 import sys
 from pathlib import Path
 
+from cryptography.fernet import Fernet
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -22,6 +24,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-8c4w#_a7k&1^!#+af%unwddrcc0=og^j7k@n*gjxm$^8b#tzdm'  # noqa
+
+# secret key for auth token encrypt and decrypt
+TOKEN_SECRET_KEY = Fernet.generate_key().decode()
 
 # SECURITY WARNING: don't run with debug turned on in production!
 # This value will be overwritten in production configuration
