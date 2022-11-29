@@ -221,7 +221,8 @@ def download_package_archive(context, engine):
     @feeds: `tmp_pom_filepath`, absolute path to the pom file, None if
             not found. Note that this is available only for maven builds.
     """
-    tmp_dir = tempfile.mkdtemp(prefix='download_')
+    tmp_dir = tempfile.mkdtemp(
+        prefix='download_', dir=context.get('tmp_root_dir'))
     config = context.get('config')
     build = context.get('build')
     koji_connector = KojiConnector(config)
@@ -536,10 +537,8 @@ def extract_source(context, engine):
     engine.logger.info('Start to extract source...')
 
     if is_metadata_component_source(tmp_src_filepath):
-        # FIXME: what is the correct mimetype for metadata source?
-        # Moreover, is the feeded `archive_mime_type` used at all?
         mime_type = None
-        shutil.move(tmp_src_filepath, src_dest_dir)
+        shutil.copytree(tmp_src_filepath, src_dest_dir, dirs_exist_ok=True)
     else:
         ua = UnpackArchive(src_file=tmp_src_filepath, dest_dir=src_dest_dir)
         mime_type = ua._get_archive_type()
@@ -578,7 +577,6 @@ def unpack_container_source_archive(context, engine):
     @feeds: 'misc_dir', directory to store misc files.
     @feeds: 'srpm_dir', directory to store source RPMs.
     @feeds: 'rs_dir', directory to store remote source
-    @feeds: 'sc_lable', True or False, a flag for source container.
     """
     prepare_dest_dir(context, engine)
     config = context.get('config')
@@ -597,7 +595,6 @@ def unpack_container_source_archive(context, engine):
     engine.logger.info('Finished unpacking the source archives.')
     context['misc_dir'], context['srpm_dir'], context['rs_dir'] = \
         misc_dir, srpm_dir, rs_dir
-    context['sc_lable'] = True
 
 
 def get_source_files_paths(source_dir):
