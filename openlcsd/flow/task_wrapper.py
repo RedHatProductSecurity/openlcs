@@ -9,19 +9,22 @@ class WorkflowWrapperTask(celery.Task):
 
     def after_return(self, status, retval, task_id, args, kwargs, einfo):
         """Handler called after the task returns."""
-        tmp_src_filepath = args[0].get('tmp_src_filepath')
-        if tmp_src_filepath and os.path.exists(tmp_src_filepath):
-            # The container misc is not an archive but a directory
-            if os.path.isdir(tmp_src_filepath):
-                shutil.rmtree(tmp_src_filepath, ignore_errors=True)
-            else:
-                os.remove(tmp_src_filepath)
-
-        src_dir = args[0].get('src_dest_dir')
-        if src_dir and os.path.exists(src_dir):
-            if not args[0].get('sc_lable'):
-                shutil.rmtree(src_dir, ignore_errors=True)
-
+        comp_type = args[0].get('component_type')
+        # Only keep uncompressed sources for container
+        if comp_type != 'OCI' or args[0].get('parent'):
+            src_dest_dir = args[0].get('src_dest_dir')
+            if src_dest_dir and os.path.exists(src_dest_dir):
+                shutil.rmtree(src_dest_dir, ignore_errors=True)
+        # Only keep the source tarball for failed container components
+        if status == 'FAILURE' and 'src_dir' in args[0]:
+            pass
+        else:
+            tmp_src_filepath = args[0].get('tmp_src_filepath')
+            if tmp_src_filepath and os.path.exists(tmp_src_filepath):
+                if os.path.isdir(tmp_src_filepath):
+                    shutil.rmtree(tmp_src_filepath, ignore_errors=True)
+                else:
+                    os.remove(tmp_src_filepath)
         super().after_return(
             status, retval, task_id, args, kwargs, einfo)
 
