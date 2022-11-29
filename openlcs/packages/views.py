@@ -299,8 +299,11 @@ file first, it should contain the following parameters:
                             status=status.HTTP_400_BAD_REQUEST)
         if serializer.is_valid():
             parent_task_id = request.data.get('parent_task_id', '')
+            token = request.data.get('token')
+            token_sk = request.data.get('token_sk')
             resp = serializer.fork_import_tasks(
-                    request.user.id, parent_task_id)
+                request.user.id, parent_task_id, token, token_sk
+            )
         else:
             return Response(data=serializer.errors,
                             status=status.HTTP_400_BAD_REQUEST)

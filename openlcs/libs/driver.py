@@ -4,6 +4,7 @@ import requests
 import configparser
 import subprocess
 import ast
+from openlcs.libs.encrypt_decrypt import decrypt_with_secret_key
 from krbcontext import krbcontext
 
 if os.path.isfile('/etc/openlcs/openlcslib.conf'):
@@ -19,7 +20,7 @@ class OpenlcsClient(object):
     all requests.
     """
 
-    def __init__(self, task_id=None):
+    def __init__(self, task_id=None, token=None, token_sk=None):
         config = configparser.ConfigParser(os.environ, allow_no_value=True)
         try:
             with open(config_file, encoding='utf8') as configfile:
@@ -32,6 +33,29 @@ class OpenlcsClient(object):
         svc_principal_hostname = config.get('general',
                                             'service_principal_hostname')
         principal = f"{svc_principal_hostname}@IPA.REDHAT.COM"
+
+        # use exist token, reduce get token frequency
+        if token is not None and token_sk is not None:
+            if hub_server == 'local':
+                self.api_url_prefix = "http://{}:{}{}".format(
+                    config.get(hub_server, 'hostname'),
+                    config.get(hub_server, 'port'),
+                    config.get('general', 'api_path'),
+                )
+            else:
+                self.api_url_prefix = "https://{}{}".format(
+                    config.get(hub_server, 'hostname'),
+                    config.get('general', 'api_path'),
+                )
+
+            self.headers = {
+                'content-type': 'application/json',
+                'Authorization': 'Token {}'.format(
+                    decrypt_with_secret_key(token, token_sk)
+                )
+            }
+            self.task_id = task_id
+            return
 
         # Construct api_url_prefix and cmd
         if hub_server == 'local':

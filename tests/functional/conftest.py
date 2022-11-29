@@ -22,7 +22,9 @@ def pytest_configure():
     conf_vars = {'__file__': ''}
     with open(settings_path) as settings_file:
         old_path = sys.path
-        sys.path = [TESTDIR]
+        # Settings also need to access third-party module we installed.
+        # Add python related path to sys.path avoiding ModuleNotFoundError
+        sys.path = [TESTDIR] + [p for p in old_path if 'python' in p]
         try:
             output = "\n".join(settings_file.readlines())
             exec(output, conf_vars)
@@ -36,6 +38,7 @@ def pytest_configure():
     del conf_vars['Path']
     del conf_vars['sys']
     del conf_vars['parent_dir']
+    del conf_vars['Fernet']
     settings.configure(**conf_vars)
 
 
