@@ -388,13 +388,14 @@ class SourceContainerHandler(object):
             # check PELC-4511, CLOUDBLD-3809, and OLCS-292.
             source_path = self.get_special_component_path(
                 component, extra_src_dir)
-        return source_path
+        return source_path, search_patterns
 
     def get_container_remote_source(self, components):
         """
         Get remote source in source container.
         """
         missing_components = []
+        missing_components_error = []
         extra_src_dir = os.path.join(self.dest_dir, 'extra_src_dir')
 
         if os.path.exists(extra_src_dir):
@@ -405,10 +406,16 @@ class SourceContainerHandler(object):
             # Get source for each component.
             for _ in range(len(components)):
                 component = components.pop(0)
-                comp_path = self.get_remote_source_path(
+                comp_path, search_patterns = self.get_remote_source_path(
                     component, extra_src_dir)
                 if not comp_path:
                     missing_components.append(component)
+                    err_msg = (f"Failed to get remote source for component."
+                               f"Error info:can not find source tarball path,"
+                               f" search path:{extra_src_dir}, search patterns"
+                               f":{search_patterns}.Component info:"
+                               f"{component}")
+                    missing_components_error.append(err_msg)
                     continue
 
                 # Create a directory to store remote source tarball.
@@ -451,6 +458,10 @@ class SourceContainerHandler(object):
             misc_dir = os.path.join(self.dest_dir, 'metadata')
             shutil.move(extra_src_dir, misc_dir)
         else:
+            err_msg = (f"Failed to get remote source for components."
+                       f"Error info: extra_src_dir:{extra_src_dir} not exist."
+                       f"Components info:{components}")
+            missing_components_error.append(err_msg)
             missing_components = components
 
-        return missing_components
+        return missing_components, missing_components_error
