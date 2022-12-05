@@ -83,6 +83,39 @@ def get_config(context, engine):
     engine.logger.info("Worker {}".format(socket.gethostname()))
 
 
+def filter_duplicate_import(context, engine):
+    url = 'check_duplicate_import'
+    cli = context.get('client')
+    component_type = context.get('component_type')
+    build_data = context.get('build', {})
+    data = {
+        'name': build_data.get('name', ''),
+        'version': build_data.get('version', ''),
+        'release': build_data.get('release', ''),
+        'type': component_type,
+        'license_scan': context.get('license_scan'),
+        'copyright_scan': context.get('copyright_scan')
+    }
+    if component_type == 'RPMMOD':
+        data['arch'] = ''
+    else:
+        data['arch'] = build_data.get('arch', 'src')
+    msg = 'Start to check duplicate import for {}'.format(data)
+    engine.logger.info(msg)
+    resp = cli.post(url, data=data)
+    if resp.status_code == 200:
+        results = resp.json()['results']
+        if results:
+            obj_url = results.get('obj_url')
+            if obj_url:
+                task_id = context.get('task_id')
+                msg = 'Found duplicate import for task: {}, \
+                        obj_url: {}'.format(task_id, obj_url)
+                engine.logger.warning(msg)
+                context['duplicate_import'] = True
+    engine.logger.info('Done')
+
+
 def get_build(context, engine):
     """
     Get build from brew/koji.
@@ -1099,51 +1132,60 @@ def fork_components_imports(context, engine):
 flow_default = [
     get_config,
     get_build,
-    # Different workflows could be used for different build types
-    IF_ELSE(
-        lambda o, e: 'image' in o.get('build_type') and not o.get('parent'),
-        # Task flow for image build
+    filter_duplicate_import,
+    # Whether to skip the following steps according to `duplicate_import` flag
+    IF(
+        lambda o, e: not o.get('duplicate_import'),
         [
-            get_source_container_build,
-            download_source_image,
-            unpack_container_source_archive,
-            get_container_components,
-            save_components,
-            get_container_remote_source,
-            fork_components_imports,
-        ],
-        [
+            # Different workflows could be used for different build types
             IF_ELSE(
-                lambda o, e: 'module' in o.get('build_type'),
-                # Task flow for module
+                lambda o, e: \
+                'image' in o.get('build_type') and not o.get('parent'),
+                # Task flow for image build
                 [
-                    get_module_components_from_brew,
+                    get_source_container_build,
+                    download_source_image,
+                    unpack_container_source_archive,
+                    get_container_components,
                     save_components,
+                    get_container_remote_source,
                     fork_components_imports,
                 ],
-                # Task flow for source scan
                 [
-                    download_component_source,
-                    get_source_metadata,
-                    check_source_scan_status,
-                    IF(
-                        lambda o, e: not o.get("source_scanned"),
+                    IF_ELSE(
+                        lambda o, e: 'module' in o.get('build_type'),
+                        # Task flow for module
                         [
-                            unpack_source,
-                            deduplicate_source,
-                            send_package_data,
-                            IF(
-                                lambda o, e: o.get('license_scan_req'),
-                                license_scan,
-                             ),
-                            IF(
-                                lambda o, e: o.get('copyright_scan_req'),
-                                copyright_scan,
-                            ),
-                            save_scan_result,
+                            get_module_components_from_brew,
+                            save_components,
+                            fork_components_imports,
                         ],
+                        # Task flow for source scan
+                        [
+                            download_component_source,
+                            get_source_metadata,
+                            check_source_scan_status,
+                            IF(
+                                lambda o, e: not o.get("source_scanned"),
+                                [
+                                    unpack_source,
+                                    deduplicate_source,
+                                    send_package_data,
+                                    IF(
+                                        lambda o, e: o.get('license_scan_req'),
+                                        license_scan,
+                                    ),
+                                    IF(
+                                        lambda o, e: \
+                                        o.get('copyright_scan_req'),
+                                        copyright_scan,
+                                    ),
+                                    save_scan_result,
+                                ],
+                            )
+                        ]
                     )
-                 ]
+                ]
             )
         ]
     )

@@ -879,6 +879,35 @@ source__state=&source__archive_type=&source__scan_flag=
         return super().retrieve(request, *args, **kwargs)
 
 
+class CheckDuplicateImport(APIView):
+    """
+    Check duplicate container/component/module import,
+    so that we can skip duplicate import for these files.
+    Duplicate import means reimport a container/component/module
+    that exists in the database.
+    """
+    def post(self, request, *args, **kwargs):
+        results = dict()
+        data = request.data
+        imported_components = Component.objects.filter(
+                name=data.get('name', ''),
+                version=data.get('version', ''),
+                release=data.get('release', ''),
+                arch=data.get('arch', ''),
+                type=data.get('type', ''),
+        )
+        serializer = ComponentSerializer(imported_components, many=True)
+        serializer_data = serializer.data
+
+        if serializer_data and len(serializer_data) == 1:
+            obj = serializer_data[0]
+            obj_url = 'http://{}/rest/v1/components/{}/'.format(
+                settings.HOSTNAME, obj.get('id', -1))
+            results['obj_url'] = obj_url
+        return Response(data={
+                'results': results})
+
+
 class SaveComponentsView(APIView, SaveComponentsMixin):
     """
     Save container data to database
