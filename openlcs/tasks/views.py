@@ -1,8 +1,16 @@
+import json
+import os
 from celery.states import SUCCESS, STARTED, FAILURE,\
     RECEIVED, REVOKED, RETRY, PENDING
-from rest_framework.viewsets import ModelViewSet
 from django_filters import rest_framework as filters
 
+from rest_framework.decorators import action
+from rest_framework.viewsets import ModelViewSet
+from rest_framework.response import Response
+from rest_framework import status
+
+# pylint:disable=no-name-in-module,import-error
+from openlcs.celery import app
 from tasks.models import Task, TaskMeta
 from tasks.serializers import TaskSerializer
 
@@ -197,3 +205,39 @@ to search.
             }
         """ # noqa
         return super().retrieve(request, *args, **kwargs)
+
+    @action(detail=True, methods=['post'])
+    def retry(self, request, pk):
+        """
+        Retry a failed task.
+
+        ####__Request__####
+
+            curl -X POST -H "Content-Type: application/json" -H \
+'Authorization: Token your_token' %(HOST_NAME)s/%(API_PATH)s/tasks/instance_pk/retry/
+
+        ####__Response__####
+
+            {"task_id":XXX}
+        """    # noqa
+        task = self.get_object()
+        if not task.retryable:
+            err_msg = "Retry is limited to failed tasks."
+            return Response(err_msg, status=status.HTTP_400_BAD_REQUEST)
+
+        params = task.get_params()
+        # Check source direcotry for failed container component import
+        src_dir = params.get('src_dir')
+        if src_dir and not os.path.exists(src_dir):
+            err_msg = f"The source directory {src_dir} does not exist."
+            return Response(err_msg, status=status.HTTP_400_BAD_REQUEST)
+
+        task_flow = 'flow.tasks.flow_default'
+        celery_task = app.send_task(task_flow, [params])
+        t = Task.objects.create(
+            meta_id=celery_task.task_id,
+            owner_id=request.user.id,
+            task_flow=task_flow,
+            params=json.dumps(params),
+        )
+        return Response(data={'task_id': t.id})

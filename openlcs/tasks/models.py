@@ -65,3 +65,15 @@ class Task(models.Model):
             return json.loads(self.params)
         except Exception:
             return self.params
+
+    @property
+    def status(self):
+        try:
+            taskmeta = TaskMeta.objects.get(task_id=self.meta_id)
+        except TaskMeta.DoesNotExist:
+            return 'PENDING'
+        return taskmeta.status
+
+    @property
+    def retryable(self):
+        return self.status == "FAILURE"

@@ -38,7 +38,8 @@ class ReadOnlyBrowsableAPIRenderer(BrowsableAPIRenderer):
         'destroy',
         'partial_update',
         'import_package',
-        'report'
+        'report',
+        'retry'
     )
 
     def get_raw_data_form(self, data, view, method, request):
