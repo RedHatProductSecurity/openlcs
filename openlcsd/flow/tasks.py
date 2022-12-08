@@ -8,6 +8,7 @@ from http import HTTPStatus
 from requests.exceptions import HTTPError
 
 from checksumdir import dirhash
+from commoncode.fileutils import delete
 from workflow.patterns.controlflow import IF
 from workflow.patterns.controlflow import IF_ELSE
 from packagedcode.rpm import parse as rpm_parse
@@ -512,7 +513,7 @@ def prepare_dest_dir(context, engine):
         src_dir = tempfile.mkdtemp(
             prefix='src_', dir=context.get('tmp_root_dir'))
     if os.path.exists(src_dir):
-        shutil.rmtree(src_dir, ignore_errors=True)
+        delete(src_dir)
     try:
         os.makedirs(src_dir)
     except OSError as err:
