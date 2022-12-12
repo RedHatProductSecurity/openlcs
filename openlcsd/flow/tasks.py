@@ -919,12 +919,10 @@ def get_container_remote_source(context, engine):
             type_components = components.get(comp_type)
             if type_components:
                 rs_components.extend(type_components)
-        missing_components = sc_handler.get_container_remote_source(
-            rs_components)
+        missing_components, missing_components_errors = \
+            sc_handler.get_container_remote_source(rs_components)
         if missing_components:
-            engine.logger.error('Failed to get remote source for components:')
-            for missing_component in missing_components:
-                engine.logger.error(missing_component)
+            engine.logger.error("\n".join(missing_components_errors))
             context['missing_components'] = missing_components
 
         # Redefine the 'rs_dir' after collate remote source.
