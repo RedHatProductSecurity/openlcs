@@ -890,11 +890,11 @@ class CheckDuplicateImport(APIView):
         results = dict()
         data = request.data
         imported_components = Component.objects.filter(
-                name=data.get('name', ''),
+                name__iexact=data.get('name', ''),
                 version=data.get('version', ''),
                 release=data.get('release', ''),
                 arch=data.get('arch', ''),
-                type=data.get('type', ''),
+                type__iexact=data.get('type', ''),
         )
         serializer = ComponentSerializer(imported_components, many=True)
         serializer_data = serializer.data
