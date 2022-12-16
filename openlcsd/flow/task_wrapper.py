@@ -9,6 +9,11 @@ class WorkflowWrapperTask(celery.Task):
 
     def after_return(self, status, retval, task_id, args, kwargs, einfo):
         """Handler called after the task returns."""
+        # Update the status of task when `duplicate_import` flag exists
+        duplicate_import = args[0].get('duplicate_import')
+        if status == 'SUCCESS' and duplicate_import:
+            self.update_state(state='DUPLICATE')
+
         comp_type = args[0].get('component_type')
         # Only keep uncompressed sources for container
         if comp_type != 'OCI' or args[0].get('parent'):
