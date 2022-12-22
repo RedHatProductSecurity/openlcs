@@ -125,14 +125,13 @@ class SaveComponentsMixin:
         # Create release node
         release_ctype = ContentType.objects.get_for_model(Release)
         release_node, _ = ProductTreeNode.objects.get_or_create(
-            name=self.release.name,
             content_type=release_ctype,
             object_id=self.release.id,
             parent=None,
         )
+
         # Create release component node
         release_component.release_nodes.get_or_create(
-            name=release_component.name,
             parent=release_node,
         )
 
@@ -144,7 +143,6 @@ class SaveComponentsMixin:
         # Create container/module node
         component_ctype = ContentType.objects.get_for_model(Component)
         cnode, _ = ComponentTreeNode.objects.get_or_create(
-            name=parent_component.name,
             content_type=component_ctype,
             object_id=parent_component.id,
             parent=None,
@@ -154,7 +152,6 @@ class SaveComponentsMixin:
             for component_data in components:
                 component = self.create_component(component_data)
                 component.component_nodes.get_or_create(
-                    name=component.name,
                     parent=cnode,
                 )
 
