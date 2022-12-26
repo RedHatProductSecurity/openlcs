@@ -16,6 +16,7 @@ from libs.common import (  # noqa: E402
     get_component_flat,
     get_component_name_version_combination,
     search_content_by_patterns,
+    uncompress_blob_gzip_files,
     uncompress_source_tarball,
     selection_sort_components
 )
@@ -191,12 +192,18 @@ class SourceContainerHandler(object):
         """
         Unpack source container image to destination directory.
         """
-        # uncompress source container image.
-        uncompress_source_tarball(self.src_file, self.dest_dir)
-        tarballs = glob.glob(f"{self.dest_dir}/*.tar")
-        for tarball in tarballs:
-            uncompress_source_tarball(tarball)
-
+        # No need to uncompress source container image if the source could
+        # get from the registry. Because the source blob files are
+        # located in the downloaded directory, no longer in docker image.
+        errs = []
+        if 'docker_image' in self.src_file:
+            uncompress_source_tarball(self.src_file, self.dest_dir)
+            tarballs = glob.glob(f"{self.dest_dir}/*.tar")
+            for tarball in tarballs:
+                uncompress_source_tarball(tarball)
+        else:
+            self.dest_dir = os.path.dirname(self.src_file)
+            errs = uncompress_blob_gzip_files(self.dest_dir)
         # Get source RPMs in the source container.
         srpm_dir = self.get_source_container_srpms()
 
@@ -207,7 +214,7 @@ class SourceContainerHandler(object):
         # remote source metadata in this directory at the other steps.
         misc_dir = self.get_source_container_srpms_metadata()
 
-        return srpm_dir, rs_dir, misc_dir
+        return srpm_dir, rs_dir, misc_dir, errs
 
     @staticmethod
     def get_component_search_items(component):

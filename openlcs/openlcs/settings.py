@@ -274,6 +274,7 @@ CORGI_COMPONENT_TYPES = [
     "PYPI"
 ]
 
+
 try:
     # pylint:disable=wildcard-import,unused-wildcard-import
     parent_dir = os.path.abspath(os.path.dirname(__file__))

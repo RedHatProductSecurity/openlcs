@@ -546,3 +546,32 @@ class TestParseMetadata(TestCase):
     def test_yarn(self):
         # For now, npm parser is used for yarn as well.
         pass
+
+
+class TestGetTaskRepository(TestCase):
+
+    def setUp(self):
+        os.environ.setdefault(
+                'DJANGO_SETTINGS_MODULE', 'openlcs.openlcs.settings')
+        # Input the test source container build
+        self.test_package_nvr = 'ubi8-micro-container-source-8.7-1.1'
+        self.test_task_id = 48863576
+        self.context = {'config': {'KOJI_DOWNLOAD': settings.KOJI_DOWNLOAD,
+                                   'KOJI_WEBSERVICE': settings.KOJI_WEBSERVICE,
+                                   'KOJI_WEBURL': settings.KOJI_WEBURL
+                                   }
+                        }
+        # The expected source container repository
+        self.repository = '/rh-osbs/ubi8-ubi-micro:rhel-8.7.0-containers-candidate-68432-20221108135839-x86_64' # noqa
+
+    def test_get_task_repository(self):
+        """
+        Test get task repository.
+        """
+        sc_nvr = self.test_package_nvr
+        koji_connector = KojiConnector(self.context.get('config'))
+        build = koji_connector.get_build(sc_nvr)
+        task_id = koji_connector.get_task_id(build)
+        self.assertEqual(task_id, self.test_task_id)
+        task_repository = koji_connector.get_task_repository(task_id)
+        self.assertIn(self.repository, task_repository)

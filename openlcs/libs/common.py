@@ -171,3 +171,25 @@ def get_component_flat(data, comp_type):
     else:
         component.update({'arch': 'src', 'is_source': True})
     return component
+
+
+def uncompress_blob_gzip_files(dest_dir):
+    # Uncompress the blob files that come from source container registry.
+    # Under the directory, most of the files are gzip files that need to
+    # decompress. There are some metadata files that no need to decompress.
+    err_msg_list = []
+    blob_files = os.listdir(dest_dir)
+    for blob_file in blob_files:
+        blob_file = os.path.join(dest_dir, blob_file)
+        file_type = get_mime_type(blob_file)
+        if file_type == "application/gzip":
+            cmd = ['tar', '-xvf', blob_file]
+            try:
+                subprocess.check_call(cmd, cwd=dest_dir)
+            except Exception as e:
+                err_msg = f"Failed to decompress blob files: {e}"
+                err_msg_list.append(err_msg)
+            else:
+                os.remove(blob_file)
+        continue
+    return err_msg_list
