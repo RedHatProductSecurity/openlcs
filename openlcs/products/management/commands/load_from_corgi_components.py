@@ -60,7 +60,6 @@ class Command(BaseCommand):
         )
         release_ctype = ContentType.objects.get_for_model(Release)
         release_node, _ = ProductTreeNode.objects.get_or_create(
-            name=release.name,
             content_type=release_ctype,
             object_id=release.id,
             parent=None,
@@ -69,7 +68,7 @@ class Command(BaseCommand):
             # Create component and build release node
             component = self.create_component(component_data)
             component.release_nodes.get_or_create(
-                name=component.name, parent=release_node
+                parent=release_node
             )
 
             ctype = component_data.get("type")
@@ -81,7 +80,6 @@ class Command(BaseCommand):
     def build_component_node(self, component, provides):
         component_ctype = ContentType.objects.get_for_model(Component)
         cnode, _ = ComponentTreeNode.objects.get_or_create(
-            name=component.name,
             content_type=component_ctype,
             object_id=component.id,
             parent=None,
@@ -89,7 +87,7 @@ class Command(BaseCommand):
         for provided in provides:
             provided_component = self.create_component(provided)
             provided_component.component_nodes.get_or_create(
-                name=provided_component.name, parent=cnode
+                parent=cnode
             )
 
     def handle(self, *args, **options):

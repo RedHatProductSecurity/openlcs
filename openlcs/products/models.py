@@ -102,12 +102,11 @@ class Release(models.Model):
             component = self.create_component(component_data)
             # attach component to the release_node tree.
             component.release_nodes.get_or_create(
-                name=component.name, parent=release_node
+                parent=release_node
             )
 
 
 class MpttTreeNodeMixin(MPTTModel):
-    name = models.TextField()
     parent = TreeForeignKey(
         "self",
         on_delete=models.CASCADE,
@@ -126,8 +125,21 @@ class MpttTreeNodeMixin(MPTTModel):
 class ComponentTreeNode(MpttTreeNodeMixin):
     """Class representing the component tree."""
 
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['parent', 'object_id'],
+                name='unique_parent_content_object_ct',
+            ),
+            models.UniqueConstraint(
+                fields=['object_id'],
+                condition=models.Q(parent=None),
+                name='unique_content_object_with_null_parent_ct',
+            )
+        ]
+
     def __str__(self):
-        return f'{self.content_object.type} node: {self.name}'
+        return f'{self.content_object.type} node: {self.id}'
 
 
 class ProductTreeNode(MpttTreeNodeMixin):
@@ -138,10 +150,15 @@ class ProductTreeNode(MpttTreeNodeMixin):
             models.UniqueConstraint(
                 fields=['parent', 'object_id'],
                 name='unique_parent_content_object',
+            ),
+            models.UniqueConstraint(
+                fields=['object_id'],
+                condition=models.Q(parent=None),
+                name='unique_content_object_with_null_parent',
             )
         ]
 
     def __str__(self):
         if hasattr(self.content_object, 'type'):
-            return f'{self.content_object.type} node: {self.name}'
-        return f'Product node: {self.name}'
+            return f'{self.content_object.type} node: {self.id}'
+        return f'Product node: {self.id}'
