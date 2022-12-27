@@ -94,7 +94,8 @@ def filter_duplicate_import(context, engine):
         'release': build_data.get('release', ''),
         'type': component_type,
         'license_scan': context.get('license_scan'),
-        'copyright_scan': context.get('copyright_scan')
+        'copyright_scan': context.get('copyright_scan'),
+        'parent': context.get('parent', ''),
     }
     if component_type == 'RPMMOD':
         data['arch'] = ''

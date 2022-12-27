@@ -889,6 +889,10 @@ class CheckDuplicateImport(APIView):
     def post(self, request, *args, **kwargs):
         results = dict()
         data = request.data
+        parent = data.get('parent', '')
+        if parent != '':
+            return Response(data={
+                    'results': results})
         imported_components = Component.objects.filter(
                 name=data.get('name', ''),
                 version=data.get('version', ''),
