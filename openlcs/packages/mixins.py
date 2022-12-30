@@ -101,11 +101,12 @@ class SaveComponentsMixin:
 
     @staticmethod
     def create_component(component_data):
-        summary_license = component_data.pop('summary_license')
+        summary_license = "" if component_data.get('summary_license') is None\
+            else component_data['summary_license']
         defaults = {"summary_license": summary_license}
         if "is_source" in component_data:
             defaults.update({
-                'is_source': component_data.pop("is_source")
+                'is_source': component_data.get("is_source")
             })
         component, _ = Component.objects.update_or_create(
             name=component_data.get('name'),
