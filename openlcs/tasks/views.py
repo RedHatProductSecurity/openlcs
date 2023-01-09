@@ -8,6 +8,7 @@ from rest_framework.decorators import action
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.filters import SearchFilter
 
 # pylint:disable=no-name-in-module,import-error
 from openlcs.celery import app
@@ -22,7 +23,9 @@ TASK_STATUS_CHOICES = (
     (SUCCESS, SUCCESS),
     (RECEIVED, RECEIVED),
     (REVOKED, REVOKED),
-    (RETRY, RETRY)
+    (RETRY, RETRY),
+    # manually add state
+    ('DUPLICATE', 'DUPLICATE')
 )
 
 
@@ -88,6 +91,10 @@ class TaskViewSet(ModelViewSet):
     queryset = Task.objects.all()
     serializer_class = TaskSerializer
     filterset_class = TaskFilter
+    filter_backends = (filters.DjangoFilterBackend, SearchFilter)
+    search_fields = [
+        '=meta_id', '=owner__username', '$params', '=parent_task_id'
+    ]
 
     def list(self, request, *args, **kwargs):
         """
