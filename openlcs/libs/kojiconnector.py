@@ -536,3 +536,41 @@ class KojiConnector:
             'RPMMOD': module_component
         }
         return components
+
+    def get_task_id(self, build):
+        """
+        Return build task_id.
+        """
+        extra = build.get('extra', None)
+        task_id = extra.get('container_koji_task_id') if extra else None
+        return task_id if task_id else None
+
+    def get_task_repository(self, task_id):
+        """
+        Return the task repository.
+        """
+        task_result = self._service.getTaskResult(task_id, raise_fault=True)
+        repositories = []
+        if task_result.get('repositories'):
+            repositories = task_result.get('repositories')
+        # The repository is a list. Generally, it only has the x86_64
+        # repository. But if the source container has different arch image
+        # archives, the repository list length is more than one. Here, I would
+        # like to fetch the first repository. If there are some differences
+        # between different arch of the source, pls FIX me.
+        return repositories[0] if len(repositories) > 0 else None
+
+    def get_source_from_registry(self, build, dest_dir):
+        """
+        Get source of the source container from registry.
+        """
+        task_id = self.get_task_id(build)
+        repository = self.get_task_repository(task_id)
+        source_url = 'docker://' + repository
+        dest = 'dir:' + dest_dir
+        copy_cmd = ['skopeo', 'copy', source_url, dest]
+        try:
+            subprocess.check_call(copy_cmd)
+        except Exception as e:
+            msg = f"Failed to copy source from registry: {e}"
+            raise ValueError(msg) from None

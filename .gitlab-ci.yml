@@ -145,6 +145,8 @@ build-dev-image:
       --build-arg ENG_CA_URL=${ENG_CA_URL}
       --build-arg OPENSHIFT_CLI_URL=${OPENSHIFT_CLI_URL}
       --build-arg RHEL8_REPO_URL=${RHEL8_REPO_URL}
+      --build-arg RHEL8_APPSTREAM_REPO_URL=${RHEL8_APPSTREAM_REPO_URL}
+      --build-arg DOCKER_REPO_URL=${DOCKER_REPO_URL}
       --build-arg TITO_REPO_URL=${TITO_REPO_URL}
       --build-arg CORGI_API_STAGE=${CORGI_API_STAGE}
       --build-arg CORGI_API_PROD=${CORGI_API_PROD}
@@ -181,6 +183,8 @@ build-release-image:
       --build-arg ENG_CA_URL=${ENG_CA_URL}
       --build-arg OPENSHIFT_CLI_URL=${OPENSHIFT_CLI_URL}
       --build-arg RHEL8_REPO_URL=${RHEL8_REPO_URL}
+      --build-arg RHEL8_APPSTREAM_REPO_URL=${RHEL8_APPSTREAM_REPO_URL}
+      --build-arg DOCKER_REPO_URL=${DOCKER_REPO_URL}
       --build-arg TITO_REPO_URL=${TITO_REPO_URL}
       --build-arg CORGI_API_STAGE=${CORGI_API_STAGE}
       --build-arg CORGI_API_PROD=${CORGI_API_PROD}

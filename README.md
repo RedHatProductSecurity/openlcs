@@ -44,7 +44,7 @@ sudo systemctl enable --now redis
 # openldap-devel used by install python-ldap,
 # https://www.python-ldap.org/en/python-ldap-3.3.0/installing.html#installing-from-source
 # If cannot install virtualenvwrapper, use pip to install it
-sudo dnf install python38 python38-devel postgresql-devel openldap-devel virtualenvwrapper gcc krb5-devel patch
+sudo dnf install python38 python38-devel postgresql-devel openldap-devel virtualenvwrapper gcc krb5-devel patch docker-ce-cli skopeo
 
 # Setup virtualenv
 echo "

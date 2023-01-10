@@ -235,10 +235,18 @@ def download_source_image(context, engine):
 
     koji_connector = KojiConnector(config)
     arch = 'x86_64'
-    msg = "Start to download container source image build from Brew/Koji, "
-    msg += "please wait for the task log update..."
-    engine.logger.info(msg)
-    koji_connector.download_container_image_archives(build, tmp_dir, arch)
+    # First, try to get the source from repository
+    # Otherwise, get the source from the source container image
+    task_id = koji_connector.get_task_id(build)
+    repository = koji_connector.get_task_repository(task_id)
+    if task_id and repository:
+        engine.logger.info("Start getting source from registry......")
+        koji_connector.get_source_from_registry(build, tmp_dir)
+    else:
+        msg = "Start to download container source image build from Brew/Koji, "
+        msg += "please wait for the task log update..."
+        engine.logger.info(msg)
+        koji_connector.download_container_image_archives(build, tmp_dir, arch)
     engine.logger.info('Done')
     tmp_src_filepath = os.path.join(tmp_dir, os.listdir(tmp_dir)[0])
     context['tmp_src_filepath'] = tmp_src_filepath
@@ -620,14 +628,17 @@ def unpack_container_source_archive(context, engine):
 
     # Unpack the source container image.
     sc_handler = SourceContainerHandler(config, tmp_src_filepath, src_dest_dir)
-    engine.logger.info('Start to unpack source container image...')
+    engine.logger.info('Start to unpack source container files...')
     try:
-        srpm_dir, rs_dir, misc_dir = sc_handler.unpack_source_container_image()
+        srpm_dir, rs_dir, misc_dir, errs = \
+                sc_handler.unpack_source_container_image()
     except (ValueError, RuntimeError) as err:
         err_msg = "Failed to decompress file %s: %s" % (tmp_src_filepath, err)
         engine.logger.error(err_msg)
         raise RuntimeError(err_msg) from None
-    engine.logger.info('Finished unpacking the source archives.')
+    if len(errs) > 0:
+        engine.logger.error(errs)
+    engine.logger.info('Finished unpacking the source files.')
     context['misc_dir'], context['srpm_dir'], context['rs_dir'] = \
         misc_dir, srpm_dir, rs_dir
 
@@ -947,7 +958,8 @@ def get_container_remote_source(context, engine):
 
     if any([True for rs_type in rs_types if rs_type in components.keys()]):
         engine.logger.info('Start to get remote source in source container...')
-        src_dest_dir = context.get('src_dest_dir')
+        rs_dir = context.get('rs_dir')
+        src_dest_dir = os.path.dirname(rs_dir)
         sc_handler = SourceContainerHandler(config, dest_dir=src_dest_dir)
         rs_components = []
         for comp_type in rs_types:

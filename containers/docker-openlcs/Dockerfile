@@ -7,6 +7,8 @@ ARG ROOT_CA_URL
 ARG ENG_CA_URL
 ARG TITO_REPO_URL
 ARG RHEL8_REPO_URL
+ARG RHEL8_APPSTREAM_REPO_URL
+ARG DOCKER_REPO_URL
 ARG CORGI_API_STAGE
 ARG CORGI_API_PROD
 ARG KOJI_WEBSERVICE
@@ -44,8 +46,10 @@ RUN cd /etc/pki/ca-trust/source/anchors/ && \
         update-ca-trust && \
         cd - && \
     dnf config-manager --add-repo "${TITO_REPO_URL}" \
-        --add-repo "${RHEL8_REPO_URL}" && \
-    dnf install --nogpgcheck --nodoc -y cpio-2.12 atool-0.39.0 vim krb5-workstation && \
+        --add-repo "${RHEL8_REPO_URL}" \
+        --add-repo "${RHEL8_APPSTREAM_REPO_URL}" \
+        --add-repo "${DOCKER_REPO_URL}" && \
+    dnf install --nogpgcheck --nodoc -y cpio-2.12 atool-0.39.0 vim krb5-workstation docker-ce-cli skopeo && \
     dnf clean all && \
     # To make docker cache pip package, install dependencies
     pip install --upgrade pip && pip install -r /tmp/devel.txt && \
