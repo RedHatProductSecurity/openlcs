@@ -568,8 +568,46 @@ class TestGetTaskRepository(TestCase):
         """
         Test get task repository.
         """
+        # test case for real-world example
         sc_nvr = self.test_package_nvr
         koji_connector = KojiConnector(self.context.get('config'))
         build = koji_connector.get_build(sc_nvr)
         task_repository = koji_connector.get_task_repository(build)
         self.assertIn(self.repository, task_repository)
+
+    @mock.patch.object(KojiConnector, 'get_task_result')
+    def test_get_task_repository_mock(self, mock_get_task_result):
+        connector = KojiConnector(self.context.get('config'))
+
+        # In case the "extra" does not contain desired task id.
+        # `get_task_result` won't be triggerred in such case.
+        build1 = {"extra": {}}
+        self.assertIsNone(connector.get_task_repository(build1, "x86_64"))
+
+        build2 = {"extra": {"container_koji_task_id": 111}}
+        repositories = [
+            "example-registry.com/path/xxx-container-noarch",
+            "example-registry.com/path/xxx-container-x86_64",
+            "example-registry.com/path/xxx-container-ppc64le",
+        ]
+        mock_get_task_result.return_value = {
+            'repositories': None
+        }
+        self.assertIsNone(connector.get_task_repository(build2))
+
+        mock_get_task_result.return_value = {
+            'repositories': repositories
+        }
+        self.assertEqual(connector.get_task_repository(build2),
+                         repositories[1])
+
+        repositories = [
+            "example-registry.com/path/xxx-container-ppc64le",
+            "example-registry.com/path/xxx-container-noarch",
+        ]
+        mock_get_task_result.return_value = {
+            'repositories': repositories
+        }
+        # In case no "x86_64" repo found, the first element will be returned
+        self.assertEqual(connector.get_task_repository(build2),
+                         repositories[0])
