@@ -543,40 +543,45 @@ class KojiConnector:
         }
         return components
 
-    def get_task_id(self, build):
-        """
-        Return build task_id.
-        """
-        extra = build.get('extra', None)
-        task_id = extra.get('container_koji_task_id') if extra else None
-        return task_id if task_id else None
+    def get_task_result(self, task_id):
+        return self._service.getTaskResult(task_id)
 
-    def get_task_repository(self, task_id):
+    def get_task_repository(self, build, arch="x86_64"):
         """
-        Return the task repository.
+        Returns the task repository of the specified build, or None.
+
+        If multiple repositories are found, only the one matches
+        `arch` will be returned; If none of the repositories matches,
+        the first element will be returned.
         """
-        task_result = self._service.getTaskResult(task_id, raise_fault=True)
-        repositories = []
-        if task_result.get('repositories'):
-            repositories = task_result.get('repositories')
-        # The repository is a list. Generally, it only has the x86_64
-        # repository. But if the source container has different arch image
-        # archives, the repository list length is more than one. Here, I would
-        # like to fetch the first repository. If there are some differences
-        # between different arch of the source, pls FIX me.
-        return repositories[0] if len(repositories) > 0 else None
+        # `extra` will always be in the getBuild brew api.
+        extras = build.get("extra")
+        container_koji_task_id = extras.get("container_koji_task_id")
+        if not container_koji_task_id:
+            return None
+
+        task_result = self.get_task_result(container_koji_task_id)
+        repositories = task_result.get("repositories")
+        if not repositories:
+            return None
+
+        repository = next((r for r in repositories if arch in r), None)
+        if not repository:
+            # use the first element in case no repo matches given arch.
+            repository = repositories[0]
+
+        return repository
 
     def get_source_from_registry(self, build, dest_dir):
         """
-        Get source of the source container from registry.
+        Copy source of the source container from registry.
         """
-        task_id = self.get_task_id(build)
-        repository = self.get_task_repository(task_id)
+        repository = self.get_task_repository(build)
         source_url = 'docker://' + repository
         dest = 'dir:' + dest_dir
         copy_cmd = ['skopeo', 'copy', source_url, dest]
         try:
             subprocess.check_call(copy_cmd)
-        except Exception as e:
+        except subprocess.CalledProcessError as e:
             msg = f"Failed to copy source from registry: {e}"
             raise ValueError(msg) from None
