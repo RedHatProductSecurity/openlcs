@@ -237,9 +237,8 @@ def download_source_image(context, engine):
     arch = 'x86_64'
     # First, try to get the source from repository
     # Otherwise, get the source from the source container image
-    task_id = koji_connector.get_task_id(build)
-    repository = koji_connector.get_task_repository(task_id)
-    if task_id and repository:
+    repository = koji_connector.get_task_repository(build)
+    if repository:
         engine.logger.info("Start getting source from registry......")
         koji_connector.get_source_from_registry(build, tmp_dir)
     else:
