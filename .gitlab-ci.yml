@@ -167,7 +167,7 @@ deploy-to-dev:
    - >
       tower-cli job launch -J "OpenLCS deploy dev" --monitor --no-input --insecure
       -e "openlcs_image_tag: dev"
-      -h "$TOWER_HOST" -t "$TOWER_TOKEN"
+      -h "$AAP_HOST" -t "$AAP_CI_CD_TOKEN"
 
 # ======== build-release-image ========
 build-release-image:
