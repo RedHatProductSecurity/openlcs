@@ -13,6 +13,7 @@ from workflow.patterns.controlflow import IF
 from workflow.patterns.controlflow import IF_ELSE
 from packagedcode.rpm import parse as rpm_parse
 from packagedcode.pypi import parse_sdist
+
 from packagedcode.maven import parse as maven_parse
 
 from openlcsd.celery import app
@@ -93,8 +94,6 @@ def filter_duplicate_import(context, engine):
         'version': build_data.get('version', ''),
         'release': build_data.get('release', ''),
         'type': component_type,
-        'license_scan': context.get('license_scan'),
-        'copyright_scan': context.get('copyright_scan'),
         'parent': context.get('parent', ''),
     }
     if component_type == 'RPMMOD':
@@ -122,7 +121,7 @@ def get_build(context, engine):
     Get build from brew/koji.
 
     @requires: `config`, configuration from hub server.
-    @requires: `package_nvr`, `brew_tag`, `package_name`.
+    @requires: `package_nvr`, `rpm_nvra`.
     @feeds: `build`, dictionary, including meta info with the build.
     @feeds: `build_type`, dict, with keys as build type names and values as
                 type info corresponding to that type.
@@ -145,9 +144,7 @@ def get_build(context, engine):
         koji_connector = KojiConnector(config)
         build = koji_connector.get_build_extended(
             context.get('package_nvr'),
-            context.get('brew_tag'),
-            context.get('package_name'),
-            context.get('rpm_nvra'),
+            context.get('rpm_nvra')
         )
         build_type = koji_connector.get_build_type(build)
         context['build_type'] = build_type

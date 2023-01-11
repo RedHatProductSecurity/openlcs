@@ -137,8 +137,17 @@ class KojiConnector:
         """
         return self._service.getBuild(build_info)
 
-    def get_build_extended(self, package_nvr=None, tag=None,
-                           package_name=None, rpm_nvra=None):
+    def get_build_from_nvra(self, rpm_nvra):
+        """
+        Return the build that corresponds to the rpm_nvra.
+        """
+        rpm_info = self._service.getRPM(rpm_nvra)
+        if rpm_info is None:
+            return None
+        build_id = rpm_info.get('build_id')
+        return self.get_build(build_id)
+
+    def get_build_extended(self, package_nvr=None, rpm_nvra=None):
         """
         Extended version of `get_build`, serves as a shortcut to get build
         using various forms.
@@ -149,11 +158,8 @@ class KojiConnector:
         elif rpm_nvra:
             build = self.get_build_from_nvra(rpm_nvra)
             params = rpm_nvra
-        elif tag and package_name:
-            build = self.get_latest_build(tag, package_name)
-            params = f"{tag} & {package_name}"
         else:
-            err_msg = "Package NVR or brew tag & package name are required."
+            err_msg = "Package NVR or NVRA is required."
             raise ValueError(err_msg)
 
         if not build:
