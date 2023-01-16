@@ -230,6 +230,7 @@ class SaveScanResultMixin:
 
     def save_copyright_detections(
             self, path_file_dict, data, copyright_detector):
+        # TODO: Schema needs an update for summary copyrights
         raw_data = data.get('detail_copyrights')
         copyrights = dict(
             (self.file_copyright_scan_dict.get(path_file_dict.get(k)), v) for
@@ -240,7 +241,7 @@ class SaveScanResultMixin:
                 k_objs = [
                     CopyrightDetection(
                         file_scan_id=k,
-                        statement=statement["value"],
+                        statement=statement["copyright"],
                         start_line=statement["start_line"],
                         end_line=statement["end_line"]
                     ) for statement in v
