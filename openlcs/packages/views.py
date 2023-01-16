@@ -890,7 +890,7 @@ class CheckDuplicateImport(APIView):
         results = dict()
         data = request.data
         parent = data.get('parent', '')
-        if parent != '':
+        if parent != '' and data.get('type') == 'OCI':
             return Response(data={
                     'results': results})
         imported_components = Component.objects.filter(
