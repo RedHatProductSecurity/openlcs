@@ -6,9 +6,9 @@ redis==4.3.4  # Celery broker, make sure it matches celery
 SQLAlchemy==1.4.28  # The Database Toolkit for Python
 kobo==0.20.1
 filetype==1.0.8
-extractcode==30.0.0
-commoncode==30.0.0
-scancode-toolkit==30.1.0
+extractcode==31.0.0
+commoncode==31.0.0
+scancode-toolkit==31.2.4
 extractcode-7z==16.5.210531
 extractcode-libarchive==3.5.1.210531
 # FIXME: latest version of workflow only supports python3.6

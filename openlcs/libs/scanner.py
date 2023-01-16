@@ -101,9 +101,9 @@ class CopyrightScanner(object):
 
         scancode_cli = self.config.get('SCANCODE_CLI', '/bin/scancode')
         scancode_processes = self.config.get('SCANCODE_PROCESSES', 1)
-        cmd = ('{} --copyright --only-findings --strip-root --summary '
+        cmd = ('{} --copyright --only-findings --strip-root --tallies '
                '--processes {} --json - --quiet {}'.format(
-                   scancode_cli, scancode_processes, self.src_dir))
+                    scancode_cli, scancode_processes, self.src_dir))
         try:
             proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,
                                     stderr=subprocess.PIPE)
@@ -124,8 +124,8 @@ class CopyrightScanner(object):
                     copyright_errors.append(error)
             else:
                 # Get the summary copyrights
-                copyrights_summary = scan_result['summary']['copyrights']
-                copyrights = [c.get('value') for c in copyrights_summary]
+                copyrights_tallies = scan_result['tallies']['copyrights']
+                copyrights = [c.get('value') for c in copyrights_tallies]
                 # Get copyright statements for each file.
                 detail_copyrights = dict([
                     (f['path'], f['copyrights']) for f in scan_result['files']

@@ -11,10 +11,9 @@ from checksumdir import dirhash
 from commoncode.fileutils import delete
 from workflow.patterns.controlflow import IF
 from workflow.patterns.controlflow import IF_ELSE
-from packagedcode.rpm import parse as rpm_parse
-from packagedcode.pypi import parse_sdist
-
-from packagedcode.maven import parse as maven_parse
+# from packagedcode.rpm import parse as rpm_parse
+# from packagedcode.pypi import parse_sdist
+# from packagedcode.maven import parse as maven_parse
 
 from openlcsd.celery import app
 from openlcsd.flow.task_wrapper import WorkflowWrapperTask
@@ -24,8 +23,8 @@ from openlcs.libs.corgi import CorgiConnector
 from openlcs.libs.driver import OpenlcsClient
 from openlcs.libs.kojiconnector import KojiConnector
 from openlcs.libs.logger import get_task_logger
-from openlcs.libs.metadata import GolangMeta
-from openlcs.libs.metadata import NpmMeta
+# from openlcs.libs.metadata import GolangMeta
+# from openlcs.libs.metadata import NpmMeta
 from openlcs.libs.parsers import sha256sum
 from openlcs.libs.scanner import LicenseScanner
 from openlcs.libs.scanner import CopyrightScanner
@@ -361,35 +360,34 @@ def get_source_metadata(context, engine):
     else:
         source_name = os.path.basename(src_filepath)
         source_checksum = sha256sum(src_filepath)
-    pom_filepath = context.get('tmp_pom_filepath', None)
     build_type = context.get('build_type')
-    build = context.get('build')
-
     package = None
-    try:
-        if 'rpm' in build_type:
-            package = rpm_parse(src_filepath)
-        elif 'PYPI' in build_type:
-            package = parse_sdist(src_filepath)
-        elif 'GOLANG' in build_type:
-            retval = GolangMeta(src_filepath).parse_metadata()
-            if isinstance(retval, str):
-                engine.logger.warning(f"Failed to get metadata: {retval}")
-                package = None
-            else:
-                package = retval
-        elif 'NPM' in build_type or 'YARN' in build_type:
-            retval = NpmMeta(src_filepath).parse_metadata()
-            if isinstance(retval, str):
-                engine.logger.warning(f"Failed to get metadata: {retval}")
-                package = None
-            else:
-                package = retval
-        elif pom_filepath is not None:
-            package = maven_parse(pom_filepath)
-        # TODO: Add support for other package types.
-    except Exception as e:
-        engine.logger.warning(str(e))
+    # TODO: the parser for below types of packages need to be updated
+    # pom_filepath = context.get('tmp_pom_filepath', None)
+    # try:
+    #     if 'rpm' in build_type:
+    #         package = rpm_parse(src_filepath)
+    #     elif 'PYPI' in build_type:
+    #         package = parse_sdist(src_filepath)
+    #     elif 'GOLANG' in build_type:
+    #         retval = GolangMeta(src_filepath).parse_metadata()
+    #         if isinstance(retval, str):
+    #             engine.logger.warning(f"Failed to get metadata: {retval}")
+    #             package = None
+    #         else:
+    #             package = retval
+    #     elif 'NPM' in build_type or 'YARN' in build_type:
+    #         retval = NpmMeta(src_filepath).parse_metadata()
+    #         if isinstance(retval, str):
+    #             engine.logger.warning(f"Failed to get metadata: {retval}")
+    #             package = None
+    #         else:
+    #             package = retval
+    #     elif pom_filepath is not None:
+    #         package = maven_parse(pom_filepath)
+    #     # TODO: Add support for other package types.
+    # except Exception as e:
+    #     engine.logger.warning(str(e))
 
     if package is not None:
         # Package has below urls which could be referenced as source url:
@@ -407,15 +405,18 @@ def get_source_metadata(context, engine):
         # Use declared_license from packagecode output which could support
         # more package types instead of rebuilding wheels.
         context['declared_license'] = package.declared_license
+    else:
+        context['source_url'] = ''
+        context['declared_license'] = ''
 
-    # TODO: Update metadata for remote source.
+    build = context.get('build')
     context['source_info'] = {
         'product_release': context.get('product_release'),
         "source": {
             "checksum": source_checksum,
             "name": source_name,
             "url": context.get("source_url"),
-            "archive_type": list(context['build_type'].keys())[0]
+            "archive_type": list(build_type.keys())[0]
         },
         "component": {
             "name": build.get('name'),
