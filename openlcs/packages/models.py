@@ -256,3 +256,6 @@ class ComponentSubscription(models.Model):
     def deactivate(self):
         self.active = False
         self.save()
+
+    def __str__(self):
+        return f"{self.name}"
