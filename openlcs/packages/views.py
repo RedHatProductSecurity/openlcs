@@ -942,9 +942,55 @@ class SaveComponentsView(APIView, SaveComponentsMixin):
 
 class ComponentSubscriptionViewSet(ModelViewSet):
     """
-    API endpoint that allows components to be viewed.
+    API endpoint that allows ComponentSubscription to be viewed or edited.
     """
     # queryset = ComponentSubscription.objects.all()
     # List only active subscriptions by default
     queryset = ComponentSubscription.objects.get_active_subscriptions()
     serializer_class = ComponentSubscriptionSerializer
+
+    def retrieve(self, request, *args, **kwargs):
+        """
+        Retrieve a specified component subscription instance.
+
+        ####__Request__####
+
+            curl -X GET -H "Content-Type: application/json" \
+-H 'Authorization: Token your_token' \
+%(HOST_NAME)s/%(API_PATH)s/subscriptions/id/
+
+        ####__Response__####
+
+            HTTP 200 OK
+            Content-Type: application/json
+            {
+            "id": 1,
+            "name": "ansible_automation_platform:2.2",
+            "query_params": {
+                "ofuri": "o:redhat:ansible_automation_platform:2.2"
+            },
+            "component_purls": [
+                "pkg:rpm/redhat/python-pyjwt@1.7.1-8.el9pc?arch=src",
+                "pkg:rpm/redhat/python-webencodings@0.5.1-3.el9pc?arch=src",
+                "pkg:oci/aap-must-gather-container-source?tag=0.0.1-216.1",
+                "pkg:oci/automation-controller-operator-container-source?tag=2.2.1-30.1",
+                "pkg:oci/automation-controller-container-source?tag=4.2.1-29.1",
+                "pkg:oci/ee-29-container-source?tag=1.0.0-219.1",
+                "pkg:oci/automation-hub-container-source?tag=4.5.2-31.1",
+                "pkg:oci/ansible-python-toolkit-container-source?tag=1.0.0-189.1",
+                "pkg:oci/ansible-builder-container-source?tag=1.1.0-99.1",
+                "pkg:oci/automation-hub-web-container-source?tag=4.5.2-29.1",
+                "pkg:oci/ee-minimal-container-source?tag=1.0.0-234.1",
+                "pkg:oci/ee-supported-container-source?tag=1.0.0-196.1",
+                "pkg:oci/platform-resource-runner-container-source?tag=2.2.1-26.1",
+                "pkg:rpm/redhat/receptor@1.3.0-1.el9ap?arch=src",
+                "...",
+                "<list-is-too-long-and-omitted...>",
+                "...",
+            ],
+            "active": true,
+            "created_at": "2023-01-18T09:35:55.582000Z",
+            "updated_at": "2023-01-18T10:52:37.775419Z"
+            }
+        """
+        return super().retrieve(request, *args, **kwargs)
