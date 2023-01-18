@@ -257,5 +257,20 @@ class ComponentSubscription(models.Model):
         self.active = False
         self.save()
 
+    def get_delta_component_purls(self, purls):
+        """
+        Compute the `delta` components as compared with previous sync.
+        Used to de-duplicate components that were previously processed.
+
+        e.g., suppose after a previosly sync, we have
+        `self.component_purls = ["purl1", "purl2", "purl3"]`
+        and the latest sync yields
+        `purls = ["purl2", "purl3", "purl4", "purl5"],
+
+        this function returns ["purl4", "purl5"] which should be processed,
+        others were processed earlier.
+        """
+        return filter(lambda p: p not in self.component_purls, purls)
+
     def __str__(self):
         return f"{self.name}"
