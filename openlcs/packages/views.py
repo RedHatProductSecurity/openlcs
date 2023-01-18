@@ -10,9 +10,16 @@ from packages.mixins import (
     SaveScanResultMixin,
     SaveComponentsMixin
 )
-from packages.models import Component, File, Path, Source
+from packages.models import (
+    Component,
+    ComponentSubscription,
+    File,
+    Path,
+    Source
+)
 from packages.serializers import (
     ComponentSerializer,
+    ComponentSubscriptionSerializer,
     FileSerializer,
     NVRImportSerializer,
     PathSerializer,
@@ -931,3 +938,13 @@ class SaveComponentsView(APIView, SaveComponentsMixin):
         except IntegrityError as err:
             return Response(data={'message': err.args},
                             status=status.HTTP_400_BAD_REQUEST)
+
+
+class ComponentSubscriptionViewSet(ModelViewSet):
+    """
+    API endpoint that allows components to be viewed.
+    """
+    # queryset = ComponentSubscription.objects.all()
+    # List only active subscriptions by default
+    queryset = ComponentSubscription.objects.get_active_subscriptions()
+    serializer_class = ComponentSubscriptionSerializer
