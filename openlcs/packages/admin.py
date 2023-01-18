@@ -1,4 +1,6 @@
 from django.contrib import admin
+from django import forms
+
 from packages.models import File
 from packages.models import Path
 from packages.models import Source
@@ -33,3 +35,11 @@ class ComponentAdmin(admin.ModelAdmin):
 @admin.register(ComponentSubscription)
 class ComponentSubscriptionAdmin(admin.ModelAdmin):
     search_fields = ['name', 'query_params']
+    list_display = ('name', 'query_params', 'created_at', 'updated_at',
+                    'active',)
+
+    def get_form(self, request, obj=None, **kwargs):
+        kwargs['widgets'] = {
+            'component_purls': forms.Textarea(attrs={'rols': 100, 'cols': 100})
+        }
+        return super().get_form(request, obj, **kwargs)
