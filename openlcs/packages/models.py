@@ -1,6 +1,7 @@
 from django.db import models
 from django.db.models import Q
 from django.contrib.contenttypes.fields import GenericRelation
+from django.contrib.postgres.fields import ArrayField
 from django.core.validators import URLValidator
 # avoid name clash
 import uuid as uuid_module
@@ -216,3 +217,42 @@ class Component(CorgiComponentMixin):
 
     def __str__(self):
         return f'{self.name}-{self.version}, {self.type}'
+
+
+class ComponentSubscriptionManager(models.Manager):
+
+    def get_active_subscriptions(self):
+        return self.filter(active=True)
+
+
+class ComponentSubscription(models.Model):
+    """
+    Subscription model controls which components in component registry
+    should be processed.
+    """
+    name = models.CharField(max_length=255)
+    # various query params being used in corgi's `/components` api endpoint
+    query_params = models.JSONField()
+    # component purls are populated/updated in the periodical tasks.
+    # the number of components may vary over time.
+    # a previous sync guarantees all components were processed, all subsequent
+    # sync maintain the latest fetched components from corgi, and focuses
+    # only on the newly added components.
+    component_purls = ArrayField(
+        models.CharField(max_length=1024),
+        default=list,
+        blank=True,
+        null=True,
+    )
+    # a subscription may be no loner valid over time. set it to False to
+    # prevent it from being taken by the sync task.
+    active = models.BooleanField(default=True)
+    # move this to a separate mixin model if timestamp is needed elsewhere.
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    objects = ComponentSubscriptionManager()
+
+    def deactivate(self):
+        self.active = False
+        self.save()
