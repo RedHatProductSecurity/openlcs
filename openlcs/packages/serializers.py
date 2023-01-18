@@ -3,7 +3,13 @@ import os
 import sys
 
 from libs.swh_tools import swhid_check
-from packages.models import Component, File, Path, Source
+from packages.models import (
+    Component,
+    File,
+    Path,
+    Source,
+    ComponentSubscription,
+)
 from products.models import Release
 from rest_framework import serializers
 from tasks.models import Task
@@ -254,3 +260,9 @@ class ComponentSerializer(serializers.ModelSerializer):
             serializer = ComponentSerializer(descendant_components, many=True)
             provides = serializer.data
         return provides
+
+
+class ComponentSubscriptionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ComponentSubscription
+        fields = "__all__"
