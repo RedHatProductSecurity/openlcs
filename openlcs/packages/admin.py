@@ -2,7 +2,7 @@ from django.contrib import admin
 from packages.models import File
 from packages.models import Path
 from packages.models import Source
-from packages.models import Component
+from packages.models import Component, ComponentSubscription
 
 
 # Register your models here.
@@ -28,3 +28,8 @@ class SourceAdmin(admin.ModelAdmin):
 @admin.register(Component)
 class ComponentAdmin(admin.ModelAdmin):
     search_fields = ['uuid', 'purl', 'type', 'name']
+
+
+@admin.register(ComponentSubscription)
+class ComponentSubscriptionAdmin(admin.ModelAdmin):
+    search_fields = ['name', 'query_params']
