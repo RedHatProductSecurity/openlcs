@@ -32,6 +32,7 @@ class ReadOnlyBrowsableAPIRenderer(BrowsableAPIRenderer):
     methods_mapping = (
         'list',
         'retrieve',
+        'patch',
         'create',
         'put',
         'update',
