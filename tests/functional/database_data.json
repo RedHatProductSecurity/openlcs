@@ -18,6 +18,35 @@
     }
 },
 {
+    "model": "packages.componentsubscription",
+    "pk": 1,
+    "fields": {
+        "name": "ansible_automation_platform:2.2",
+        "query_params": {
+            "ofuri": "o:redhat:ansible_automation_platform:2.2"
+    },
+    "component_purls": "[]",
+    "active": true,
+    "created_at": "2023-01-18T09:35:55.582Z",
+    "updated_at": "2023-01-18T09:53:40.221Z"
+    }
+},
+{
+    "model": "packages.componentsubscription",
+    "pk": 2,
+    "fields": {
+        "name": "redhat:3amp:2 src components",
+        "query_params": {
+            "arch": "src",
+            "ofuri": "redhat:3amp:2"
+        },
+    "component_purls": "[]",
+    "active": true,
+    "created_at": "2023-01-18T10:05:50.255Z",
+    "updated_at": "2023-01-18T10:05:50.255Z"
+    }
+},
+{
     "model": "packages.file",
     "pk": 1,
     "fields": {
