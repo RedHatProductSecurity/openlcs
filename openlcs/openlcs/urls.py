@@ -41,7 +41,7 @@ router.register(r'components', package_views.ComponentViewSet,
                 basename='components')
 router.register(r'subscriptions',
                 package_views.ComponentSubscriptionViewSet,
-                basename='component_subscriptions')
+                basename='subscriptions')
 router.register(r'releases', product_views.ReleaseViewSet, basename='releases')
 router.register(r'licensedetections', report_views.LicenseDetectionViewSet,
                 basename='licensedetections')

@@ -1016,7 +1016,7 @@ query params of the corgi `component` api endpoint.
 
         ####__Response__####
 
-            Success: HTTP 200 OK
+            Success: HTTP 201 Created
             {
                 "id": 6,
                 "name": "mysubscription",
