@@ -3,11 +3,13 @@ import httpx
 import os
 import re
 import requests
+from requests.exceptions import RequestException, HTTPError
 import sys
 import uuid
 import uvloop
 from concurrent.futures import ThreadPoolExecutor
 from urllib import parse
+
 
 openlcs_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if openlcs_dir not in sys.path:
@@ -198,3 +200,21 @@ class CorgiConnector:
             for field in fields:
                 retval[field] = product_data[field]
         return retval
+
+    def get_paginated_data(self, query_params=None, path="components"):
+        url = f"{self.base_url}{path}"
+        while url:
+            try:
+                response = requests.get(url, params=query_params)
+                response.raise_for_status()
+                data = response.json()
+                yield from data['results']
+                url = data['next']
+            except HTTPError as e:
+                # non-200 responses
+                print(f"HTTP Error: {e}")
+                break
+            except RequestException as e:
+                # general exceptions, timeout/connection/maxredirect etc.
+                print(f"Request failed: {e}")
+                break
