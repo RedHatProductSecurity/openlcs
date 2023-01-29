@@ -1,5 +1,6 @@
 import asyncio
 import httpx
+import logging
 import os
 import re
 import requests
@@ -17,6 +18,9 @@ if openlcs_dir not in sys.path:
 from libs.common import group_components  # noqa: E402
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+
+
+logger = logging.getLogger(__name__)
 
 
 class CorgiConnector:
@@ -201,20 +205,35 @@ class CorgiConnector:
                 retval[field] = product_data[field]
         return retval
 
-    def get_paginated_data(self, query_params=None, path="components"):
-        url = f"{self.base_url}{path}"
+    def get_paginated_data(self, query_params=None, api_path="components"):
+        """
+        Retrieves paginated data from `api_path`.
+
+        The implementation assumes that the API endpoint returns paginated
+        data with following form:
+        {
+            "previous": url of the previous page (if any),
+            "next": url of the next page (if any),
+            "results": a list of data
+        }
+
+        :param query_params: a dictionary of query parameters.
+        :param api_path: the path of the API endpoint, default to "components"
+        :return: yields each page of data as a list
+        """
+        url = f"{self.base_url}{api_path}"
         while url:
             try:
                 response = requests.get(url, params=query_params)
                 response.raise_for_status()
                 data = response.json()
-                yield from data['results']
-                url = data['next']
+                yield from data["results"]
+                url = data.get("next")
             except HTTPError as e:
                 # non-200 responses
-                print(f"HTTP Error: {e}")
+                logger.error("HTTP Error: %s", e)
                 break
             except RequestException as e:
                 # general exceptions, timeout/connection/maxredirect etc.
-                print(f"Request failed: {e}")
+                logger.error("Request failed: %s", e)
                 break
