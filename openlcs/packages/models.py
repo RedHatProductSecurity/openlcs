@@ -6,6 +6,8 @@ from django.core.validators import URLValidator
 # avoid name clash
 import uuid as uuid_module
 
+from libs.corgi import CorgiConnector
+
 
 # Create your models here.
 class File(models.Model):
@@ -255,6 +257,21 @@ class ComponentSubscription(models.Model):
 
     def deactivate(self):
         self.active = False
+        self.save()
+
+    def get_latest_component_purls(self):
+        purls = []
+        connector = CorgiConnector()
+        try:
+            for component in connector.get_paginated_data(self.query_params):
+                purls.append(component.get("purl"))
+        except Exception:
+            pass
+        return purls
+
+    def populate_component_purls(self):
+        purls = self.get_latest_component_purls()
+        self.component_purls = purls
         self.save()
 
     def get_delta_component_purls(self, purls):
