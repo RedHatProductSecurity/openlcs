@@ -74,7 +74,7 @@ class Command(BaseCommand):
         params = {'name': name}
         if fields is None:
             fields = ['name', 'ofuri', 'description', 'products', 'components']
-        data = requests.get(endpoint, params=params).json()
+        data = requests.get(endpoint, params=params, timeout=10).json()
         # 0 or 1 result for product version name query
         retval = dict()
         if data['count'] > 0:

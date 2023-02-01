@@ -104,7 +104,8 @@ class OpenlcsClient(object):
 
     def get(self, url, params=None):
         abs_url = self.get_abs_url(url)
-        return requests.get(abs_url, headers=self.headers, params=params)
+        return requests.get(abs_url, headers=self.headers,
+                            params=params, timeout=10)
 
     def post(self, url, data):
         abs_url = self.get_abs_url(url)
@@ -116,7 +117,7 @@ class OpenlcsClient(object):
             return obj.isoformat() if hasattr(obj, 'isoformat') else obj
         return requests.post(
             abs_url, headers=self.headers, data=json.dumps(
-                data, default=date_handler))
+                data, default=date_handler), timeout=10)
 
     def patch(self, url, data):
         abs_url = self.get_abs_url(url)
@@ -128,4 +129,4 @@ class OpenlcsClient(object):
             return obj.isoformat() if hasattr(obj, 'isoformat') else obj
         return requests.patch(
             abs_url, headers=self.headers, data=json.dumps(
-                data, default=date_handler))
+                data, default=date_handler), timeout=10)

@@ -1,6 +1,6 @@
 # https://catalog.redhat.com/software/containers/ubi8/python-38/5dde9cacbed8bd164a0af24a?container-tabs=overview
 # FROM registry.access.redhat.com/ubi8/python-38:1-75
-FROM registry.access.redhat.com/ubi8/python-38:1-75
+FROM registry.access.redhat.com/ubi8/python-38
 
 ARG PRODSEC_DEV_OPENLCS_MAIL
 ARG ROOT_CA_URL
@@ -45,6 +45,7 @@ RUN cd /etc/pki/ca-trust/source/anchors/ && \
         curl -skO "${ENG_CA_URL}" && \
         update-ca-trust && \
         cd - && \
+    dnf -y upgrade && \
     dnf config-manager --add-repo "${TITO_REPO_URL}" \
         --add-repo "${RHEL8_REPO_URL}" \
         --add-repo "${RHEL8_APPSTREAM_REPO_URL}" \
@@ -52,7 +53,7 @@ RUN cd /etc/pki/ca-trust/source/anchors/ && \
     dnf install --nogpgcheck --nodoc -y cpio-2.12 atool-0.39.0 vim krb5-workstation docker-ce-cli skopeo && \
     dnf clean all && \
     # To make docker cache pip package, install dependencies
-    pip install --upgrade pip && pip install -r /tmp/devel.txt && \
+    pip install --upgrade pip && pip install -r /tmp/devel.txt --use-pep517 && \
     # Add permissions for openlcs 
     mkdir -p /var/openlcs/static /var/log/openlcs/ /var/cache/ && \
     chmod a+rwX -R /var/log/openlcs/ /var/cache/ /var/openlcs/static "${HOME}" /etc/passwd && \

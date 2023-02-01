@@ -1,10 +1,11 @@
-FROM registry.access.redhat.com/ubi8/python-38:1-75
+FROM registry.access.redhat.com/ubi8/python-38
 
 ARG PRODSEC_DEV_OPENLCS_MAIL
 ARG ROOT_CA_URL
 ARG ENG_CA_URL
 ARG TITO_REPO_URL
 ARG RHEL8_REPO_URL
+ARG RHEL8_APPSTREAM_REPO_URL
 ARG OPENSHIFT_CLI_URL
 ARG CORGI_API_STAGE
 ARG CORGI_API_PROD
@@ -38,15 +39,18 @@ RUN cd /etc/pki/ca-trust/source/anchors/ && \
         curl -skO "${ENG_CA_URL}" && \
         update-ca-trust && \
         cd - && \
+    dnf -y upgrade && \
     dnf config-manager --add-repo "${TITO_REPO_URL}" \
-        --add-repo "${RHEL8_REPO_URL}" && \
+        --add-repo "${RHEL8_REPO_URL}" \
+        --add-repo "${RHEL8_APPSTREAM_REPO_URL}" && \
     dnf install --nogpgcheck --nodoc -y cpio-2.12 atool-0.39.0 && \
+    # Remove it caused by vulnerabilities CVE-2021-33503 and CVE-2020-26137
+    dnf remove python2-urllib3 && \
     dnf clean all && \
     # To make docker cache pip package, install dependencies
-    pip install --upgrade pip && pip install -r /tmp/devel.txt && \
+    pip install --upgrade pip && pip install -r /tmp/devel.txt --use-pep517 && \
     # This download url is from currently ocp cluster console
     curl -k "${OPENSHIFT_CLI_URL}" | tar xf - -C /usr/local/bin/ && \
-    pip install --upgrade pip && pip install -r /tmp/devel.txt && \
     # Link the site-packages to correct location, so that tox can find it when use current-env plugin
     # CI image site packages path is /usr/local/lib/python3.8/site-packages.
     # But tox will use one of ['/usr/local/lib64/python3.8/site-packages',

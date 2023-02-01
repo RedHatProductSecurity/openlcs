@@ -56,7 +56,7 @@ class CorgiConnector:
         if nvr:
             params = {'type': component_type, 'nvr': nvr}
             response = requests.get(
-                f"{self.base_url}{route}", params=params)
+                f"{self.base_url}{route}", params=params, timeout=10)
             if response.status_code == 200:
                 try:
                     results = response.json().get('results')
@@ -196,7 +196,8 @@ class CorgiConnector:
         params = {"name": name}
         if fields is None:
             fields = ["name", "ofuri", "description", "products", "components"]
-        data = requests.get(f"{self.base_url}{route}", params=params).json()
+        data = requests.get(f"{self.base_url}{route}", params=params,
+                            timeout=10).json()
         # 0 or 1 result for product version name query
         retval = dict()
         if data["count"] > 0:
@@ -224,7 +225,7 @@ class CorgiConnector:
         url = f"{self.base_url}{api_path}"
         while url:
             try:
-                response = requests.get(url, params=query_params)
+                response = requests.get(url, params=query_params, timeout=10)
                 response.raise_for_status()
                 data = response.json()
                 yield from data["results"]

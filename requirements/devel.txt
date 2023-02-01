@@ -1,14 +1,14 @@
 -r base.txt
 
 flake8==4.0.1
-pylint==2.12.2
-pylint-django==2.4.4
-pytest==6.2.5
-tox==3.24.4
+pylint==2.16.0
+pylint-django==2.5.3
+pytest==7.2.1
+tox==4.4.4
 libmagic==1.0
 coverage==6.2
 # To avoid duplicate install dependencies
-tox-current-env==0.0.6
+tox-current-env==0.0.11
 # pytest dependency
 pytest-django==4.5.2
 pytest-redis==2.4.0
