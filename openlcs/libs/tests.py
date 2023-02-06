@@ -6,21 +6,19 @@ import shutil
 import tempfile
 import warnings
 from unittest import mock
-from unittest import skip
 from unittest import TestCase
 from kobo.shortcuts import run
 from django.conf import settings
 
 from libs.corgi import CorgiConnector
 from libs.kojiconnector import KojiConnector
-# from libs.metadata import GolangMeta, NpmMeta
+from libs.metadata import GolangMeta, NpmMeta
+from packagedcode.maven import MavenPomXmlHandler
+from packagedcode.pypi import PypiSdistArchiveHandler
 from libs.parsers import parse_manifest_file
 from libs.scanner import LicenseScanner
 from libs.scanner import CopyrightScanner
 from libs.unpack import UnpackArchive
-# from packagedcode.golang import GolangPackage
-# from packagedcode.npm import NpmPackage
-# from packagedcode.pypi import PythonPackage, parse_sdist
 
 
 class TestUnpack(TestCase):
@@ -480,7 +478,6 @@ class TestGetModuleMappingSRPMs(TestCase):
         self.assertEqual(self.srpm_nvr, package_nvr[0])
 
 
-# pylint: disable=E0602
 class TestParseMetadata(TestCase):
     def setUp(self):
         dirname = Path(__file__).resolve().parent.parent.parent
@@ -489,12 +486,11 @@ class TestParseMetadata(TestCase):
         self.npm_tarball = testdata_root / 'npm/uuid-3.4.0.tgz'
         self.golang_tarball = testdata_root / 'golang/v1.3.1.zip'
         self.yarn_tarball = testdata_root / 'yarn/json5-2.1.3.tgz'
+        self.maven_pomfile = testdata_root / 'maven/xmltool-3.3.pom'
 
-    @skip("Pending pypi parser update")
     def test_pypi(self):
-        # PosixPath is invalid form for `parse_sdist`
-        package = parse_sdist(str(self.pypi_tarball)) # noqa
-        self.assertTrue(isinstance(package, PythonPackage)) # noqa
+        packages = PypiSdistArchiveHandler.parse(str(self.pypi_tarball))
+        package = next(packages)
         declared_license = {
             'license': 'new BSD License',
             'classifiers': ['License :: OSI Approved :: BSD License'],
@@ -504,50 +500,42 @@ class TestParseMetadata(TestCase):
             package.homepage_url, "https://github.com/micheles/decorator"
         )
 
-    @skip("Pending npm parser update")
     def test_npm(self):
-        parser = NpmMeta(self.npm_tarball) # noqa
+        parser = NpmMeta(self.npm_tarball)
         package = parser.parse_metadata()
-        self.assertTrue(isinstance(package, NpmPackage)) # noqa
         self.assertEqual(package.declared_license, ['MIT'])
         self.assertEqual(
             package.vcs_url, "git+https://github.com/uuidjs/uuid.git"
         )
 
-    @skip("Pending npm parser update")
     def test_non_existent_npm_archive(self):
         non_exist_filepath = "/path/to/non-existent"
-        parser = NpmMeta(non_exist_filepath) # noqa
+        parser = NpmMeta(non_exist_filepath)
         retval = parser.parse_metadata()
         self.assertEqual(retval, f"{non_exist_filepath} does not exist.")
 
-    @skip("Pending npm parser update")
     def test_npm_unsupported_extension(self):
-        parser = NpmMeta(self.golang_tarball) # noqa
+        parser = NpmMeta(self.golang_tarball)
         retval = parser.parse_metadata()
         self.assertIsInstance(retval, str)
         self.assertIn("Unsupported", retval)
 
-    @skip("Pending golang parser update")
     def test_golang(self):
-        parser = GolangMeta(self.golang_tarball) # noqa
+        parser = GolangMeta(self.golang_tarball)
         package = parser.parse_metadata()
-        self.assertTrue(isinstance(package, GolangPackage)) # noqa
         self.assertEqual(
             package.homepage_url,
             "https://pkg.go.dev/cloud.google.com/go/pubsub",
         )
 
-    @skip("Pending golang parser update")
     def test_non_existent_golang_archive(self):
         non_exist_filepath = "/path/to/non-existent"
-        parser = GolangMeta(non_exist_filepath) # noqa
+        parser = GolangMeta(non_exist_filepath)
         retval = parser.parse_metadata()
         self.assertEqual(retval, f"{non_exist_filepath} does not exist.")
 
-    @skip("Pending golang parser update")
     def test_golang_unsupported_extension(self):
-        parser = GolangMeta(self.npm_tarball) # noqa
+        parser = GolangMeta(self.npm_tarball)
         retval = parser.parse_metadata()
         self.assertIsInstance(retval, str)
         self.assertIn("Unsupported", retval)
@@ -555,6 +543,19 @@ class TestParseMetadata(TestCase):
     def test_yarn(self):
         # For now, npm parser is used for yarn as well.
         pass
+
+    def test_maven(self):
+        packages = MavenPomXmlHandler.parse(str(self.maven_pomfile))
+        package = next(packages)
+        declared_license = [{
+            'name': 'The Apache Software License, Version 2.0',
+            'url': 'http://www.apache.org/licenses/LICENSE-2.0.txt',
+            'comments': None, 'distribution': 'repo'
+        }]
+        self.assertEqual(package.declared_license, declared_license)
+        self.assertEqual(
+            package.homepage_url, "http://code.mycila.com/"
+        )
 
 
 class TestGetTaskRepository(TestCase):

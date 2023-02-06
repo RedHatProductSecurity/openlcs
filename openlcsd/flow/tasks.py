@@ -11,9 +11,9 @@ from checksumdir import dirhash
 from commoncode.fileutils import delete
 from workflow.patterns.controlflow import IF
 from workflow.patterns.controlflow import IF_ELSE
-# from packagedcode.rpm import parse as rpm_parse
-# from packagedcode.pypi import parse_sdist
-# from packagedcode.maven import parse as maven_parse
+from packagedcode.rpm import RpmArchiveHandler
+from packagedcode.pypi import PypiSdistArchiveHandler
+from packagedcode.maven import parse as MavenPomXmlHandler
 
 from openlcsd.celery import app
 from openlcsd.flow.task_wrapper import WorkflowWrapperTask
@@ -23,8 +23,8 @@ from openlcs.libs.corgi import CorgiConnector
 from openlcs.libs.driver import OpenlcsClient
 from openlcs.libs.kojiconnector import KojiConnector
 from openlcs.libs.logger import get_task_logger
-# from openlcs.libs.metadata import GolangMeta
-# from openlcs.libs.metadata import NpmMeta
+from openlcs.libs.metadata import GolangMeta
+from openlcs.libs.metadata import NpmMeta
 from openlcs.libs.parsers import sha256sum
 from openlcs.libs.scanner import LicenseScanner
 from openlcs.libs.scanner import CopyrightScanner
@@ -361,32 +361,34 @@ def get_source_metadata(context, engine):
         source_checksum = sha256sum(src_filepath)
     build_type = context.get('build_type')
     package = None
-    # TODO: the parser for below types of packages need to be updated
-    # pom_filepath = context.get('tmp_pom_filepath', None)
-    # try:
-    #     if 'rpm' in build_type:
-    #         package = rpm_parse(src_filepath)
-    #     elif 'PYPI' in build_type:
-    #         package = parse_sdist(src_filepath)
-    #     elif 'GOLANG' in build_type:
-    #         retval = GolangMeta(src_filepath).parse_metadata()
-    #         if isinstance(retval, str):
-    #             engine.logger.warning(f"Failed to get metadata: {retval}")
-    #             package = None
-    #         else:
-    #             package = retval
-    #     elif 'NPM' in build_type or 'YARN' in build_type:
-    #         retval = NpmMeta(src_filepath).parse_metadata()
-    #         if isinstance(retval, str):
-    #             engine.logger.warning(f"Failed to get metadata: {retval}")
-    #             package = None
-    #         else:
-    #             package = retval
-    #     elif pom_filepath is not None:
-    #         package = maven_parse(pom_filepath)
-    #     # TODO: Add support for other package types.
-    # except Exception as e:
-    #     engine.logger.warning(str(e))
+    pom_filepath = context.get('tmp_pom_filepath', None)
+    try:
+        if 'rpm' in build_type:
+            packages = RpmArchiveHandler.parse(src_filepath)
+            package = next(packages)
+        elif 'PYPI' in build_type:
+            packages = PypiSdistArchiveHandler.parse(src_filepath)
+            package = next(packages)
+        elif 'NPM' in build_type or 'YARN' in build_type:
+            retval = NpmMeta(src_filepath).parse_metadata()
+            if isinstance(retval, str):
+                engine.logger.warning(f"Failed to get metadata: {retval}")
+                package = None
+            else:
+                package = retval
+        elif 'GOLANG' in build_type:
+            retval = GolangMeta(src_filepath).parse_metadata()
+            if isinstance(retval, str):
+                engine.logger.warning(f"Failed to get metadata: {retval}")
+                package = None
+            else:
+                package = retval
+        elif pom_filepath is not None:
+            packages = MavenPomXmlHandler.parse(pom_filepath)
+            package = next(packages)
+        # TODO: Add support for other package types, e.g., CARGO, RUBYGEMS.
+    except Exception as e:
+        engine.logger.warning(str(e))
 
     if package is not None:
         # Package has below urls which could be referenced as source url:
