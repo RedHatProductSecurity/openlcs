@@ -6,8 +6,8 @@ import tarfile
 import tempfile
 import zipfile
 
-from packagedcode.golang import GolangPackage
-from packagedcode.npm import parse
+from packagedcode.golang import GoModHandler
+from packagedcode.npm import NpmPackageJsonHandler
 
 
 class MetaBase:
@@ -44,11 +44,11 @@ class NpmMeta(MetaBase):
 
     def get_metadata(self, filepath):
         """
-        Accept the package json filepath, returns an NpmPackage, None in case
+        Accept the package json filepath, returns a PackageData, None in case
         nothing is found.
         """
-        # only one `NpmPackage` instance returned from the generator
-        packages = parse(filepath)
+        # only one `PackageData` instance returned from the generator
+        packages = NpmPackageJsonHandler.parse(filepath)
         return next(packages)
 
     def extract_metafile(self):
@@ -65,7 +65,7 @@ class NpmMeta(MetaBase):
 
     def parse_metadata(self):
         """
-        Returns an "NpmPackage" instance when succeed,
+        Returns a packagedcode "PackageData" instance when succeed,
         or a string(error message) string in case of failures.
         """
         result, message = self._validate_tarball()
@@ -95,7 +95,7 @@ class GolangMeta(MetaBase):
 
     def extract_metafile(self):
         temp_dir = self._create_temp_meta_dir()
-        # the default npm package archive is .tgz
+        # The default golang package archive is .zip
         found = False
         with zipfile.ZipFile(self.tarball) as zf:
             for name in zf.namelist():
@@ -112,7 +112,7 @@ class GolangMeta(MetaBase):
 
     def parse_metadata(self):
         """
-        Returns a "GolangPackage" instance when succeed,
+        Returns a packagedcode "PackageData" instance when succeed,
         or a string(error message) string in case of failures.
         """
         result, message = self._validate_tarball()
@@ -122,7 +122,7 @@ class GolangMeta(MetaBase):
             meta_dir = self.extract_metafile()
             if meta_dir is not None:
                 meta_filepath = self.get_metafile_path(meta_dir)
-                packages = GolangPackage.recognize(meta_filepath)
+                packages = GoModHandler.parse(meta_filepath)
                 return next(packages)
             else:
                 return None
