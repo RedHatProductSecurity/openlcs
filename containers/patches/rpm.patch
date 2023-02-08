@@ -1,15 +1,15 @@
---- packagedcode/rpm.py	2022-04-01 12:38:24.375524865 +0800
-+++ packagedcode/rpm.py.mod	2022-04-01 16:29:21.394860116 +0800
-@@ -94,7 +94,7 @@
-     # note: the order of the named tuple is the sort order.
-     # But for creation we put the rarely used epoch last
-     def __new__(self, version, release=None, epoch=None):
+--- packagedcode/rpm.py	2023-01-10 09:23:48.750055521 +0800
++++ packagedcode/rpm_mod.py	2023-02-08 15:45:31.010924345 +0800
+@@ -99,7 +99,7 @@
+         note: the sort order of the named tuple is the sort order.
+         But for creation we put the rarely used epoch last with a default to None.
+         """
 -        if epoch and epoch.strip() and not epoch.isdigit():
 +        if epoch and not isinstance(epoch, int):
              raise ValueError('Invalid epoch: must be a number or empty.')
          if not version:
              raise ValueError('Version is required: {}'.format(repr(version)))
-@@ -111,7 +111,7 @@
+@@ -116,7 +116,7 @@
              vr = self.version
  
          if self.epoch:
