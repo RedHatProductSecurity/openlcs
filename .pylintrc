@@ -7,7 +7,7 @@ load-plugins=pylint_django
 disable=django-not-configured
 jobs=2
 [MESSAGES CONTROL]
-disable=R,C,no-member,fixme,no-init,unused-argument,deprecated-lambda,
+disable=R,C,no-member,fixme,no-init,unused-argument,
         broad-except,redefined-builtin,protected-access,abstract-method,
         useless-super-delegation,arguments-differ,model-missing-unicode,
         attribute-defined-outside-init,unpacking-non-sequence

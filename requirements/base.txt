@@ -1,9 +1,9 @@
 Django==3.2.16
 psycopg2==2.9.2 # Python-PostgreSQL Database Adapter
 celery==5.2.7 # The latest version for Python3.8
-requests==2.28.1 # An HTTP library for Python
+requests==2.28.2 # An HTTP library for Python
 redis==4.3.4  # Celery broker, make sure it matches celery
-SQLAlchemy==1.4.28  # The Database Toolkit for Python
+SQLAlchemy==2.0.0  # The Database Toolkit for Python
 kobo==0.20.1
 filetype==1.0.8
 extractcode==31.0.0
