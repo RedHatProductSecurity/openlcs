@@ -912,6 +912,11 @@ class CheckDuplicateImport(APIView):
 
         if serializer_data and len(serializer_data) == 1:
             obj = serializer_data[0]
+            source_ready = 'source' in obj and \
+                obj['source'] is None and parent != ''
+            if source_ready:
+                return Response(data={
+                        'results': results})
             obj_url = 'http://{}/rest/v1/components/{}/'.format(
                 settings.HOSTNAME, obj.get('id', -1))
             results['obj_url'] = obj_url
