@@ -206,6 +206,11 @@ class CorgiConnector:
                 retval[field] = product_data[field]
         return retval
 
+    def get(self, url, query_params=None, timeout=10):
+        response = requests.get(url, params=query_params, timeout=timeout)
+        response.raise_for_status()
+        return response.json()
+
     def get_paginated_data(self, query_params=None, api_path="components"):
         """
         Retrieves paginated data from `api_path`.
@@ -225,9 +230,7 @@ class CorgiConnector:
         url = f"{self.base_url}{api_path}"
         while url:
             try:
-                response = requests.get(url, params=query_params, timeout=10)
-                response.raise_for_status()
-                data = response.json()
+                data = self.get(url, query_params=query_params)
                 yield from data["results"]
                 url = data.get("next")
             except HTTPError as e:
