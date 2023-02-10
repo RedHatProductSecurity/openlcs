@@ -167,7 +167,7 @@ class SourceContainerHandler(object):
                 uncompress_source_tarball(rs_tarball_path, rs_dest_dir)
         return rs_dir
 
-    def get_source_container_srpms_metadata(self):
+    def get_source_container_metadata(self):
         """
         Get metadata files of source RPMs in source container.
         """
@@ -202,8 +202,7 @@ class SourceContainerHandler(object):
             for tarball in tarballs:
                 uncompress_source_tarball(tarball)
         else:
-            self.dest_dir = os.path.dirname(self.src_file)
-            errs = uncompress_blob_gzip_files(self.dest_dir)
+            errs = uncompress_blob_gzip_files(self.src_file, self.dest_dir)
         # Get source RPMs in the source container.
         srpm_dir = self.get_source_container_srpms()
 
@@ -212,7 +211,7 @@ class SourceContainerHandler(object):
 
         # Get metadata files of source RPMs to metadata dir, will add the
         # remote source metadata in this directory at the other steps.
-        misc_dir = self.get_source_container_srpms_metadata()
+        misc_dir = self.get_source_container_metadata()
 
         return srpm_dir, rs_dir, misc_dir, errs
 

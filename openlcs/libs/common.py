@@ -173,14 +173,15 @@ def get_component_flat(data, comp_type):
     return component
 
 
-def uncompress_blob_gzip_files(dest_dir):
+def uncompress_blob_gzip_files(src_file, dest_dir):
     # Uncompress the blob files that come from source container registry.
     # Under the directory, most of the files are gzip files that need to
     # decompress. There are some metadata files that no need to decompress.
     err_msg_list = []
-    blob_files = os.listdir(dest_dir)
+    src_dir = os.path.dirname(src_file)
+    blob_files = os.listdir(src_dir)
     for blob_file in blob_files:
-        blob_file = os.path.join(dest_dir, blob_file)
+        blob_file = os.path.join(src_dir, blob_file)
         file_type = get_mime_type(blob_file)
         if file_type == "application/gzip":
             cmd = ['tar', '-xvf', blob_file]
