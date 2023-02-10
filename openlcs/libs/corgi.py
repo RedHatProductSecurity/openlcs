@@ -33,6 +33,11 @@ class CorgiConnector:
             base_url = os.getenv("CORGI_API_PROD")
         self.base_url = base_url
 
+    def get(self, url, query_params=None, timeout=10):
+        response = requests.get(url, params=query_params, timeout=timeout)
+        response.raise_for_status()
+        return response.json()
+
     @staticmethod
     def get_component_flat(data):
         return {
@@ -206,11 +211,6 @@ class CorgiConnector:
                 retval[field] = product_data[field]
         return retval
 
-    def get(self, url, query_params=None, timeout=10):
-        response = requests.get(url, params=query_params, timeout=timeout)
-        response.raise_for_status()
-        return response.json()
-
     def get_paginated_data(self, query_params=None, api_path="components"):
         """
         Retrieves paginated data from `api_path`.
@@ -241,3 +241,30 @@ class CorgiConnector:
                 # general exceptions, timeout/connection/maxredirect etc.
                 logger.error("Request failed: %s", e)
                 break
+
+    def get_srpm_component(self, component):
+        """
+        Returns the source rpm component for `component`
+        """
+        if component["arch"] == "src":
+            return component
+        else:
+            sources = component.get("sources")
+            if not sources:
+                return None
+            link = sources[0].get("link")
+            return self.get(link)
+
+    def get_oci_component(component):
+        # FIXME: returns the OCI component.
+        raise NotImplementedError
+
+    def get_source_component(self, component):
+        component_type = component.get("type")
+        if component_type == "RPM":
+            return self.get_srpm_component(component)
+        elif component_type == "OCI":
+            return self.get_oci_component(component)
+        else:
+            # FIXME: add golang/npm/cargo/pip/maven here.
+            raise ValueError("Unsupported type")
