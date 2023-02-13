@@ -8,6 +8,7 @@ from requests.exceptions import RequestException, HTTPError
 import sys
 import uuid
 import uvloop
+import concurrent.futures
 from concurrent.futures import ThreadPoolExecutor
 from urllib import parse
 
@@ -32,9 +33,10 @@ class CorgiConnector:
             # corgi api endpoint available in environment variable
             base_url = os.getenv("CORGI_API_PROD")
         self.base_url = base_url
+        self.session = requests.Session()
 
-    def get(self, url, query_params=None, timeout=10):
-        response = requests.get(url, params=query_params, timeout=timeout)
+    def get(self, url, query_params=None, timeout=30):
+        response = self.session.get(url, params=query_params)
         response.raise_for_status()
         return response.json()
 
@@ -60,7 +62,7 @@ class CorgiConnector:
         parent_component = {}
         if nvr:
             params = {'type': component_type, 'nvr': nvr}
-            response = requests.get(
+            response = self.session.get(
                 f"{self.base_url}{route}", params=params, timeout=10)
             if response.status_code == 200:
                 try:
@@ -201,7 +203,7 @@ class CorgiConnector:
         params = {"name": name}
         if fields is None:
             fields = ["name", "ofuri", "description", "products", "components"]
-        data = requests.get(f"{self.base_url}{route}", params=params,
+        data = self.session.get(f"{self.base_url}{route}", params=params,
                             timeout=10).json()
         # 0 or 1 result for product version name query
         retval = dict()
@@ -253,18 +255,72 @@ class CorgiConnector:
             if not sources:
                 return None
             link = sources[0].get("link")
+            logger.info(f"Querying component: {link}")
             return self.get(link)
 
-    def get_oci_component(component):
-        # FIXME: returns the OCI component.
-        raise NotImplementedError
+    def fetch_component(self, link):
+        component = self.get(link)
+        if component.get("type") == "RPM":
+            return self.get_srpm_component(component)
+        return component
+
+    def get_container_source_components(self, component):
+        """
+        Extract source components from a corgi container component
+
+        If the name of the component ends with "-source", it will be handled
+        separately. Otherwise the function looks for binary components
+        provided by the component and retrieves their corresponding
+        source components. The source components are returned as a list.
+
+        Args:
+        component (dict): The OCI component info
+
+        Returns:
+        list: A list of source components found.
+        """
+        logger.info(f"Start to get source component for {component['nvr']}")
+        name = component.get("name")
+        if name.endswith("-source"):
+            sources = component.get("sources")
+            if not sources:
+                return None
+            link = sources[0].get("link")
+            component = self.get(link)
+
+        provides = component.get("provides", [])
+        links = [provide.get("link") for provide in provides]
+
+        components_extracted = list()
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=5
+        ) as executor:
+            tasks = {
+                executor.submit(
+                    self.fetch_component, link): link for link in links}
+            for task in concurrent.futures.as_completed(tasks):
+                components_extracted.append(task.result())
+        component_set = set(tuple(c.items()) for c in components_extracted)
+        return [dict(c) for c in component_set]
 
     def get_source_component(self, component):
         component_type = component.get("type")
         if component_type == "RPM":
             return self.get_srpm_component(component)
         elif component_type == "OCI":
-            return self.get_oci_component(component)
+            return self.get_container_source_components(component)
         else:
             # FIXME: add golang/npm/cargo/pip/maven here.
             raise ValueError("Unsupported type")
+
+def main():
+    connector = CorgiConnector()
+    url = ("https://corgi.prodsec.redhat.com/api/v1/components/"
+           "513eda9e-545b-4420-889b-b5b8ffd67df8")
+    component = connector.get(url)
+    provides = connector.get_container_source_components(component)
+    return provides
+
+if __name__ == "__main__":
+    provides = main()
+    print("\n".join([c.get("purl") for c in provides]))
