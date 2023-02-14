@@ -753,7 +753,7 @@ def send_package_data(context, engine):
             'task_id': context.get('task_id')
         }
         json.dump(file_content, destination, cls=DateEncoder)
-    resp = cli.post(url, data={"file_path": tmp_file_path})
+    resp = cli.post(url, data={"file_path": tmp_file_path}, timeout=30)
     context['client'] = cli
     try:
         # Raise it in case we made a bad request:
@@ -996,7 +996,7 @@ def save_components(context, engine):
         prefix='save_components_', dir=context.get('post_dir'))
     with os.fdopen(fd, 'w') as destination:
         json.dump(data, destination, cls=DateEncoder)
-    resp = cli.post(url, data={"file_path": tmp_file_path})
+    resp = cli.post(url, data={"file_path": tmp_file_path}, timeout=30)
     context['client'] = cli
     try:
         resp.raise_for_status()
