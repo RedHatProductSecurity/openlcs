@@ -2,6 +2,7 @@ import filetype
 import glob
 import mimetypes
 import os
+import re
 import shutil
 import subprocess
 import tarfile
@@ -194,3 +195,16 @@ def uncompress_blob_gzip_files(src_file, dest_dir):
                 os.remove(blob_file)
         continue
     return err_msg_list
+
+
+def find_srpm_source(sources:list[dict]):
+    """
+    A shortcut to find the first item in `sources` that has a `purl`
+    starting with "pkg:rpm" and contains "arch=src".
+    Returns the "link" of matched source or None otherwise.
+    """
+    pattern = re.compile(r'pkg:rpm.*arch=src')
+    for source in sources:
+        if pattern.search(source['purl']):
+            return source['link']
+    return None
