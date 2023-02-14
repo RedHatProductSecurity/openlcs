@@ -23,6 +23,7 @@ asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 
 logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.DEBUG)
 
 
 class CorgiConnector:
@@ -34,9 +35,22 @@ class CorgiConnector:
             # corgi api endpoint available in environment variable
             base_url = os.getenv("CORGI_API_PROD")
         self.base_url = base_url
+        # corgi stage support this at the moment.
+        self.default_exclude_fields = (
+            "products",
+            "product_versions",
+            "product_streams",
+            "product_variants",
+            "channels",
+        )
         self.session = requests.Session()
 
-    def get(self, url, query_params=None, timeout=30):
+    def get(self, url, query_params=None,
+            excludes=self.default_exclude_fields, timeout=30):
+        if not query_params:
+            query_params = {}
+        # exclude costly related field queries by default.
+        query_params['exclude_fields'] = ','.join(excludes)
         response = self.session.get(url, params=query_params)
         response.raise_for_status()
         return response.json()
@@ -282,27 +296,32 @@ class CorgiConnector:
         Returns:
         list: A list of source components found.
         """
-        logger.info(f"Start to get source component for {component['nvr']}")
         name = component.get("name")
         if name.endswith("-source"):
+            logger.debug("This is a source container build")
             sources = component.get("sources")
             if not sources:
                 return None
             link = sources[0].get("link")
             component = self.get(link)
+            logger.debug(f"Binary build {component['nevra']} retrieved.")
 
         provides = component.get("provides", [])
         links = [provide.get("link") for provide in provides]
+        logger.debug(f"List of provides({len(links)}) collected")
 
         components_extracted = list()
         with concurrent.futures.ThreadPoolExecutor(
-            max_workers=5
+            max_workers=3
         ) as executor:
             tasks = {
                 executor.submit(
                     self.fetch_component, link): link for link in links}
             for task in concurrent.futures.as_completed(tasks):
-                components_extracted.append(task.result())
+                result = task.result()
+                components_extracted.append(result)
+                logger.debug(f"Provides {result['nevra']} retrieved.")
+        # Remove duplicates
         component_set = set(tuple(c.items()) for c in components_extracted)
         return [dict(c) for c in component_set]
 
@@ -318,9 +337,10 @@ class CorgiConnector:
 
 def main():
     connector = CorgiConnector()
-    url = ("https://corgi.prodsec.redhat.com/api/v1/components/"
-           "513eda9e-545b-4420-889b-b5b8ffd67df8")
+    url = ("https://corgi-stage.prodsec.redhat.com/api/v1/components/"
+           "000be063-14ef-4fcc-8e56-397cfc4a0b10")
     component = connector.get(url)
+    logger.debug(f"Component {component['nevra']} retrieved.")
     provides = connector.get_container_source_components(component)
     return provides
 
