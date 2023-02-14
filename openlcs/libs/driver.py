@@ -107,7 +107,7 @@ class OpenlcsClient(object):
         return requests.get(abs_url, headers=self.headers,
                             params=params, timeout=10)
 
-    def post(self, url, data):
+    def post(self, url, data, timeout=10):
         abs_url = self.get_abs_url(url)
         # http://stackoverflow.com/a/25895504
         # To resolve the issue that datetime.datetime object is not
@@ -117,7 +117,7 @@ class OpenlcsClient(object):
             return obj.isoformat() if hasattr(obj, 'isoformat') else obj
         return requests.post(
             abs_url, headers=self.headers, data=json.dumps(
-                data, default=date_handler), timeout=10)
+                data, default=date_handler), timeout=timeout)
 
     def patch(self, url, data):
         abs_url = self.get_abs_url(url)
