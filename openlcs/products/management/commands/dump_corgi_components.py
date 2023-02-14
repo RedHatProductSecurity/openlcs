@@ -20,7 +20,7 @@ CORGI_API_ENDPIONTS = {
 
 def load_json_from_url(url, session=None):
     if session is None:
-        session = session.Session()
+        session = requests.Session()
     return session.get(url).json()
 
 
