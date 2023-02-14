@@ -17,6 +17,7 @@ openlcs_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if openlcs_dir not in sys.path:
     sys.path.append(openlcs_dir)
 from libs.common import group_components  # noqa: E402
+from libs.common import find_srpm_source
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
@@ -254,9 +255,11 @@ class CorgiConnector:
             sources = component.get("sources")
             if not sources:
                 return None
-            link = sources[0].get("link")
-            logger.info(f"Querying component: {link}")
-            return self.get(link)
+            link = find_srpm_source(sources)
+            if link:
+                logger.info(f"Querying component: {link}")
+                return self.get(link)
+            return None
 
     def fetch_component(self, link):
         component = self.get(link)
