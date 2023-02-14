@@ -197,7 +197,7 @@ def uncompress_blob_gzip_files(src_file, dest_dir):
     return err_msg_list
 
 
-def find_srpm_source(sources:list[dict]):
+def find_srpm_source(sources):
     """
     A shortcut to find the first item in `sources` that has a `purl`
     starting with "pkg:rpm" and contains "arch=src".
