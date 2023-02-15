@@ -103,6 +103,29 @@ DATABASES = {
     }
 }
 
+# cache location settings
+REDIS_CACHE_LOCATION = os.environ.get('REDIS_CACHE_LOCATION',
+                                      'redis://localhost:6379/1')
+
+CACHES = {
+    'default': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': REDIS_CACHE_LOCATION,
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            "CONNECTION_POOL_KWARGS": {"max_connections": 100}
+        },
+    },
+}
+
+REST_FRAMEWORK_EXTENSIONS = {
+    'DEFAULT_CACHE_RESPONSE_TIMEOUT': 60 * 10,
+    'DEFAULT_USE_CACHE': 'default'
+}
+
+RELEASE_LIST_CACHE_TIMEOUT = 60 * 60
+
+RELEASE_RETRIEVE_CACHE_TIMEOUT = 60 * 15
 
 # Password validation
 # https://docs.djangoproject.com/en/3.2/ref/settings/#auth-password-validators

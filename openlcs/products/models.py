@@ -5,8 +5,12 @@ from django.contrib.contenttypes.fields import (
     GenericRelation,
 )
 import koji
-
+from datetime import datetime
 from mptt.models import MPTTModel, TreeForeignKey
+from django.core.cache import cache
+from django.db.models.signals import post_delete, post_save
+import logging
+logger = logging.getLogger(__name__)
 
 
 class Product(models.Model):
@@ -104,6 +108,17 @@ class Release(models.Model):
             component.release_nodes.get_or_create(
                 parent=release_node
             )
+
+
+def sync_release_updated_at(*args, sender=None, instance=None, **kwargs):
+    release_updated_at = datetime.utcnow()
+    logger.info(
+        "sync_release_updated_at at: %s (UTC time)", release_updated_at)
+    cache.set("release_updated_at", release_updated_at)
+
+
+post_save.connect(receiver=sync_release_updated_at, sender=Release)
+post_delete.connect(receiver=sync_release_updated_at, sender=Release)
 
 
 class MpttTreeNodeMixin(MPTTModel):

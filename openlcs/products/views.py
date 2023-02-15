@@ -4,10 +4,25 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.pagination import LimitOffsetPagination
+from rest_framework_extensions.cache.decorators import cache_response
+from rest_framework_extensions.key_constructor.bits import (
+    ListSqlQueryKeyBit,
+    PaginationKeyBit,
+    RetrieveSqlQueryKeyBit
+)
+from rest_framework_extensions.key_constructor.constructors import (
+    DefaultKeyConstructor
+)
+from datetime import datetime
+from django.core.cache import cache
+from rest_framework_extensions.key_constructor.bits import KeyBitBase
 
 from libs.parsers import parse_manifest_file
 from products.models import Release
 from products.serializers import ReleaseSerializer
+from django.conf import settings
+import logging
+logger = logging.getLogger(__name__)
 
 
 class ManifestFileParserView(APIView):
@@ -57,6 +72,35 @@ class ReleaseLimitOffsetPagination(LimitOffsetPagination):
     max_limit = 10
 
 
+class ReleaseUpdatedAtKeyBit(KeyBitBase):
+    """
+    http://chibisov.github.io/drf-extensions/docs/#key-constructors
+    The key: release_updated_at will be updated in redis when the model
+    `Release` saved or deleted, so we get it from cache firstly;
+    If the key does not exist, we prefer to set a new one in cache.
+    """
+    key = "release_updated_at"
+
+    def get_data(self, **kwargs):
+        value = cache.get(self.key, None)
+        if not value:
+            value = datetime.utcnow()
+            cache.set(self.key, value=value)
+        logger.info("ReleaseUpdatedAt: %s (UTC time)", value)
+        return str(value)
+
+
+class ReleaseListKeyConstructor(DefaultKeyConstructor):
+    list_sql = ListSqlQueryKeyBit()
+    pagination = PaginationKeyBit()
+    updated_at = ReleaseUpdatedAtKeyBit()
+
+
+class ReleaseObjectKeyConstructor(DefaultKeyConstructor):
+    retrieve_sql = RetrieveSqlQueryKeyBit()
+    updated_at = ReleaseUpdatedAtKeyBit()
+
+
 class ReleaseViewSet(ModelViewSet):
     """
     API endpoint that allows releases to be viewed.
@@ -65,6 +109,8 @@ class ReleaseViewSet(ModelViewSet):
     serializer_class = ReleaseSerializer
     pagination_class = ReleaseLimitOffsetPagination
 
+    @cache_response(timeout=settings.RELEASE_LIST_CACHE_TIMEOUT,
+                    key_func=ReleaseListKeyConstructor())
     def list(self, request, *args, **kwargs):
         """
         Get a list of product releases.
@@ -98,6 +144,8 @@ class ReleaseViewSet(ModelViewSet):
         """
         return super().list(request, *args, **kwargs)
 
+    @cache_response(timeout=settings.RELEASE_RETRIEVE_CACHE_TIMEOUT,
+                    key_func=ReleaseObjectKeyConstructor())
     def retrieve(self, request, *args, **kwargs):
         """
         Get a specific product release.

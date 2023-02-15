@@ -35,7 +35,9 @@ class ObtainConfigView(generics.RetrieveAPIView):
             'COPYRIGHT_SCANNER',
             'CORGI_API_STAGE',
             'CORGI_API_PROD',
-            'TOKEN_SECRET_KEY'
+            'TOKEN_SECRET_KEY',
+            'RELEASE_LIST_CACHE_TIMEOUT',
+            'RELEASE_RETRIEVE_CACHE_TIMEOUT',
         ]
         for attr_name in allowable_attrs:
             attr = getattr(settings, attr_name, None)
