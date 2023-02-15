@@ -5,19 +5,17 @@ import os
 import re
 import requests
 from requests.exceptions import RequestException, HTTPError
-import sys
 import uuid
 import uvloop
 import concurrent.futures
 from concurrent.futures import ThreadPoolExecutor
 from urllib import parse
 
-
-openlcs_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-if openlcs_dir not in sys.path:
-    sys.path.append(openlcs_dir)
+ openlcs_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+ if openlcs_dir not in sys.path:
+     sys.path.append(openlcs_dir)
 from libs.common import group_components  # noqa: E402
-from libs.common import find_srpm_source
+from libs.common import find_srpm_source  # noqa: E402
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
@@ -45,15 +43,21 @@ class CorgiConnector:
         )
         self.session = requests.Session()
 
-    def get(self, url, query_params=None,
-            excludes=self.default_exclude_fields, timeout=30):
+    def get(self, url, query_params=None, excludes=None, timeout=30):
         if not query_params:
             query_params = {}
+        if excludes is None:
+            excludes = self.default_exclude_fields
         # exclude costly related field queries by default.
         query_params['exclude_fields'] = ','.join(excludes)
-        response = self.session.get(url, params=query_params)
-        response.raise_for_status()
-        return response.json()
+        try:
+            response = self.session.get(
+                url, params=query_params, timeout=timeout)
+            response.raise_for_status()
+            return response.json()
+        except RequestException as e:
+            logger.error("Error during request: %s", e)
+            return None
 
     @staticmethod
     def get_component_flat(data):
@@ -92,8 +96,8 @@ class CorgiConnector:
                             continue
                         else:
                             parent_component = self.get_component_flat(result)
-                            provides = result.get('provides')
-                            for provide in provides:
+                            provide_components = result.get('provides')
+                            for provide in provide_components:
                                 component_links.append(provide.get('link'))
                             break
                 except Exception as e:
@@ -219,7 +223,7 @@ class CorgiConnector:
         if fields is None:
             fields = ["name", "ofuri", "description", "products", "components"]
         data = self.session.get(f"{self.base_url}{route}", params=params,
-                            timeout=10).json()
+                                timeout=10).json()
         # 0 or 1 result for product version name query
         retval = dict()
         if data["count"] > 0:
@@ -271,7 +275,7 @@ class CorgiConnector:
                 return None
             link = find_srpm_source(sources)
             if link:
-                logger.info(f"Querying component: {link}")
+                logger.info("Querying component: %s", link)
                 return self.get(link)
             return None
 
@@ -304,11 +308,11 @@ class CorgiConnector:
                 return None
             link = sources[0].get("link")
             component = self.get(link)
-            logger.debug(f"Binary build {component['nevra']} retrieved.")
+            logger.debug("Binary build %s retrieved.", component['nevra'])
 
-        provides = component.get("provides", [])
-        links = [provide.get("link") for provide in provides]
-        logger.debug(f"List of provides({len(links)}) collected")
+        oci_provides = component.get("provides", [])
+        links = [provide.get("link") for provide in oci_provides]
+        logger.debug("List of provides(%d) collected", len(links))
 
         components_extracted = list()
         with concurrent.futures.ThreadPoolExecutor(
@@ -320,7 +324,7 @@ class CorgiConnector:
             for task in concurrent.futures.as_completed(tasks):
                 result = task.result()
                 components_extracted.append(result)
-                logger.debug(f"Provides {result['nevra']} retrieved.")
+                logger.debug("Provides %s retrieved.", result['nevra'])
         # Remove duplicates
         component_set = set(tuple(c.items()) for c in components_extracted)
         return [dict(c) for c in component_set]
@@ -335,14 +339,15 @@ class CorgiConnector:
             # FIXME: add golang/npm/cargo/pip/maven here.
             raise ValueError("Unsupported type")
 
+
 def main():
     connector = CorgiConnector()
     url = ("https://corgi-stage.prodsec.redhat.com/api/v1/components/"
            "000be063-14ef-4fcc-8e56-397cfc4a0b10")
     component = connector.get(url)
-    logger.debug(f"Component {component['nevra']} retrieved.")
-    provides = connector.get_container_source_components(component)
-    return provides
+    logger.debug("Component %s retrieved.", component['nevra'])
+    return connector.get_container_source_components(component)
+
 
 if __name__ == "__main__":
     provides = main()
