@@ -3,6 +3,7 @@ from rest_framework.parsers import FileUploadParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
+from rest_framework.pagination import LimitOffsetPagination
 
 from libs.parsers import parse_manifest_file
 from products.models import Release
@@ -49,12 +50,20 @@ class ManifestFileParserView(APIView):
             return Response(data=data, status=status.HTTP_200_OK)
 
 
+class ReleaseLimitOffsetPagination(LimitOffsetPagination):
+    default_limit = 5
+    limit_query_param = 'limit'
+    offset_query_param = 'offset'
+    max_limit = 10
+
+
 class ReleaseViewSet(ModelViewSet):
     """
     API endpoint that allows releases to be viewed.
     """
     queryset = Release.objects.all()
     serializer_class = ReleaseSerializer
+    pagination_class = ReleaseLimitOffsetPagination
 
     def list(self, request, *args, **kwargs):
         """
