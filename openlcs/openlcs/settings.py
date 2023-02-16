@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django_celery_beat',
     'django_filters',
     'rest_framework',
     'rest_framework.authtoken',
@@ -159,6 +160,21 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_RESULT_BACKEND = 'db+postgresql://{USER}:{PASSWORD}@{HOST}/{NAME}'.format(**DATABASES.get('default'))    # noqa
 CELERY_TASK_TRACK_STARTED = True
+CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
+CELERY_BEAT_SCHEDULE = {
+    # TODO add periodic task conf
+    # refer to https://docs.celeryq.dev/en/v5.2.7/userguide/periodic-tasks.html#periodic-tasks  # noqa
+
+    # 'test-task': {
+    #     'task': 'openlcsd.flow.periodic_tasks.test_task',
+    #     'schedule': crontab()
+    # },
+    # 'test-task-1': {
+    #     'task': 'openlcsd.flow.periodic_tasks.print_task_id',
+    #     'schedule': crontab()
+    # }
+}
+
 LOGGER_DIR = '/var/log/openlcs/'
 
 LICENSE_SCANNER = 'scancode-toolkit 30.1.0'
