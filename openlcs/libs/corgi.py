@@ -23,7 +23,8 @@ asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.DEBUG)
+# Turn on debug mode if you want more verbose logs
+logging.basicConfig(level=logging.INFO)
 
 
 class CorgiConnector:
@@ -51,7 +52,7 @@ class CorgiConnector:
             query_params = {}
         if excludes is None:
             excludes = self.default_exclude_fields
-        # work around for latencies by excluding costly related field
+        # work around for latencies by excluding costly related fields
         # queries, see also CORGI-482
         query_params['exclude_fields'] = ','.join(excludes)
 
@@ -313,12 +314,14 @@ class CorgiConnector:
         separately. Otherwise the function looks for binary components
         provided by the component and retrieves their corresponding
         source components. The source components are returned as a list.
+        There are chances that after several retries the component retrieval
+        still fails, failed ones are returned as a list of strings.
 
         Args:
         component (dict): The OCI component info
 
         Returns:
-        list: A list of source components found.
+        Tuple: (components found / missings)
         """
         name = component.get("name")
         if name.endswith("-source"):
@@ -353,7 +356,7 @@ class CorgiConnector:
         # Remove duplicates
         component_set = set(tuple(c.items()) for c in components_extracted)
         components = [dict(c) for c in component_set]
-        return (components, list())
+        return (components, list(components_missing))
 
     def get_source_component(self, component):
         component_type = component.get("type")
