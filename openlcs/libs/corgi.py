@@ -5,15 +5,17 @@ import os
 import re
 import requests
 from requests.exceptions import RequestException, HTTPError
+import sys
+import time
 import uuid
 import uvloop
 import concurrent.futures
 from concurrent.futures import ThreadPoolExecutor
 from urllib import parse
 
- openlcs_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
- if openlcs_dir not in sys.path:
-     sys.path.append(openlcs_dir)
+openlcs_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if openlcs_dir not in sys.path:
+    sys.path.append(openlcs_dir)
 from libs.common import group_components  # noqa: E402
 from libs.common import find_srpm_source  # noqa: E402
 
@@ -43,21 +45,32 @@ class CorgiConnector:
         )
         self.session = requests.Session()
 
-    def get(self, url, query_params=None, excludes=None, timeout=30):
+    def get(self, url, query_params=None, excludes=None, timeout=30,
+            max_retries=5, retry_delay=10):
         if not query_params:
             query_params = {}
         if excludes is None:
             excludes = self.default_exclude_fields
-        # exclude costly related field queries by default.
+        # work around for latencies by excluding costly related field
+        # queries, see also CORGI-482
         query_params['exclude_fields'] = ','.join(excludes)
-        try:
-            response = self.session.get(
-                url, params=query_params, timeout=timeout)
-            response.raise_for_status()
-            return response.json()
-        except RequestException as e:
-            logger.error("Error during request: %s", e)
-            return None
+
+        for i in range(max_retries + 1):
+            try:
+                response = self.session.get(
+                    url, params=query_params, timeout=timeout)
+                response.raise_for_status()
+                return response.json()
+            except (RequestException, HTTPError) as e:
+                if i == max_retries:
+                    logger.error(
+                        "Request exception after %d retries: %s", i, e)
+                    return None
+                else:
+                    logger.warning(
+                        "Request exception: %s. Retry after %d seconds...",
+                        e, retry_delay)
+                    time.sleep(retry_delay)
 
     @staticmethod
     def get_component_flat(data):
@@ -268,22 +281,29 @@ class CorgiConnector:
         Returns the source rpm component for `component`
         """
         if component["arch"] == "src":
-            return component
+            return (True, component)
+        sources = component.get("sources")
+        if not sources:
+            # This is not likely to happen since corgi promises
+            # to always have corresponding srpm.
+            return (False, component.get("purl"))
+        link = find_srpm_source(sources)
+        if link:
+            logger.info("Querying component: %s", link)
+            component = self.get(link)
+            return (True, component) if component else (False, link)
         else:
-            sources = component.get("sources")
-            if not sources:
-                return None
-            link = find_srpm_source(sources)
-            if link:
-                logger.info("Querying component: %s", link)
-                return self.get(link)
-            return None
+            return (False, component.get("purl"))
 
     def fetch_component(self, link):
         component = self.get(link)
-        if component.get("type") == "RPM":
-            return self.get_srpm_component(component)
-        return component
+        if component:
+            if component.get("type") == "RPM":
+                return self.get_srpm_component(component)
+            # FIXME: examine what to return for non-rpm components.
+            return (True, component)
+        else:
+            return (False, link)
 
     def get_container_source_components(self, component):
         """
@@ -315,6 +335,7 @@ class CorgiConnector:
         logger.debug("List of provides(%d) collected", len(links))
 
         components_extracted = list()
+        components_missing = set()
         with concurrent.futures.ThreadPoolExecutor(
             max_workers=3
         ) as executor:
@@ -322,12 +343,17 @@ class CorgiConnector:
                 executor.submit(
                     self.fetch_component, link): link for link in links}
             for task in concurrent.futures.as_completed(tasks):
-                result = task.result()
-                components_extracted.append(result)
-                logger.debug("Provides %s retrieved.", result['nevra'])
+                success, result = task.result()
+                if success:
+                    components_extracted.append(result)
+                    logger.debug("Provides %s retrieved.", result['nevra'])
+                else:
+                    components_missing.add(result)
+                    logger.error("Provides %s missing.", result)
         # Remove duplicates
         component_set = set(tuple(c.items()) for c in components_extracted)
-        return [dict(c) for c in component_set]
+        components = [dict(c) for c in component_set]
+        return (components, list())
 
     def get_source_component(self, component):
         component_type = component.get("type")
@@ -338,17 +364,3 @@ class CorgiConnector:
         else:
             # FIXME: add golang/npm/cargo/pip/maven here.
             raise ValueError("Unsupported type")
-
-
-def main():
-    connector = CorgiConnector()
-    url = ("https://corgi-stage.prodsec.redhat.com/api/v1/components/"
-           "000be063-14ef-4fcc-8e56-397cfc4a0b10")
-    component = connector.get(url)
-    logger.debug("Component %s retrieved.", component['nevra'])
-    return connector.get_container_source_components(component)
-
-
-if __name__ == "__main__":
-    provides = main()
-    print("\n".join([c.get("purl") for c in provides]))
