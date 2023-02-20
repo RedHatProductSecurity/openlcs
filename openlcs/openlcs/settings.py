@@ -13,7 +13,9 @@ import os
 import sys
 from pathlib import Path
 
+# from celery.schedules import crontab
 from cryptography.fernet import Fernet
+from datetime import timedelta
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -175,12 +177,18 @@ CELERY_BEAT_SCHEDULE = {
 
     # 'test-task': {
     #     'task': 'openlcsd.flow.periodic_tasks.test_task',
-    #     'schedule': crontab()
+    #     'schedule': crontab(minute='*', hour='*', day_of_week='*',
+    #              day_of_month='*', month_of_year='*')
     # },
     # 'test-task-1': {
     #     'task': 'openlcsd.flow.periodic_tasks.print_task_id',
-    #     'schedule': crontab()
-    # }
+    #     'schedule': timedelta(seconds=1)
+    # },
+    'run_corgi_sync': {
+        'task': 'openlcsd.flow.periodic_tasks.run_corgi_sync',
+        'schedule': timedelta(minutes=3),
+        'kwargs': {'provenance':  'sync_corgi'}
+    }
 }
 
 LOGGER_DIR = '/var/log/openlcs/'

@@ -202,6 +202,8 @@ class ReleaseImportMixin(ImportSerializer):
         component_type = data.get('component_type', None)
         product_release = data.get('product_release')
         parent = data.get('parent', None)
+        component = data.get('component', None)
+        provenance = data.get('provenance')
         if src_dir is not None:
             params['src_dir'] = src_dir
         if component_type is not None:
@@ -210,6 +212,10 @@ class ReleaseImportMixin(ImportSerializer):
             params['parent'] = parent
         if product_release:
             params['product_release'] = product_release
+        if component:
+            params['component'] = component
+        if provenance:
+            params['provenance'] = provenance
         return params
 
 
@@ -239,6 +245,21 @@ class RSImportSerializer(ImportScanOptionsMixin, ReleaseImportMixin):
                  dict(rs_comp=rs_comp, **params))
             )
         return result
+
+
+class ComponentImportSerializer(ImportScanOptionsMixin, ReleaseImportMixin):
+    components = serializers.ListField(child=serializers.DictField())
+    provenance = serializers.CharField(required=True)
+
+    def validate(self, attrs):
+        attrs = super(ComponentImportSerializer, self).validate(attrs)
+        return attrs
+
+    def get_tasks_params(self):
+        params = self.get_task_params()
+        components = self.validated_data.get('components')
+        return [(component.get('nvr'), dict(component=component, **params))
+                for component in components]
 
 
 class ComponentSerializer(serializers.ModelSerializer):

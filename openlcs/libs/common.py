@@ -57,7 +57,9 @@ def uncompress_source_tarball(src_file, dest_dir=None):
 def group_components(components, key=None):
     """ # noqa
     Group by the remote source components.
-    Example of group by 'type':
+    :param components: list, component list.
+    :param key: list, For others, can use  key=['name', 'version'] etc.
+    Example of group by 'type' by default:
     [
         {'name': 'github.com/blang/semver', 'type': "go-package", 'version': 'v3.5.1+incompatible', ...},
         {'name': 'github.com/hashicorp/go-syslog', 'type': "gomod", 'version': 'v1.0.0', ...},
@@ -88,6 +90,39 @@ def group_components(components, key=None):
         for i in items:
             result[key].append(i)
     return dict(result)
+
+
+def ungroup_components(components):
+    """ # noqa
+    Ungroup the components.
+    {
+        'go-package': [
+            {'name': 'github.com/blang/semver', 'type': 'go-package', 'version': 'v3.5.1+incompatible', ...},
+            {'name': 'encoding/csv', 'type': 'go-package', 'version': '', ...}
+        ],
+        'gomod': [
+            {'name': 'github.com/hashicorp/go-syslog', 'type': 'gomod', 'version': 'v1.0.0', ...},
+            {'name': 'github.com/mattn/go-isatty', 'type': 'gomod', 'version': 'v0.0.12', ...}
+        ],
+        'yarn': [
+            {'name': 'tunnel-agent', 'type': 'yarn', 'version': '0.6.0', ...},
+            {'name': 'umd', 'type': 'yarn', 'version': '3.0.3', ...}
+        ]
+    }
+    Result:
+    [
+        {'name': 'github.com/blang/semver', 'type': "go-package", 'version': 'v3.5.1+incompatible', ...},
+        {'name': 'github.com/hashicorp/go-syslog', 'type': "gomod", 'version': 'v1.0.0', ...},
+        {'name': 'encoding/csv', 'type': "go-package", 'version': '', ...},
+        {'name': 'tunnel-agent', 'type': "yarn", 'version': '0.6.0', ...},
+        {'name': 'github.com/mattn/go-isatty', 'type': "gomod", 'version': 'v0.0.12', ...},
+        {'name': 'umd', 'type': "yarn", 'version': '3.0.3', ...},
+    ]
+    """
+    result = []
+    for item in components.values():
+        result.extend(item)
+    return result
 
 
 def compress_source_to_tarball(dest_file, src_dir, remove_source=True):
@@ -222,3 +257,20 @@ def remove_duplicates_from_list_by_key(data, key):
             seen.add(d[key])
             result.append(d)
     return result
+
+
+def run_and_capture(cmd, dest_dir):
+    """
+    Run a command and capture exceptions. This is a blocking call
+    :cmd: str, command string
+    :dest_dir: str, The current directory before the child is executed.
+    :returns: tuple of exitcode, error (or None)
+    :rtype: int, str | None
+    """
+    proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE, cwd=dest_dir)
+    ret_output, error = proc.communicate()
+    ret_code = proc.poll()
+    err_msg = f"Failed to run command {cmd}: {error.decode('utf-8')}" \
+        if ret_code else None
+    return ret_code, err_msg

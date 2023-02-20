@@ -25,7 +25,8 @@ from packages.serializers import (
     NVRImportSerializer,
     PathSerializer,
     RSImportSerializer,
-    SourceSerializer
+    SourceSerializer,
+    ComponentImportSerializer
 )
 from products.models import Product, Release
 from tasks.models import Task
@@ -116,6 +117,7 @@ class SourceViewSet(ModelViewSet):
     serializer_class = SourceSerializer
     nvr_import_serializer = NVRImportSerializer
     rs_import_serializer = RSImportSerializer
+    component_import_serializer = ComponentImportSerializer
     parser_classes = [JSONParser, FileUploadParser]
 
     def list(self, request, *args, **kwargs):
@@ -302,6 +304,8 @@ file first, it should contain the following parameters:
         # Import packages for remote source import.
         elif 'rs_comps' in data:
             serializer = self.rs_import_serializer(data=data)
+        elif 'components' in data:
+            serializer = self.component_import_serializer(data=data)
         else:
             return Response("Missing arguments in request.",
                             status=status.HTTP_400_BAD_REQUEST)

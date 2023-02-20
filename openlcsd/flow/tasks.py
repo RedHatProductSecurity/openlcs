@@ -19,6 +19,8 @@ from openlcsd.celery import app
 from openlcsd.flow.task_wrapper import WorkflowWrapperTask
 from openlcs.libs.common import get_component_name_version_combination
 from openlcs.libs.common import get_nvr_list_from_components
+from openlcs.libs.common import remove_duplicates_from_list_by_key
+from openlcs.libs.common import run_and_capture
 from openlcs.libs.corgi import CorgiConnector
 from openlcs.libs.driver import OpenlcsClient
 from openlcs.libs.kojiconnector import KojiConnector
@@ -85,38 +87,6 @@ def get_config(context, engine):
     engine.logger.info("Worker {}".format(socket.gethostname()))
 
 
-def filter_duplicate_import(context, engine):
-    url = 'check_duplicate_import'
-    cli = context.get('client')
-    component_type = context.get('component_type')
-    build_data = context.get('build', {})
-    data = {
-        'name': build_data.get('name', ''),
-        'version': build_data.get('version', ''),
-        'release': build_data.get('release', ''),
-        'type': component_type,
-        'parent': context.get('parent', ''),
-    }
-    if component_type == 'RPMMOD':
-        data['arch'] = ''
-    else:
-        data['arch'] = build_data.get('arch', 'src')
-    msg = 'Start to check duplicate import for {}'.format(data)
-    engine.logger.info(msg)
-    resp = cli.post(url, data=data)
-    if resp.status_code == 200:
-        results = resp.json()['results']
-        if results:
-            obj_url = results.get('obj_url')
-            if obj_url:
-                task_id = context.get('task_id')
-                msg = 'Found duplicate import for task: {}, \
-                        obj_url: {}'.format(task_id, obj_url)
-                engine.logger.warning(msg)
-                context['duplicate_import'] = True
-    engine.logger.info('Done')
-
-
 def get_build(context, engine):
     """
     Get build from brew/koji.
@@ -127,48 +97,98 @@ def get_build(context, engine):
     @feeds: `build_type`, dict, with keys as build type names and values as
                 type info corresponding to that type.
     """
-    config = context.get('config')
-    rs_comp = context.get('rs_comp')
-    if rs_comp:
-        rs_type = rs_comp.get('type')
-        if rs_type in config.get('RS_TYPES'):
-            context['build_type'] = {rs_type: None}
-            context['build'] = {
-                'name': rs_comp.get('name'),
-                'version': rs_comp.get('version'),
-                'release': rs_comp.get('release'),
-                'summary_license': '',
-                'arch': rs_comp.get('arch'),
-                'type': rs_type,
-            }
+    # Not get build when sync component form Corgi.
+    provenance = context.get('provenance')
+    if provenance and provenance == 'sync_corgi':
+        component = context.get('component')
+        component_type = component.get('type')
+        context['build_type'] = {component_type: None}
+        context['component_type'] = component_type
     else:
-        koji_connector = KojiConnector(config)
-        build = koji_connector.get_build_extended(
-            context.get('package_nvr'),
-            context.get('rpm_nvra')
-        )
-        build_type = koji_connector.get_build_type(build)
-        context['build_type'] = build_type
-        context['build'] = build
-
-    if context.get('component_type'):
-        component_type = context.get('component_type')
-    elif context.get('rs_comp'):
-        component_type = context.get('rs_comp')['type']
-    else:
-        comp_type = list(context['build_type'].keys())[0]
-        if comp_type == 'image':
-            component_type = 'OCI'
-        elif comp_type == 'module':
-            component_type = 'RPMMOD'
+        config = context.get('config')
+        rs_comp = context.get('rs_comp')
+        if rs_comp:
+            rs_type = rs_comp.get('type')
+            if rs_type in config.get('RS_TYPES'):
+                context['build_type'] = {rs_type: None}
+                context['build'] = {
+                    'name': rs_comp.get('name'),
+                    'version': rs_comp.get('version'),
+                    'release': rs_comp.get('release'),
+                    'summary_license': '',
+                    'arch': rs_comp.get('arch'),
+                    'type': rs_type,
+                }
         else:
-            component_type = comp_type.upper()
-    context['component_type'] = component_type
+            koji_connector = KojiConnector(config)
+            build = koji_connector.get_build_extended(
+                context.get('package_nvr'),
+                context.get('rpm_nvra')
+            )
+            build_type = koji_connector.get_build_type(build)
+            context['build_type'] = build_type
+            context['build'] = build
+
+        if context.get('component_type'):
+            component_type = context.get('component_type')
+        elif context.get('rs_comp'):
+            component_type = context.get('rs_comp')['type']
+        else:
+            comp_type = list(context['build_type'].keys())[0]
+            if comp_type == 'image':
+                component_type = 'OCI'
+            elif comp_type == 'module':
+                component_type = 'RPMMOD'
+            else:
+                component_type = comp_type.upper()
+        context['component_type'] = component_type
+
+
+def filter_duplicate_import(context, engine):
+    """
+    Filter duplicate import.
+
+    """
+    url = 'check_duplicate_import'
+    cli = context.get('client')
+    component_type = context.get('component_type')
+    build_data = context.get('build', {})
+    if component := context.get('component'):
+        data = {
+            'name': component.get('name'),
+            'version': component.get('version'),
+            'release': component.get('release'),
+            'type': component.get('type'),
+            'parent': context.get('parent', ''),
+            'arch': component.get('arch')
+        }
+    else:
+        data = {
+            'name': build_data.get('name', ''),
+            'version': build_data.get('version', ''),
+            'release': build_data.get('release', ''),
+            'type': component_type,
+            'parent': context.get('parent', ''),
+            'arch': '' if component_type == 'RPMMOD' else build_data.get(
+                'arch', 'src')
+        }
+    msg = f'Start to check duplicate import for {data}'
+    engine.logger.info(msg)
+    resp = cli.post(url, data=data, timeout=10)
+    if resp.status_code == 200:
+        if results := resp.json().get('results'):
+            if obj_url := results.get('obj_url'):
+                task_id = context.get('task_id')
+                msg = f'Found duplicate import for task: ' \
+                      f'{task_id}, obj_url: {obj_url}'
+                engine.logger.warning(msg)
+                context['duplicate_import'] = True
+    engine.logger.info("Finished checking duplicate import.")
 
 
 def get_source_container_build(context, engine):
     """
-    Get Source container build with brew/koji API.
+    Get source container build with brew/koji API.
     @requires: `config`, configuration from hub server.
     @requires: `build`, dictionary, including meta info with the build.
     @feeds: `build`, dictionary, including meta info with the build of
@@ -220,10 +240,10 @@ def download_source_image(context, engine):
     With normalized parameters, returning an absolute path \
     to which the image is being downloaded.
 
-    @requires: `config`, configuration from hub server. It's not always
-                required.
-    @requires: `client`, to communicate with hub server. It's not always
-                required.
+    @requires: `config`, configuration from hub server.
+                It's not always required.
+    @requires: `client`, to communicate with hub server.
+                It's not always required.
     @feeds: `tmp_src_filepath`, absolute path to the downloaded image.
     """
     tmp_dir = tempfile.mkdtemp(prefix='download_sc_',
@@ -264,24 +284,39 @@ def download_package_archive(context, engine):
     tmp_dir = tempfile.mkdtemp(
         prefix='download_', dir=context.get('tmp_root_dir'))
     config = context.get('config')
-    build = context.get('build')
     koji_connector = KojiConnector(config)
-    build_id = build.get('id')
-    engine.logger.info('Start to download package source from Brew/Koji...')
+    component = context.get('component')
+    if build := context.get('build'):
+        build_id = build.get('id')
+    else:
+        software_build = component.get('software_build') if component else None
+        build_id = software_build.get('build_id')
+    engine.logger.info('Start to download package source...')
     try:
-        koji_connector.download_build_source(build_id, dest_dir=tmp_dir)
+        if build_id:
+            koji_connector.download_build_source(build_id, dest_dir=tmp_dir)
+        else:
+            # For remote source, we should use 'download_url' to
+            # download pacakge archive
+            if download_url := component.get('download_url'):
+                cmd = f'wget -q --show-progress {download_url}'
+                ret_code, err_msg = run_and_capture(cmd, tmp_dir)
+                if ret_code:
+                    raise RuntimeError(err_msg)
+            else:
+                err_msg = "Download URL not exist."
+                raise RuntimeError(err_msg)
     except RuntimeError as err:
-        nvr = build.get('nvr')
-        err_msg = f'Failed to download source for {nvr} in Brew/Koji.' \
-                  f' Reason: {err}'
+        nvr = build.get('nvr') if build else component.get('nvr')
+        err_msg = f'Failed to download source for {nvr} in ' \
+                  f'Brew/Koji/download_url: {err}'
         engine.logger.error(err_msg)
         raise RuntimeError(err_msg) from None
 
     tmp_src_filepath = os.path.join(tmp_dir, os.listdir(tmp_dir)[0])
     context['tmp_src_filepath'] = tmp_src_filepath
 
-    build_type = context.get('build_type')
-    if 'maven' in build_type:
+    if (build_type := context.get('build_type')) and 'maven' in build_type:
         try:
             pom_path = koji_connector.get_pom_pathinfo(
                 build_id=build.get('id'))
@@ -365,7 +400,7 @@ def get_source_metadata(context, engine):
     package = None
     pom_filepath = context.get('tmp_pom_filepath', None)
     try:
-        if 'rpm' in build_type:
+        if 'rpm' in build_type or 'RPM' in build_type:
             packages = RpmArchiveHandler.parse(src_filepath)
             package = next(packages)
         elif 'PYPI' in build_type:
@@ -420,8 +455,7 @@ def get_source_metadata(context, engine):
         context['source_url'] = ''
         context['declared_license'] = ''
 
-    build = context.get('build')
-    context['source_info'] = {
+    source_info = {
         'product_release': context.get('product_release'),
         "source": {
             "checksum": source_checksum,
@@ -429,16 +463,37 @@ def get_source_metadata(context, engine):
             "url": context.get("source_url"),
             "archive_type": list(build_type.keys())[0]
         },
-        "component": {
-            "name": build.get('name'),
-            "version": build.get('version'),
-            "release": build.get('release'),
-            "arch": 'src',
-            "type": context.get('component_type'),
-            "summary_license": context.get("declared_license", ""),
-            "is_source": True
-        }
+
     }
+    if build := context.get('build'):
+        source_info.update(
+            {"component": {
+                "name": build.get('name'),
+                "version": build.get('version'),
+                "release": build.get('release'),
+                "arch": 'src',
+                "type": context.get('component_type'),
+                "summary_license": context.get("declared_license", ""),
+                "is_source": True
+            }}
+        )
+    elif component := context.get('component'):
+        source_info.update(
+            {"component": {
+                "name": component.get('name'),
+                "version": component.get('version'),
+                "release": component.get('release'),
+                "arch": 'src',
+                "type": component.get('type'),
+                "summary_license": context.get("declared_license", ""),
+                "is_source": True
+            }}
+        )
+    else:
+        msg = "Failed to get component information."
+        engine.logger.error(msg)
+        raise RuntimeError(msg)
+    context['source_info'] = source_info
     if source_name == f"{nvr}-metadata":
         context['source_info']['source']['archive_type'] = 'tar'
 
@@ -549,16 +604,21 @@ def prepare_dest_dir(context, engine):
         dest_root = os.path.join(src_root, dir_name)
     else:
         dest_root = context.get('tmp_root_dir')
+    nvr = build.get('nvr') if build else context.get('component').get('nvr')
     if parent:
         dest_root = os.path.join(dest_root, parent)
     if component_type == 'RPM':
-        src_dir = os.path.join(dest_root, build.get('nvr'))
+        src_dir = os.path.join(dest_root, nvr)
     elif component_type in rs_types:
         rs_comp = context.get('rs_comp')
+        component = context.get('component')
+        print('rs_comprs_comprs_comprs_comp: ',rs_comp)
+        print('componentcomponentcomponentcomponent: ', component)
+        rs_comp = rs_comp if rs_comp else component
         rs_nv = get_component_name_version_combination(rs_comp)
         src_dir = os.path.join(dest_root, rs_nv)
     elif component_type == 'OCI' and parent:
-        metadata_dir = build.get('nvr') + '-metadata'
+        metadata_dir = nvr + '-metadata'
         src_dir = os.path.join(dest_root, metadata_dir)
     else:
         src_dir = tempfile.mkdtemp(
@@ -743,17 +803,20 @@ def deduplicate_source(context, engine):
     engine.logger.info("Finished deduplicating source.")
 
 
-def send_package_data(context, engine):
+def save_package_data(context, engine):
     """
     Equivalent of the former "post"/"post_adhoc", which sends/posts
     results to hub. But exclude scan result, they posted in other step.
     """
     url = 'packageimporttransaction'
     cli = context.pop('client')
-    package_nvr = context.get('package_nvr')
-    component = package_nvr if package_nvr else context.get('rs_comp')
-    engine.logger.info(f"Start to send {component} data to hub for further "
-                       f"processing...")
+    if component := context.get('component'):
+        component_nvr = component.get('nvr')
+    else:
+        package_nvr = context('package_nvr')
+        component_nvr = package_nvr if package_nvr else context.get('rs_comp')
+    engine.logger.info(f"Start to send {component_nvr} data to hub for "
+                       f"further processing...")
     # Post data file name instead of post context data
     fd, tmp_file_path = tempfile.mkstemp(prefix='send_package_',
                                          dir=context.get('post_dir'))
@@ -763,19 +826,19 @@ def send_package_data(context, engine):
             'task_id': context.get('task_id')
         }
         json.dump(file_content, destination, cls=DateEncoder)
-    resp = cli.post(url, data={"file_path": tmp_file_path}, timeout=30)
+    resp = cli.post(url, data={"file_path": tmp_file_path}, timeout=60)
     context['client'] = cli
     try:
         # Raise it in case we made a bad request:
         # http://docs.python-requests.org/en/master/user/quickstart/#response-status-codes  # noqa
         resp.raise_for_status()
     except HTTPError:
-        err_msg = f"Failed to save {component} data to db: {resp.text}"
+        err_msg = f"Failed to save {component_nvr} data to db: {resp.text}"
         engine.logger.error(err_msg)
         raise RuntimeError(err_msg) from None
     finally:
         os.remove(tmp_file_path)
-    engine.logger.info(f"Finished saving {component} data to database.")
+    engine.logger.info(f"Finished saving {component_nvr} data to database.")
 
 
 def license_scan(context, engine):
@@ -851,9 +914,12 @@ def save_scan_result(context, engine):
         return
     url = 'savescanresult'
     cli = context.pop('client')
-    package_nvr = context.get('package_nvr')
-    component = package_nvr if package_nvr else context.get('rs_comp')
-    engine.logger.info(f"Start to send {component} scan result to hub for "
+    if component := context.get('component'):
+        component_nvr = component.get('nvr')
+    else:
+        package_nvr = context.get('package_nvr')
+        component_nvr = package_nvr if package_nvr else context.get('rs_comp')
+    engine.logger.info(f"Start to send {component_nvr} scan result to hub for "
                        f"further processing...")
 
     fd, tmp_file_path = tempfile.mkstemp(prefix='scan_result_',
@@ -865,7 +931,7 @@ def save_scan_result(context, engine):
         err_msg = f"Failed to create scan result file: {e}"
         engine.logger.error(err_msg)
         raise RuntimeError(err_msg) from None
-    resp = cli.post(url, data={"file_path": tmp_file_path})
+    resp = cli.post(url, data={"file_path": tmp_file_path}, timeout=60)
     context['client'] = cli
     try:
         resp.raise_for_status()
@@ -876,6 +942,18 @@ def save_scan_result(context, engine):
     finally:
         os.remove(tmp_file_path)
     engine.logger.info("Finished saving scan result to database.")
+
+
+def get_source_components(context, engine):
+    component = context.get("component")
+    connector = CorgiConnector()
+    components, components_missing = connector.get_source_component(component)
+    if components_missing:
+        context['components_missing'] = components_missing
+        msg = f'Failed to sync these component(s) data from Corgi: ' \
+              f'{components_missing}'
+        engine.logger.warning(msg)
+    context["components"] = components
 
 
 def get_container_components(context, engine):
@@ -1084,7 +1162,8 @@ def fork_specified_type_imports(
     engine.logger.info('Done')
 
 
-def fork_remote_source_components_imports(context, engine, rs_comps, src_dir):
+def fork_remote_source_components_imports(
+        context, engine, rs_comps, src_dir=None):
     """
     In a source container, it has different type of component. The different
     components have different src_dir. This function will be defined the post
@@ -1094,7 +1173,6 @@ def fork_remote_source_components_imports(context, engine, rs_comps, src_dir):
     url = '/sources/import/'
     data = {
         'parent': context.get('package_nvr'),
-        'src_dir': src_dir,
         'rs_comps': rs_comps,
         'license_scan': context.get('license_scan'),
         'copyright_scan': context.get('copyright_scan'),
@@ -1105,6 +1183,10 @@ def fork_remote_source_components_imports(context, engine, rs_comps, src_dir):
         ),
         'token_sk': context['config']['TOKEN_SECRET_KEY']
     }
+    # Fork remote source tasks for source container that
+    # downloaded src in src_dir
+    if src_dir:
+        data.update({'src_dir': src_dir})
     msg = 'Start to fork imports for {} remote source components...'.format(
         len(rs_comps))
     engine.logger.info(msg)
@@ -1118,37 +1200,73 @@ def fork_remote_source_components_imports(context, engine, rs_comps, src_dir):
     engine.logger.info('Done')
 
 
-def fork_components_imports(context, engine):
+def fork_components_imports(context, engine, parent, components):
+    """
+    Fork tasks for components import
+    """
+    cli = context.get('client')
+    url = '/sources/import/'
+    data = {
+        'components': components,
+        'license_scan': context.get('license_scan', True),
+        'copyright_scan': context.get('copyright_scan', True),
+        'parent_task_id': context.get('task_id'),
+        'token': encrypt_with_secret_key(
+            cli.headers['Authorization'].split()[-1],
+            context['config']['TOKEN_SECRET_KEY']
+        ),
+        'token_sk': context['config']['TOKEN_SECRET_KEY'],
+        'provenance': context.get('provenance')
+    }
+    if parent:
+        data['parent'] = parent
+    msg = 'Start to fork imports for {} original components...'.format(
+        len(components))
+    engine.logger.info(msg)
+    cli.post(url, data=data)
+    components_string = "\n\t".join([component.get('nvr')
+                                     for component in components])
+    msg = '-- Forked import tasks for original components:{}'.format(
+            "\n\t" + components_string)
+    engine.logger.info(msg)
+    engine.logger.info('Done')
+
+
+def fork_imports(context, engine):
     """
     Fork components tasks
     """
     components = context.get('components')
-    srpm_nvr_list = get_nvr_list_from_components(components, 'RPM')
-    # Fork rpm tasks for module or container
-    if srpm_nvr_list:
-        fork_specified_type_imports(
-            context, engine, srpm_nvr_list, 'RPM', context.get('srpm_dir'))
+    if context.get('provenance') == 'sync_corgi':
+        parent = context.get('component').get('uuid')
+        fork_components_imports(context, engine, parent, components)
+    else:
+        srpm_nvr_list = get_nvr_list_from_components(components, 'RPM')
+        # Fork rpm tasks for module or container
+        if srpm_nvr_list:
+            fork_specified_type_imports(
+                context, engine, srpm_nvr_list, 'RPM', context.get('srpm_dir'))
 
-    # Fork container-component tasks with the misc metadata files.
-    if components.get('OCI'):
-        fork_specified_type_imports(
-            context, engine, [context.get('package_nvr')],
-            'OCI', context.get('misc_dir'))
+        # Fork container-component tasks with the misc metadata files.
+        if components.get('OCI'):
+            fork_specified_type_imports(
+                context, engine, [context.get('package_nvr')],
+                'OCI', context.get('misc_dir'))
 
-    # Fork remote source component tasks.
-    config = context.get('config')
-    rs_comps = []
-    for comp_type in config.get('RS_TYPES'):
-        comps = components.get(comp_type)
-        if comps:
-            rs_comps.extend(comps)
-    missing_components = context.get('missing_components')
-    if missing_components:
-        rs_comps = [rs_comp for rs_comp in rs_comps
-                    if rs_comp not in missing_components]
-    if rs_comps:
-        fork_remote_source_components_imports(
-            context, engine, rs_comps, context.get('rs_dir'))
+        # Fork remote source component tasks.
+        config = context.get('config')
+        rs_comps = []
+        for comp_type in config.get('RS_TYPES'):
+            comps = components.get(comp_type)
+            if comps:
+                rs_comps.extend(comps)
+        missing_components = context.get('missing_components')
+        if missing_components:
+            rs_comps = [rs_comp for rs_comp in rs_comps
+                        if rs_comp not in missing_components]
+        if rs_comps:
+            fork_remote_source_components_imports(
+                context, engine, rs_comps, context.get('rs_dir'))
 
 
 flow_default = [
@@ -1161,49 +1279,59 @@ flow_default = [
         [
             # Different workflows could be used for different build types
             IF_ELSE(
-                lambda o, e: \
-                'image' in o.get('build_type') and not o.get('parent'),
-                # Task flow for image build
+                lambda o, e: o.get('provenance') == 'sync_corgi' and (
+                        'OCI' in o.get('build_type') or 'RPMMOD' in o.get(
+                        'build_type')),
+                # Work flow for sync with Corgi OCI/RPMMOD component
                 [
-                    get_source_container_build,
-                    download_source_image,
-                    unpack_container_source_archive,
-                    get_container_components,
-                    save_components,
-                    get_container_remote_source,
-                    fork_components_imports,
+                    get_source_components,
+                    fork_imports,
                 ],
                 [
                     IF_ELSE(
-                        lambda o, e: 'module' in o.get('build_type'),
-                        # Task flow for module
+                        lambda o, e: 'image' in o.get('build_type'),
+                        # Work flow for import container build
                         [
-                            get_module_components_from_brew,
+                            get_source_container_build,
+                            download_source_image,
+                            unpack_container_source_archive,
+                            get_container_components,
                             save_components,
-                            fork_components_imports,
+                            get_container_remote_source,
+                            fork_imports,
                         ],
-                        # Task flow for source scan
                         [
-                            download_component_source,
-                            get_source_metadata,
-                            check_source_scan_status,
-                            IF(
-                                lambda o, e: not o.get("source_scanned"),
+                            IF_ELSE(
+                                lambda o, e: 'module' in o.get('build_type'),
+                                # Work flow for import module build
                                 [
-                                    unpack_source,
-                                    deduplicate_source,
-                                    send_package_data,
-                                    IF(
-                                        lambda o, e: o.get('license_scan_req'),
-                                        license_scan,
-                                    ),
-                                    IF(
-                                        lambda o, e: \
-                                        o.get('copyright_scan_req'),
-                                        copyright_scan,
-                                    ),
-                                    save_scan_result,
+                                    get_module_components_from_brew,
+                                    save_components,
+                                    fork_imports,
                                 ],
+                                # Work flow for scan component source
+                                [
+                                    download_component_source,
+                                    get_source_metadata,
+                                    check_source_scan_status,
+                                    IF(
+                                        lambda o, e: not o.get("source_scanned"), # noqa
+                                        [
+                                            unpack_source,
+                                            deduplicate_source,
+                                            save_package_data,
+                                            IF(
+                                                lambda o, e: o.get('license_scan_req'), # noqa
+                                                license_scan,
+                                            ),
+                                            IF(
+                                                lambda o, e: o.get('copyright_scan_req'), # noqa
+                                                copyright_scan,
+                                            ),
+                                            save_scan_result,
+                                        ],
+                                    )
+                                ]
                             )
                         ]
                     )
@@ -1319,16 +1447,57 @@ def translate_components(context, engine):
     """
     Accept list of raw components, translate into OLCS-recoginzable inputs.
     """
-    print(f"task id: {context['task_id']}")
-    context["components"] = list()
+    with open('/root/work/openlcs_mac/openlcs/sample.json', encoding='utf-8') as f:
+        context["source_components"] = json.load(f)
+    corgi_sources = []
+    single_components = []
+    component_keys = ['uuid', 'type', 'nvr', 'name', 'version', 'release',
+                      'arch', 'software_build', 'download_url']
+    source_components = context.get('source_components')
+    for source_component in source_components:
+        sources = source_component.get('sources')
+        for source in sources:
+            source_type = source.get('type')
+            if source_type in ['OCI', 'RPMMOD']:
+                olcs_sources = source.get('olcs_sources')
+                corgi_source = {
+                    'parent': {key: source.get(key) for key in component_keys},
+                    'components': [
+                        {key: olcs_source.get(key) for key in component_keys}
+                        for olcs_source in olcs_sources]
+                }
+                corgi_sources.append(corgi_source)
+            else:
+                single_components.append(
+                    {key: source.get(key) for key in component_keys})
+
+    single_components = remove_duplicates_from_list_by_key(
+        single_components, 'uuid')
+    corgi_sources.append({'parent': {}, 'components': single_components})
+    context['corgi_sources'] = corgi_sources
+
+
+def trigger_corgi_components_inputs(context, engine):
+    """
+    Trigger fork tasks directly using Corgi source.
+    """
+    corgi_sources = context.get('corgi_sources')
+    for corgi_source in corgi_sources:
+        if parent := corgi_source.get('parent'):
+            parent_uuid = parent.get('uuid')
+        else:
+            parent_uuid = None
+        fork_components_imports(context, engine, parent_uuid,
+                                corgi_source.get('components'))
 
 
 flow_get_corgi_components = [
     get_config,
-    get_active_subscriptions,
-    collect_components,
+    #get_active_subscriptions,
+    #collect_components,
     # populate_subscription_purls,
-    # translate_components,
+    translate_components,
+    trigger_corgi_components_inputs
 ]
 
 

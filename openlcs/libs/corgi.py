@@ -6,6 +6,7 @@ import re
 import requests
 from requests.exceptions import RequestException, HTTPError
 import sys
+import subprocess
 import time
 import uuid
 import uvloop
@@ -47,8 +48,8 @@ class CorgiConnector:
         )
         self.session = requests.Session()
 
-    def get(self, url, query_params=None, excludes=None, timeout=30,
-            max_retries=5, retry_delay=10):
+    def get(self, url, query_params=None, includes=None, excludes=None,
+            timeout=30, max_retries=5, retry_delay=10):
         if not query_params:
             query_params = {}
         if excludes is None:
@@ -56,7 +57,10 @@ class CorgiConnector:
         # work around for latencies by excluding costly related fields
         # queries, see also CORGI-482
         query_params['exclude_fields'] = ','.join(excludes)
-
+        # "includes" and "exclude" are mutually exclusive, only one can work.
+        if includes:
+            del query_params['exclude_fields']
+            query_params['include_fields'] = includes
         for i in range(max_retries + 1):
             try:
                 response = self.session.get(
@@ -95,26 +99,18 @@ class CorgiConnector:
         component_links = []
         parent_component = {}
         if nvr:
-            params = {'type': component_type, 'nvr': nvr}
+            params = {'type': component_type, 'nvr': nvr, 'arch': 'x86_64'}
             response = self.session.get(
                 f"{self.base_url}{route}", params=params, timeout=10)
             if response.status_code == 200:
                 try:
                     results = response.json().get('results')
                     for result in results:
-                        # This part is only for contianer, won't share this
-                        # condition with Module
-                        # Currently, we only need arch='src' components.
-
-                        if result.get('arch') != 'src' and\
-                                component_type == "OCI":
-                            continue
-                        else:
-                            parent_component = self.get_component_flat(result)
-                            provide_components = result.get('provides')
-                            for provide in provide_components:
-                                component_links.append(provide.get('link'))
-                            break
+                        parent_component = self.get_component_flat(result)
+                        provide_components = result.get('provides')
+                        for provide in provide_components:
+                            component_links.append(provide.get('link'))
+                        break
                 except Exception as e:
                     raise RuntimeError(e) from None
         else:
@@ -325,7 +321,7 @@ class CorgiConnector:
         Extract source components from a corgi container component
 
         If the name of the component ends with "-source", it will be handled
-        separately. Otherwise the function looks for binary components
+        separately. Otherwise, the function looks for binary components
         provided by the component and retrieves their corresponding
         source components. The source components are returned as a list.
         There are chances that after several retries the component retrieval
@@ -380,3 +376,19 @@ class CorgiConnector:
             return self.get_container_source_components(component)
         else:
             return (True, component)
+
+    def get_component_instance_from_nvr(self, nvr):
+        params = {'nvr': nvr}
+        response = self.session.get(
+            f"{self.base_url}components", params=params, timeout=10)
+        if response.status_code == 200:
+            if results := response.json().get('results'):
+                if len(results) == 1:
+                    return results[0].get('link')
+                else:
+                    for result in results:
+                        if result.get('arch') == 'x86_64':
+                            return result.get('link')
+
+        err_msg = f"Failed to find {nvr} component instance from Corgi."
+        raise ValueError(err_msg)
