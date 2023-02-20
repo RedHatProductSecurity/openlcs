@@ -1227,6 +1227,39 @@ flow_retry = [
 ]
 
 
+def get_active_subscriptions(context, engine):
+    """
+    Returns list of active subscriptions
+    """
+    subscriptions = list()
+    context["subscriptions"] = subscriptions
+
+
+def collect_components(context, engine):
+    """
+    Accept a list of subscriptions, and collect needed components
+
+    Requires: list of subscriptions
+    feeds: list of components
+    """
+    subscriptions = context.get("subscriptions")
+
+
+def translate_components(context, engine):
+    """
+    Accept list of raw components, translate into OLCS-recoginzable inputs.
+    """
+    print(f"task id: context['task_id']")
+    context["components"] = list()
+
+
+flow_get_corgi_components = [
+    get_active_subscriptions,
+    collect_components,
+    translate_components,
+]
+
+
 def register_task_flow(name, flow, **kwargs):
     @app.task(name=name, bind=True, base=WorkflowWrapperTask, **kwargs)
     def task(self, *args):
@@ -1245,3 +1278,5 @@ def register_task_flow(name, flow, **kwargs):
 
 register_task_flow('flow.tasks.flow_default', flow_default)
 register_task_flow('flow.tasks.flow_retry', flow_retry)
+register_task_flow('flow.tasks.flow_get_corgi_components',
+                   flow_get_corgi_components)
