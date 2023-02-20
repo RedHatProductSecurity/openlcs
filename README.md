@@ -95,11 +95,20 @@ auto reloading) using the following under openlcs_project_path:
 gunicorn openlcs.wsgi
 # or
 openlcs/manage.py runserver 0:8000
+# or
+openlcs/manage.py runserver host_server_ip:8000
 ```
+
+Hint：If you run OpenLCS in remote server, need do the following steps:
+- Change the `hostname` in `conf.cfg` to correct IP address
+- Add `HOSTNAME(correct IP address)`, `REST_API_PATH` and `BROWSABLE_DOCUMENT_MACROS` in `settings_local.py`
+
 ```text
 It can be accessed on http://localhost:8000/ or http://host_server_ip:8000/.
-You can log in by going to http://127.0.0.1:8000/admin/login/,
+You can log in by going to http://127.0.0.1:8000/admin/login/ or http://host_server_ip:8000/admin/login/,
 and using the account you set up in the previous section (user `admin`, password `test`).
+You can check the restful API by going to http://127.0.0.1:8000/rest/v1/ or http://host_server_ip:8000/rest/v1/,
+but need login to the server firstly.
 ```
 
 ### Running OpenLCS worker
