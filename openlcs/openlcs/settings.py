@@ -241,7 +241,7 @@ SRC_ROOT_DIR = '/srv/git/repos/openlcs'
 
 # The root directory for remote source package source tarball import
 RS_SRC_ROOT_DIR = os.path.join(SRC_ROOT_DIR, 'remote_source')
-RS_TYPES = ['GOLANG', 'NPM', 'YARN', 'PYPI']
+RS_TYPES = ['GOLANG', 'NPM', 'YARN', 'PYPI', 'CARGO']
 
 # The root directory for package source tarball for package import retry
 RETRY_DIR = os.path.join(SRC_ROOT_DIR, 'retry')
