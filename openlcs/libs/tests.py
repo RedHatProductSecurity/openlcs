@@ -12,7 +12,7 @@ from django.conf import settings
 
 from libs.corgi import CorgiConnector
 from libs.kojiconnector import KojiConnector
-from libs.metadata import GolangMeta, NpmMeta
+from libs.metadata import GolangMeta, NpmMeta, CargoMeta
 from packagedcode.maven import MavenPomXmlHandler
 from packagedcode.pypi import PypiSdistArchiveHandler
 from libs.parsers import parse_manifest_file
@@ -487,6 +487,7 @@ class TestParseMetadata(TestCase):
         self.golang_tarball = testdata_root / 'golang/v1.3.1.zip'
         self.yarn_tarball = testdata_root / 'yarn/json5-2.1.3.tgz'
         self.maven_pomfile = testdata_root / 'maven/xmltool-3.3.pom'
+        self.cargo_tarball = testdata_root / 'cargo/netavark-1.4.0.tgz'
 
     def test_pypi(self):
         packages = PypiSdistArchiveHandler.parse(str(self.pypi_tarball))
@@ -556,6 +557,14 @@ class TestParseMetadata(TestCase):
         self.assertEqual(
             package.homepage_url, "http://code.mycila.com/"
         )
+
+    def test_cargo(self):
+        parser = CargoMeta(self.cargo_tarball)
+        package = parser.parse_metadata()
+        self.assertEqual(
+            package.homepage_url, "https://github.com/containers/netavark"
+        )
+        self.assertEqual(package.declared_license, 'Apache-2.0')
 
 
 class TestGetTaskRepository(TestCase):

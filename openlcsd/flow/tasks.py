@@ -23,6 +23,7 @@ from openlcs.libs.corgi import CorgiConnector
 from openlcs.libs.driver import OpenlcsClient
 from openlcs.libs.kojiconnector import KojiConnector
 from openlcs.libs.logger import get_task_logger
+from openlcs.libs.metadata import CargoMeta
 from openlcs.libs.metadata import GolangMeta
 from openlcs.libs.metadata import NpmMeta
 from openlcs.libs.parsers import sha256sum
@@ -383,10 +384,16 @@ def get_source_metadata(context, engine):
                 package = None
             else:
                 package = retval
+        elif 'CARGO' in build_type:
+            retval = CargoMeta(src_filepath).parse_metadata()
+            if isinstance(retval, str):
+                engine.logger.warning(f"Failed to get metadata: {retval}")
+                package = None
+            else:
+                package = retval
         elif pom_filepath is not None:
             packages = MavenPomXmlHandler.parse(pom_filepath)
             package = next(packages)
-        # TODO: Add support for other package types, e.g., CARGO, RUBYGEMS.
     except Exception as e:
         engine.logger.warning(str(e))
 

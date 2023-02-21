@@ -8,6 +8,7 @@ import zipfile
 
 from packagedcode.golang import GoModHandler
 from packagedcode.npm import NpmPackageJsonHandler
+from packagedcode.cargo import CargoTomlHandler
 
 
 class MetaBase:
@@ -18,6 +19,7 @@ class MetaBase:
     def __init__(self, source_tarball):
         self.tarball = source_tarball
         self.extensions = None
+        self.metafile = None
 
     def _validate_tarball(self):
         if not os.path.exists(self.tarball):
@@ -32,14 +34,40 @@ class MetaBase:
         basename = os.path.basename(self.tarball)
         return tempfile.mkdtemp(prefix=f"{basename}_meta_")
 
-    def extract_metafile(self):
-        raise NotImplementedError
+    def extract_metafile_from_tgz(self):
+        if self.metafile is None:
+            return None
+        else:
+            temp_dir = self._create_temp_meta_dir()
+            found = False
+            with tarfile.open(self.tarball, "r:gz") as tf:
+                for member in tf.getmembers():
+                    if member.name.endswith(self.metafile):
+                        found = True
+                        tf.extract(member, temp_dir)
+                        break
+            return temp_dir if found else None
+
+    def extract_metafile_from_zip(self):
+        if self.metafile is None:
+            return None
+        else:
+            temp_dir = self._create_temp_meta_dir()
+            found = False
+            with zipfile.ZipFile(self.tarball) as zf:
+                for name in zf.namelist():
+                    if name.endswith(self.metafile):
+                        found = True
+                        zf.extract(name, temp_dir)
+                        break
+            return temp_dir if found else None
 
 
 class NpmMeta(MetaBase):
     def __init__(self, source_tarball):
         super().__init__(source_tarball)
         self.metafile = "package.json"
+        # The default npm package archive is .tgz
         self.extensions = (".tgz",)
 
     def get_metadata(self, filepath):
@@ -51,18 +79,6 @@ class NpmMeta(MetaBase):
         packages = NpmPackageJsonHandler.parse(filepath)
         return next(packages)
 
-    def extract_metafile(self):
-        temp_dir = self._create_temp_meta_dir()
-        # the default npm package archive is .tgz
-        found = False
-        with tarfile.open(self.tarball, "r:gz") as tf:
-            for member in tf.getmembers():
-                if member.name.endswith(self.metafile):
-                    found = True
-                    tf.extract(member, temp_dir)
-                    break
-        return temp_dir if found else None
-
     def parse_metadata(self):
         """
         Returns a packagedcode "PackageData" instance when succeed,
@@ -72,7 +88,7 @@ class NpmMeta(MetaBase):
         if result == self.FAILURE:
             return message
         try:
-            package_json_dir = self.extract_metafile()
+            package_json_dir = self.extract_metafile_from_tgz()
             if package_json_dir is not None:
                 package_json_filepath = os.path.join(
                     package_json_dir, f"package/{self.metafile}"
@@ -91,19 +107,8 @@ class GolangMeta(MetaBase):
     def __init__(self, source_tarball):
         super().__init__(source_tarball)
         self.metafile = "go.mod"
-        self.extensions = (".zip",)
-
-    def extract_metafile(self):
-        temp_dir = self._create_temp_meta_dir()
         # The default golang package archive is .zip
-        found = False
-        with zipfile.ZipFile(self.tarball) as zf:
-            for name in zf.namelist():
-                if name.endswith(self.metafile):
-                    found = True
-                    zf.extract(name, temp_dir)
-                    break
-        return temp_dir if found else None
+        self.extensions = (".zip",)
 
     def get_metafile_path(self, meta_dir):
         for path in glob.glob(f"{meta_dir}/**/{self.metafile}",
@@ -119,11 +124,51 @@ class GolangMeta(MetaBase):
         if result == self.FAILURE:
             return message
         try:
-            meta_dir = self.extract_metafile()
+            meta_dir = self.extract_metafile_from_zip()
             if meta_dir is not None:
                 meta_filepath = self.get_metafile_path(meta_dir)
                 packages = GoModHandler.parse(meta_filepath)
                 return next(packages)
+            else:
+                return None
+        except StopIteration:
+            return None
+        finally:
+            if meta_dir is not None:
+                shutil.rmtree(meta_dir)
+
+
+class CargoMeta(MetaBase):
+    def __init__(self, source_tarball):
+        super().__init__(source_tarball)
+        self.metafile = "Cargo.toml"
+        # The tarball extension in source container needs more checking
+        # see OLCS-403
+        self.extensions = (".tgz",)
+
+    def get_metadata(self, filepath):
+        """
+        Accept the package manifest filepath, returns a PackageData,
+        None in case nothing is found.
+        """
+        packages = CargoTomlHandler.parse(filepath)
+        return next(packages)
+
+    def parse_metadata(self):
+        """
+        Returns a packagedcode "PackageData" instance when succeed,
+        or a string(error message) string in case of failures.
+        """
+        result, message = self._validate_tarball()
+        if result == self.FAILURE:
+            return message
+        try:
+            meta_dir = self.extract_metafile_from_tgz()
+            if meta_dir is not None:
+                # Package root is where the Cargo.toml located.
+                metafile_path = os.path.join(
+                        meta_dir, os.listdir(meta_dir)[0], f"{self.metafile}")
+                return self.get_metadata(metafile_path)
             else:
                 return None
         except StopIteration:
