@@ -46,7 +46,7 @@ class Command(BaseCommand):
             day_of_month='*',
             month_of_year='*'
         )
-        periodic_task, created = PeriodicTask.objects.update_or_create(
+        _, created = PeriodicTask.objects.update_or_create(
             name=module_name,
             task=module_name,
             defaults={

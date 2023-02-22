@@ -109,7 +109,7 @@ class OpenlcsClient(object):
     def get(self, url, params=None):
         abs_url = self.get_abs_url(url)
         return self.session.get(abs_url, headers=self.headers,
-                            params=params, timeout=10)
+                                params=params, timeout=10)
 
     def get_paginated_data(self, url, query_params=None):
         """
@@ -135,7 +135,8 @@ class OpenlcsClient(object):
                 yield from data["results"]
                 url = data.get("next")
             except (HTTPError, RequestException):
-                raise
+                # FIXME: fail silently is not ideal
+                break
 
     def post(self, url, data, timeout=10):
         abs_url = self.get_abs_url(url)
