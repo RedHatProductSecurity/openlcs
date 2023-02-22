@@ -1,6 +1,7 @@
 import os
 import json
 import requests
+from requests.exceptions import RequestException, HTTPError
 import configparser
 import subprocess
 import ast
@@ -21,6 +22,7 @@ class OpenlcsClient(object):
     """
 
     def __init__(self, task_id=None, token=None, token_sk=None):
+        self.session = requests.Session()
         config = configparser.ConfigParser(os.environ, allow_no_value=True)
         try:
             with open(config_file, encoding='utf8') as configfile:
@@ -98,14 +100,42 @@ class OpenlcsClient(object):
         }
         self.task_id = task_id
 
-    def get_abs_url(self, url):
-        sep = "/"
+    def get_abs_url(self, url, sep="/"):
+        # avoid recursive concatenations
+        if self.api_url_prefix in url:
+            return url
         return sep.join(s.strip(sep) for s in [self.api_url_prefix, url]) + sep
 
     def get(self, url, params=None):
         abs_url = self.get_abs_url(url)
-        return requests.get(abs_url, headers=self.headers,
+        return self.session.get(abs_url, headers=self.headers,
                             params=params, timeout=10)
+
+    def get_paginated_data(self, url, query_params=None):
+        """
+        Retrieves paginated data from `url`.
+
+        The implementation assumes that the API endpoint returns paginated
+        data with following form:
+        {
+            "previous": url of the previous page (if any),
+            "next": url of the next page (if any),
+            "results": a list of data
+        }
+
+        :param url: the path of the API endpoint
+        :param query_params: a dictionary of query parameters.
+        :return: yields each page of data as a list
+        """
+        while url:
+            try:
+                response = self.get(url, params=query_params)
+                response.raise_for_status()
+                data = response.json()
+                yield from data["results"]
+                url = data.get("next")
+            except (HTTPError, RequestException):
+                raise
 
     def post(self, url, data, timeout=10):
         abs_url = self.get_abs_url(url)
@@ -115,7 +145,7 @@ class OpenlcsClient(object):
 
         def date_handler(obj):
             return obj.isoformat() if hasattr(obj, 'isoformat') else obj
-        return requests.post(
+        return self.session.post(
             abs_url, headers=self.headers, data=json.dumps(
                 data, default=date_handler), timeout=timeout)
 
@@ -127,6 +157,6 @@ class OpenlcsClient(object):
 
         def date_handler(obj):
             return obj.isoformat() if hasattr(obj, 'isoformat') else obj
-        return requests.patch(
+        return self.session.patch(
             abs_url, headers=self.headers, data=json.dumps(
                 data, default=date_handler), timeout=10)
