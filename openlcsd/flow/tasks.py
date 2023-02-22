@@ -1247,9 +1247,75 @@ def collect_components(context, engine):
     Accept a list of subscriptions, and collect needed components
 
     Requires: list of subscriptions
-    feeds: list of components
+    feeds: source_components
+
+    source_components are with below form:
     """
-    subscriptions = context.get("subscriptions")
+    subscriptions = context.get("subscriptions", [])
+    # FIXME: switch to corgi-prod after CORGI-482 is fixed.
+    api_endpoint = os.getenv("CORGI_API_STAGE")
+    connector = CorgiConnector(base_url=api_endpoint)
+    source_components = []
+
+    def process_component(component):
+        purl = component.get("purl")
+        sources = []
+        missings = []
+        component_type = component.get("type")
+        if component_type in ["OCI", "RPMMOD"]:
+            found, retval = connector.get_source_component(component)
+            component["source_components"] = found
+            sources.append(component)
+            missings.extend(retval)
+        else:
+            found, src_component = connector.get_source_component(component)
+            if found:
+                sources.append(src_component)
+            else:
+                missings.append(src_component)
+
+        return (purl, {"sources": sources, "missings": missings})
+
+    for subscription in subscriptions:
+        query_params = subscription.get("query_params")
+        if not query_params:
+            continue
+
+        components = connector.get_paginated_data(query_params)
+        sub = {subscription["id"]: {}}
+        purls, sources, missings = [], [], []
+
+        for component in components:
+            purl, component_data = process_component(component)
+            purls.append(purl)
+            sources.extend(component_data["sources"])
+            missings.extend(component_data["missings"])
+
+        sub[subscription["id"]] = {
+            "purls": purls,
+            "sources": sources,
+            "missings": missings
+        }
+        source_components.append(sub)
+
+    context["source_components"] = source_components
+
+
+def populate_subscription_purls(context, engine):
+    """
+    @requires: source_components
+    @requires: client
+    @feeds: None
+    """
+    source_components = context["source_components"]
+    for source_component in source_components:
+        for sid, data in source_component.items():
+            purls = data.get("purls")
+            if purls:
+                # FIXME: update `component_purls` to latest
+                # FIXME: find delta components and skip those already processed
+                # client.patch(f"subscriptions/{sid}", purls)
+                engine.logger.debug(f"Subscription id: {sid}")
 
 
 def translate_components(context, engine):
@@ -1264,6 +1330,7 @@ flow_get_corgi_components = [
     get_config,
     get_active_subscriptions,
     collect_components,
+    populate_subscription_purls,
     translate_components,
 ]
 
