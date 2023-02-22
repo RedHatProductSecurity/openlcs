@@ -1254,6 +1254,7 @@ def translate_components(context, engine):
 
 
 flow_get_corgi_components = [
+    get_config,
     get_active_subscriptions,
     collect_components,
     translate_components,
