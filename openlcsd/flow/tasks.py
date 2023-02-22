@@ -1230,8 +1230,15 @@ flow_retry = [
 def get_active_subscriptions(context, engine):
     """
     Returns list of active subscriptions
+    @requires: client
+    @feeds: subscriptions: list of subscriptions
     """
     subscriptions = list()
+    client = context['client']
+    for subscription in client.get_paginated_data("subscriptions"):
+        subscriptions.append(subscription)
+        engine.logger.debug(f"{subscription['name']} retrieved!")
+    engine.logger.info(f"Collected {len(subscriptions)} subscriptions!")
     context["subscriptions"] = subscriptions
 
 
@@ -1249,7 +1256,7 @@ def translate_components(context, engine):
     """
     Accept list of raw components, translate into OLCS-recoginzable inputs.
     """
-    print(f"task id: context['task_id']")
+    print(f"task id: {context['task_id']}")
     context["components"] = list()
 
 
