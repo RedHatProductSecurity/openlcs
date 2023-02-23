@@ -1,5 +1,6 @@
 import json
 import time
+from distutils.util import strtobool
 import django_filters
 from django.conf import settings
 from django.db import IntegrityError, transaction
@@ -950,9 +951,16 @@ class ComponentSubscriptionViewSet(ModelViewSet):
     API endpoint that allows ComponentSubscription to be viewed or edited.
     """
     queryset = ComponentSubscription.objects.all()
-    # List only active subscriptions
-    # queryset = ComponentSubscription.objects.get_active_subscriptions()
     serializer_class = ComponentSubscriptionSerializer
+
+    def get_queryset(self):
+        active = self.request.query_params.get('active', None)
+        if active is not None:
+            queryset = self.queryset.filter(active=strtobool(active))
+        else:
+            queryset = self.queryset
+
+        return queryset
 
     def retrieve(self, request, *args, **kwargs):
         """
@@ -999,6 +1007,41 @@ class ComponentSubscriptionViewSet(ModelViewSet):
             }
         """
         return super().retrieve(request, *args, **kwargs)
+
+    def list(self, request, *args, **kwargs):
+        """
+        Get a list of component subscription instances.
+
+        ####__Supported query params__####
+
+        ``active``: boolean, status of subscription, "true" or "false".
+
+        ####__Response__####
+
+            HTTP 200 OK
+            Content-Type: application/json
+            [
+                {
+                    "count": 1,
+                    "next": null,
+                    "previous": null,
+                    "results": [
+                        {
+                            "active": true,
+                            "component_purls": [],
+                            "created_at": "2023-02-23T07:25:40.530352Z",
+                            "id": 1,
+                            "name": "ubi9-container-9.0.0-1640.1669730845",
+                            "query_params": {
+                                "nvr": "ubi9-container-9.0.0-1640.1669730845"
+                            },
+                            "updated_at": "2023-02-23T07:25:40.530371Z"
+                        }
+                    ]
+                }
+            ]
+        """
+        return super().list(request, *args, **kwargs)
 
     def create(self, request, *args, **kwargs):
         """
