@@ -1261,19 +1261,15 @@ def collect_components(context, engine):
         purl = component.get("purl")
         sources = []
         missings = []
-        component_type = component.get("type")
-        if component_type in ["OCI", "RPMMOD"]:
-            found, retval = connector.get_source_component(component)
+        found, retval = connector.get_source_component(component)
+        if component.get("type") in ["OCI", "RPMMOD"]:
             component["source_components"] = found
             sources.append(component)
             missings.extend(retval)
+        elif found:
+            sources.append(retval)
         else:
-            found, src_component = connector.get_source_component(component)
-            if found:
-                sources.append(src_component)
-            else:
-                missings.append(src_component)
-
+            missings.append(retval)
         return (purl, {"sources": sources, "missings": missings})
 
     for subscription in subscriptions:
