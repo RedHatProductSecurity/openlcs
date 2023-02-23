@@ -32,11 +32,31 @@ class ComponentAdmin(admin.ModelAdmin):
     search_fields = ['uuid', 'purl', 'type', 'name']
 
 
+def activate_selected(modeladmin, request, queryset):
+    queryset.update(active=True)
+    message = "Successfully activated selected component subscriptions"
+    modeladmin.message_user(request, message)
+
+
+activate_selected.short_description = "Activate selected subscriptions"
+
+
+def deactivate_selected(modeladmin, request, queryset):
+    queryset.update(active=False)
+    message = "Successfully deactivated selected component subscriptions"
+    modeladmin.message_user(request, message)
+
+
+deactivate_selected.short_description = "Deactivate selected subscriptions"
+
+
 @admin.register(ComponentSubscription)
 class ComponentSubscriptionAdmin(admin.ModelAdmin):
-    search_fields = ['name', 'query_params']
+    search_fields = ['name', 'query_params__icontains']
     list_display = ('name', 'query_params', 'created_at', 'updated_at',
                     'active',)
+    list_filter = ('active',)
+    actions = [activate_selected, deactivate_selected]
 
     def get_form(self, request, obj=None, **kwargs):
         kwargs['widgets'] = {
