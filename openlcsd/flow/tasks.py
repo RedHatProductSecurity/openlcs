@@ -26,6 +26,7 @@ from openlcs.libs.logger import get_task_logger
 from openlcs.libs.metadata import CargoMeta
 from openlcs.libs.metadata import GolangMeta
 from openlcs.libs.metadata import NpmMeta
+from openlcs.libs.metadata import GemMeta
 from openlcs.libs.parsers import sha256sum
 from openlcs.libs.scanner import LicenseScanner
 from openlcs.libs.scanner import CopyrightScanner
@@ -391,6 +392,8 @@ def get_source_metadata(context, engine):
                 package = None
             else:
                 package = retval
+        elif 'GEM' in build_type:
+            package = GemMeta(src_filepath).parse_metadata()
         elif pom_filepath is not None:
             packages = MavenPomXmlHandler.parse(pom_filepath)
             package = next(packages)

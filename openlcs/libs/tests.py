@@ -12,7 +12,10 @@ from django.conf import settings
 
 from libs.corgi import CorgiConnector
 from libs.kojiconnector import KojiConnector
-from libs.metadata import GolangMeta, NpmMeta, CargoMeta
+from libs.metadata import CargoMeta
+from libs.metadata import GemMeta
+from libs.metadata import GolangMeta
+from libs.metadata import NpmMeta
 from packagedcode.maven import MavenPomXmlHandler
 from packagedcode.pypi import PypiSdistArchiveHandler
 from libs.parsers import parse_manifest_file
@@ -488,6 +491,8 @@ class TestParseMetadata(TestCase):
         self.yarn_tarball = testdata_root / 'yarn/json5-2.1.3.tgz'
         self.maven_pomfile = testdata_root / 'maven/xmltool-3.3.pom'
         self.cargo_tarball = testdata_root / 'cargo/netavark-1.4.0.tgz'
+        self.gem_tarball = testdata_root / 'gem/zip-zip-0.3.gem'
+        self.gem_gemspec = testdata_root / 'gem/json-schema.gemspec'
 
     def test_pypi(self):
         packages = PypiSdistArchiveHandler.parse(str(self.pypi_tarball))
@@ -565,6 +570,23 @@ class TestParseMetadata(TestCase):
             package.homepage_url, "https://github.com/containers/netavark"
         )
         self.assertEqual(package.declared_license, 'Apache-2.0')
+
+    def test_gem(self):
+        parser = GemMeta(self.gem_tarball)
+        package = parser.parse_metadata()
+        self.assertEqual(
+            package.homepage_url, "https://github.com/orien/zip-zip"
+        )
+        self.assertEqual(package.declared_license, ['MIT'])
+
+    def test_gemspec(self):
+        parser = GemMeta(self.gem_gemspec)
+        package = parser.parse_metadata()
+        self.assertEqual(
+            package.homepage_url,
+            "http://github.com/ruby-json-schema/json-schema/tree/master"
+        )
+        self.assertEqual(package.declared_license, ['MIT'])
 
 
 class TestGetTaskRepository(TestCase):
