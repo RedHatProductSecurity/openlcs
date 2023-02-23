@@ -280,8 +280,10 @@ class CorgiConnector:
 
     def get_srpm_component(self, component):
         """
-        Returns the source rpm component for `component`
+        Returns the source rpm component for an RPM component
         """
+        if component["type"] != "RPM":
+            raise ValueError(f"Unsupported component type {component['type']}")
         if component["arch"] == "src":
             return (True, component)
         sources = component.get("sources")
@@ -297,17 +299,18 @@ class CorgiConnector:
         else:
             return (False, component.get("purl"))
 
-    def fetch_component(self, link, addtional_excludes=None):
+    def _fetch_component(self, link, additional_excludes=None):
         """
         shortcut to retrieve component data from corgi.
 
-        :params addtional_excludes: additional exclude fields besides defaults
+        :params additional_excludes: additional exclude fields besides defaults
         """
-        if addtional_excludes is None:
+        if additional_excludes is None:
             # provides is useful for "OCI" components, but can be a noise
             # for rpm-based components.
-            addtional_excludes = ("provides")
-        excludes = self.default_exclude_fields + tuple(addtional_excludes)
+            excludes = self.default_exclude_fields + tuple(["provides"])
+        else:
+            excludes = self.default_exclude_fields + tuple(additional_excludes)
         component = self.get(link, excludes=excludes)
         if component:
             if component.get("type") == "RPM":
@@ -355,7 +358,7 @@ class CorgiConnector:
         ) as executor:
             tasks = {
                 executor.submit(
-                    self.fetch_component, link): link for link in links}
+                    self._fetch_component, link): link for link in links}
             for task in concurrent.futures.as_completed(tasks):
                 success, result = task.result()
                 if success:

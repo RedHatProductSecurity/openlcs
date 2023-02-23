@@ -1235,7 +1235,10 @@ def get_active_subscriptions(context, engine):
     """
     subscriptions = list()
     client = context['client']
-    for subscription in client.get_paginated_data("subscriptions"):
+    # Only sync active subscriptions by default.
+    query_params = {"active": "true"}
+    for subscription in client.get_paginated_data(
+            "subscriptions", query_params):
         subscriptions.append(subscription)
         engine.logger.debug(f"{subscription['name']} retrieved!")
     engine.logger.info(f"Collected {len(subscriptions)} subscriptions!")
@@ -1258,19 +1261,19 @@ def collect_components(context, engine):
     source_components = []
 
     def process_component(component):
-        purl = component.get("purl")
         sources = []
         missings = []
         found, retval = connector.get_source_component(component)
         if component.get("type") in ["OCI", "RPMMOD"]:
-            component["source_components"] = found
+            # Nest source components in `olcs-sources`
+            component["olcs_sources"] = found
             sources.append(component)
             missings.extend(retval)
         elif found:
             sources.append(retval)
         else:
             missings.append(retval)
-        return (purl, {"sources": sources, "missings": missings})
+        return (sources, missings)
 
     for subscription in subscriptions:
         query_params = subscription.get("query_params")
@@ -1278,21 +1281,19 @@ def collect_components(context, engine):
             continue
 
         components = connector.get_paginated_data(query_params)
-        sub = {subscription["id"]: {}}
-        purls, sources, missings = [], [], []
+        subscription_sources, subscription_missings = [], []
 
         for component in components:
-            purl, component_data = process_component(component)
-            purls.append(purl)
-            sources.extend(component_data["sources"])
-            missings.extend(component_data["missings"])
+            sources, missings = process_component(component)
+            subscription_sources.extend(sources)
+            subscription_missings.extend(missings)
 
-        sub[subscription["id"]] = {
-            "purls": purls,
-            "sources": sources,
-            "missings": missings
+        result = {
+            "subscription_id": subscription["id"],
+            "sources": subscription_sources,
+            "missings": subscription_missings,
         }
-        source_components.append(sub)
+        source_components.append(result)
 
     context["source_components"] = source_components
 
@@ -1326,8 +1327,8 @@ flow_get_corgi_components = [
     get_config,
     get_active_subscriptions,
     collect_components,
-    populate_subscription_purls,
-    translate_components,
+    # populate_subscription_purls,
+    # translate_components,
 ]
 
 
