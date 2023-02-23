@@ -38,15 +38,13 @@ def activate_selected(modeladmin, request, queryset):
     modeladmin.message_user(request, message)
 
 
-activate_selected.short_description = "Activate selected subscriptions"
-
-
 def deactivate_selected(modeladmin, request, queryset):
     queryset.update(active=False)
     message = "Successfully deactivated selected component subscriptions"
     modeladmin.message_user(request, message)
 
 
+activate_selected.short_description = "Activate selected subscriptions"
 deactivate_selected.short_description = "Deactivate selected subscriptions"
 
 
