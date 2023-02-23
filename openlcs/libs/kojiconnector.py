@@ -376,6 +376,8 @@ class KojiConnector:
             component_type = 'GOLANG'
         elif component_type == "pip":
             component_type = "PYPI"
+        elif component_type == "rubygems":
+            component_type = "GEM"
         else:
             component_type = component_type.upper()
         return {

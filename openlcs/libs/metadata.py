@@ -9,6 +9,8 @@ import zipfile
 from packagedcode.golang import GoModHandler
 from packagedcode.npm import NpmPackageJsonHandler
 from packagedcode.cargo import CargoTomlHandler
+from packagedcode.rubygems import GemArchiveHandler
+from packagedcode.rubygems import GemspecHandler
 
 
 class MetaBase:
@@ -176,3 +178,31 @@ class CargoMeta(MetaBase):
         finally:
             if meta_dir is not None:
                 shutil.rmtree(meta_dir)
+
+
+class GemMeta(MetaBase):
+    def __init__(self, source_tarball):
+        super().__init__(source_tarball)
+        self.metafile = "*.gemspec"
+        self.extensions = (".gem",)
+
+    def parse_metadata(self):
+        """
+        Returns a packagedcode "PackageData" instance when succeed,
+        or a string(error message) string in case of failures.
+        """
+        package = None
+        if os.path.exists(self.tarball):
+            extension = pathlib.Path(self.tarball).suffix
+            if extension in self.extensions:
+                packages = GemArchiveHandler.parse(self.tarball)
+                package = next(packages)
+            # The component source is not a gem
+            else:
+                source_dir = os.path.dirname(self.tarball)
+                metafiles = glob.glob(f"{source_dir}/**/{self.metafile}",
+                                      recursive=True)
+                if metafiles:
+                    packages = GemspecHandler.parse(metafiles[0])
+                    package = next(packages)
+        return package
