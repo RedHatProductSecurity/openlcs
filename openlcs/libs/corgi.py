@@ -18,6 +18,7 @@ if openlcs_dir not in sys.path:
     sys.path.append(openlcs_dir)
 from libs.common import group_components  # noqa: E402
 from libs.common import find_srpm_source  # noqa: E402
+from libs.common import remove_duplicates_from_list_by_key  # noqa: E402
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
@@ -296,8 +297,18 @@ class CorgiConnector:
         else:
             return (False, component.get("purl"))
 
-    def fetch_component(self, link):
-        component = self.get(link)
+    def fetch_component(self, link, addtional_excludes=None):
+        """
+        shortcut to retrieve component data from corgi.
+
+        :params addtional_excludes: additional exclude fields besides defaults
+        """
+        if addtional_excludes is None:
+            # provides is useful for "OCI" components, but can be a noise
+            # for rpm-based components.
+            addtional_excludes = ("provides")
+        excludes = self.default_exclude_fields + tuple(addtional_excludes)
+        component = self.get(link, excludes=excludes)
         if component:
             if component.get("type") == "RPM":
                 return self.get_srpm_component(component)
@@ -306,7 +317,7 @@ class CorgiConnector:
         else:
             return (False, link)
 
-    def get_container_source_components(self, component):
+    def get_container_source_components(self, component, max_workers=5):
         """
         Extract source components from a corgi container component
 
@@ -340,7 +351,7 @@ class CorgiConnector:
         components_extracted = list()
         components_missing = set()
         with concurrent.futures.ThreadPoolExecutor(
-            max_workers=3
+            max_workers=max_workers
         ) as executor:
             tasks = {
                 executor.submit(
@@ -354,8 +365,8 @@ class CorgiConnector:
                     components_missing.add(result)
                     logger.error("Provides %s missing.", result)
         # Remove duplicates
-        component_set = set(tuple(c.items()) for c in components_extracted)
-        components = [dict(c) for c in component_set]
+        components = remove_duplicates_from_list_by_key(
+            components_extracted, "uuid")
         return (components, list(components_missing))
 
     def get_source_component(self, component):

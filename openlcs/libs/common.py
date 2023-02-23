@@ -208,3 +208,17 @@ def find_srpm_source(sources):
         if pattern.search(source['purl']):
             return source['link']
     return None
+
+
+# Inspired from https://stackoverflow.com/a/43319539/654952
+def remove_duplicates_from_list_by_key(data, key):
+    """
+    Remove duplicates from a list of dictionaries based on a specific key.
+    """
+    seen = set()
+    result = []
+    for d in data:
+        if d[key] not in seen:
+            seen.add(d[key])
+            result.append(d)
+    return result
