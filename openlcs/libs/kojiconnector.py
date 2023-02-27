@@ -574,11 +574,10 @@ class KojiConnector:
 
         return repository
 
-    def get_source_from_registry(self, build, dest_dir):
+    def get_source_from_registry(self, repository, dest_dir):
         """
         Copy source of the source container from registry.
         """
-        repository = self.get_task_repository(build)
         source_url = 'docker://' + repository
         dest = 'dir:' + dest_dir
         copy_cmd = ['skopeo', 'copy', source_url, dest]
