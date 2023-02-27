@@ -301,7 +301,7 @@ class CorgiConnector:
 
     def _fetch_component(self, link, additional_excludes=None):
         """
-        shortcut to retrieve component data from corgi.
+        shortcut to retrieve container "provides" component
 
         :params additional_excludes: additional exclude fields besides defaults
         """
@@ -376,8 +376,7 @@ class CorgiConnector:
         component_type = component.get("type")
         if component_type == "RPM":
             return self.get_srpm_component(component)
-        elif component_type == "OCI":
+        elif component_type in ["OCI", "RPMMOD"]:
             return self.get_container_source_components(component)
         else:
-            # FIXME: add golang/npm/cargo/pip/maven here.
-            raise ValueError("Unsupported type")
+            return (True, component)
