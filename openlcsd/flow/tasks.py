@@ -238,7 +238,7 @@ def download_source_image(context, engine):
     repository = koji_connector.get_task_repository(build)
     if repository:
         engine.logger.info("Start getting source from registry......")
-        koji_connector.get_source_from_registry(build, tmp_dir)
+        koji_connector.get_source_from_registry(repository, tmp_dir)
     else:
         msg = "Start to download container source image build from Brew/Koji, "
         msg += "please wait for the task log update..."
