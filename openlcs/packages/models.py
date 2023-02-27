@@ -134,10 +134,11 @@ class CorgiComponentMixin(models.Model):
     If more corgi readonly fields are needed in future, put it here.
     """
 
-    # uuid uniquely identifies a corgi component.
+    # Specify explicitly the `uuid` field if data is from corgi.
     uuid = models.UUIDField(
         unique=True,
-        help_text='Corgi component uuid',
+        default=uuid_module.uuid4,
+        help_text='Component uuid',
     )
     type = models.CharField(
         max_length=50,
@@ -160,11 +161,20 @@ class CorgiComponentMixin(models.Model):
 
 class Component(CorgiComponentMixin):
 
-    uuid = models.UUIDField(
-        unique=True,
-        default=uuid_module.uuid4,
-        help_text='Component uuid',
-    )
+    # inspired from https://docs.djangoproject.com/en/3.2/ref/models/
+    # fields/#enumeration-types
+    class SyncStatus(models.TextChoices):
+        SYNCED = 'synced', 'Synced'
+        UNSYNCED = 'unsynced', 'Unsynced'
+        SYNC_FAILED = 'sync_failed', 'Sync Failed'
+
+    class SyncFailureReason(models.TextChoices):
+        # Add all possible failures
+        REQUEST_TIMEOUT = 'request_timeout', 'Request timeout'
+        SCAN_EXCEPTION = 'scan_exception', 'Scan exception'
+        MISSING_DOWNLOAD_URL = 'missing_download_url', 'Missing download url'
+        UNKNOWN_FAILURE = 'unknown_failure', 'Unknown failure'
+
     source = models.ForeignKey(
         Source,
         null=True,
@@ -187,11 +197,21 @@ class Component(CorgiComponentMixin):
         help_text="True if this component corresponds to the entire "
                   "source, rather than an actual binary package",
     )
-    synced = models.BooleanField(
+    from_corgi = models.BooleanField(
         default=False,
-        help_text="Indicate whether the component is synced with component "
-                  "from component registry. Synced component should have "
-                  "identical uuid.",
+        help_text='True if created from component registry'
+    )
+    sync_status = models.CharField(
+        max_length=50,
+        choices=SyncStatus.choices,
+        default=SyncStatus.UNSYNCED
+    )
+    sync_failure_reason = models.CharField(
+        max_length=50,
+        choices=SyncFailureReason.choices,
+        null=True,
+        blank=True,
+        default=None
     )
     component_nodes = GenericRelation(
         "products.ComponentTreeNode", related_query_name="component"
@@ -209,13 +229,23 @@ class Component(CorgiComponentMixin):
             ),
         ]
 
+    @property
+    def sync_needed(self):
+        return self.from_corgi and self.sync_status != self.SyncStatus.SYNCED
+
     def sync_with_corgi(self, data):
-        if not self.synced:
+        if not self.sync_status:
             self.uuid = data.get("uuid")
             # FIXME: should we add a validation here? i.e,. is it possible to
             # have inconsistent name/version/release/arch/type while syncing?
-            self.synced = True
+            self.sync_status = True
             self.save()
+
+    def save(self, *args, **kwargs):
+        # only failed sync has a reason
+        if self.sync_status != self.SyncStatus.SYNC_FAILED:
+            self.sync_failure_reason = None
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f'{self.name}-{self.version}, {self.type}'
