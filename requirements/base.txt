@@ -28,3 +28,5 @@ httpx==0.23.0
 uvloop==0.16.0
 django-mptt==0.13.4
 checksumdir==1.2.0
+drf-extensions==0.7.1
+django-redis==5.2.0
