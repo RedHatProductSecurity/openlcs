@@ -84,7 +84,6 @@ class CorgiConnector:
             "release": data.get("release", ""),
             "summary_license": data.get("license", ""),
             "arch": data.get("arch", ""),
-            'synced': True
         }
 
     def get_component_and_links(self, nvr, component_type):
@@ -151,7 +150,6 @@ class CorgiConnector:
                 'release': match.group('release'),
                 'arch': match.group('arch'),
                 'summary_license': '',
-                'synced': False
             }
 
         if not match:
@@ -165,7 +163,6 @@ class CorgiConnector:
                 'release': '',
                 'arch': '',
                 'summary_license': '',
-                'synced': False
             }
         if component:
             return component

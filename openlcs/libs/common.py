@@ -165,7 +165,6 @@ def get_component_flat(data, comp_type):
             'version': data.get('version'),
             'release': data.get('release'),
             'summary_license': '',
-            'synced': False
         }
     if comp_type == 'RPMMOD':
         component.update({'arch': ''})

@@ -101,7 +101,6 @@ class Release(models.Model):
                 'type': type,
                 'arch': arch,
                 'summary_license': '',
-                'synced': False
             }
             component = self.create_component(component_data)
             # attach component to the release_node tree.

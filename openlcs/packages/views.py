@@ -656,7 +656,6 @@ class ComponentFilter(django_filters.FilterSet):
     summary_license = django_filters.CharFilter(
             field_name='summary_license', lookup_expr='iexact')
     is_source = django_filters.BooleanFilter(field_name='is_source')
-    synced = django_filters.BooleanFilter(field_name='synced')
     source__name = django_filters.CharFilter(lookup_expr='iexact')
     source__state = django_filters.NumberFilter()
     source__archive_type = django_filters.CharFilter(lookup_expr='iexact')
@@ -667,7 +666,7 @@ class ComponentFilter(django_filters.FilterSet):
 
         fields = (
             'name', 'type', 'version', 'release', 'arch', 'purl',
-            'uuid', 'summary_license', 'is_source', 'synced',
+            'uuid', 'summary_license', 'is_source',
         )
 
 
@@ -726,7 +725,6 @@ class ComponentViewSet(ModelViewSet):
                     "uuid": "852b587a-544d-4baf-8621-e134db891b6a",
                     "summary_license": "",
                     "is_source": false,
-                    "synced": true
                 },
                 ...
             ]
@@ -737,7 +735,7 @@ class ComponentViewSet(ModelViewSet):
 -H "Authorization: Token your_token" \
 %(HOST_NAME)s/%(API_PATH)s/components/?name=fio&type= \
 &version=&release=&arch=&purl=&uuid=&summary_license=& \
-is_source=unknown&synced=unknown&source__name=& \
+is_source=unknown&source__name=& \
 source__state=&source__archive_type=&source__scan_flag=
 
         ####__Supported query params__####
@@ -759,8 +757,6 @@ source__state=&source__archive_type=&source__scan_flag=
         ``summary_license``: String, the component summary_license.
 
         ``is_source``: Boolean, the component is_source.
-
-        ``synced``: Boolean, the component synced.
 
         ``source__name``: String, the source's name.
 
@@ -812,7 +808,6 @@ source__state=&source__archive_type=&source__scan_flag=
                     "uuid": "de3da5cc-bbf2-4953-9e33-084506706073",
                     "summary_license": "GPLv2",
                     "is_source": true,
-                    "synced": false
                 }
             ]
 
@@ -881,7 +876,6 @@ source__state=&source__archive_type=&source__scan_flag=
                 "uuid": "852b587a-544d-4baf-8621-e134db891b6a",
                 "summary_license": "",
                 "is_source": false,
-                "synced": true
             }
         """
         return super().retrieve(request, *args, **kwargs)
