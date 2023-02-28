@@ -22,6 +22,17 @@ from libs.common import (  # noqa: E402
 )
 
 
+CORGI_OSBS_RS_TYPE_MAPPING = {
+    'GOLANG': 'gomod',
+    'NPM': 'npm',
+    'YARN': 'yarn',
+    'PYPI': 'pip',
+    'CARGO': 'cargo',
+    'GEM': 'rubygems'
+}
+RS_TARBALL_EXTENSIONS = ['.tgz', '.tar.gz', '.zip', '.gem']
+
+
 class SourceContainerHandler(object):
     """
     Object used for handle source in source containers.
@@ -29,6 +40,7 @@ class SourceContainerHandler(object):
     @params: dest_dir, destination directory to which the unpacked sources
     will be moving to.
     """
+
     def __init__(self, config=None, src_file=None, dest_dir=None):
         self.config = config
         self.src_file = src_file
@@ -230,7 +242,7 @@ class SourceContainerHandler(object):
             name_items = search_name.split("/")
             # ":", "/", "#" maybe in the version string.
             version_items = re.split("[:/#]", component.get('version'))
-        elif comp_type in ['NPM', 'YARN', 'PYPI']:
+        elif comp_type in ['NPM', 'YARN', 'PYPI', 'CARGO', 'GEM']:
             search_name = component.get('name')
             name_items = component.get('name').replace("@", '').split("/")
             # ":", "/", "#" maybe in the version string.
@@ -255,6 +267,7 @@ class SourceContainerHandler(object):
         # The extensions of remote source tarball:
         # 'gomod' tarball is '.zip', 'npm' tarball is '.tgz',
         # 'yarn' tarball is '.tgz', 'pip' tarball is '.tar.gz'.
+        # 'rubygems' tarball is '.gem'
         if comp_type == 'GOLANG':
             dep_dir_pattern = os.path.join(
                 extra_src_dir, "**", "deps", 'gomod', "pkg",
@@ -272,25 +285,20 @@ class SourceContainerHandler(object):
             component_name = component.get('name')
             if search_name != component_name:
                 search_patterns.append(vendor_pattern + "/" + component_name)
-        elif comp_type in ['NPM', 'YARN', 'PYPI']:
-            # mapping Python source between Corgi and OSBS
-            comp_type = 'pip' if comp_type == 'PYPI' else comp_type.lower()
+        elif comp_type in ['NPM', 'YARN', 'PYPI', 'CARGO', 'GEM']:
+            # mapping remote source between Corgi and OSBS
+            comp_type = CORGI_OSBS_RS_TYPE_MAPPING.get(comp_type)
             dep_dir_pattern = os.path.join(
                 extra_src_dir, '**', 'deps', comp_type)
             common_pattern = dep_dir_pattern + name_pattern + version_pattern
             search_patterns = [common_pattern + extension
-                               for extension in ['.tgz', '.tar.gz', '.zip']]
+                               for extension in RS_TARBALL_EXTENSIONS]
         return search_patterns
 
     def get_special_component_path(self, component, extra_src_dir):
         comp_type = component.get('type')
         comp_version = component.get('version')
-        if comp_type == 'PYPI':
-            comp_type = 'pip'
-        elif comp_type == 'GOLANG':
-            comp_type = 'gomod'
-        else:
-            comp_type = comp_type.lower()
+        comp_type = CORGI_OSBS_RS_TYPE_MAPPING.get(comp_type)
         dep_dir_pattern = os.path.join(extra_src_dir, '**', 'deps', comp_type)
         _, name_items, version_items = self.get_component_search_items(
             component)
@@ -334,12 +342,12 @@ class SourceContainerHandler(object):
         # Using name pattern and version pattern to search source path.
         search_patterns = [
             dep_dir_pattern + "/**" + name_pattern + version_pattern + extension  # noqa
-            for extension in ['.tgz', '.tar.gz', '.zip']
+            for extension in RS_TARBALL_EXTENSIONS
         ]
         # Only use version pattern to search source path.
         search_patterns.extend([
             dep_dir_pattern + "/**" + version_pattern + extension
-            for extension in ['.tgz', '.tar.gz', '.zip']
+            for extension in RS_TARBALL_EXTENSIONS
         ])
 
         paths = search_content_by_patterns(search_patterns)
