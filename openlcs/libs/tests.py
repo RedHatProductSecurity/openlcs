@@ -297,7 +297,6 @@ class TestComponents(TestCase):
                 'release': '151.el8',
                 'arch': 's390x',
                 'summary_license': '',
-                'synced': True
             },
             {
                 'uuid': 'fe7f82c1-db81-4045-84d6-c81a9da8d146',
@@ -307,7 +306,6 @@ class TestComponents(TestCase):
                 'release': '15.el8_3',
                 'arch': 's390x',
                 'summary_license': '',
-                'synced': True
             },
             {
                 'uuid': 'fe7f82c1-db81-4045-84d6-c81a9da8d147',
@@ -317,7 +315,6 @@ class TestComponents(TestCase):
                 'release': '',
                 'arch': '',
                 'summary_license': '',
-                'synced': True
             },
             {
                 'uuid': 'bb7e0e10-0a68-4bae-a490-3ff491cb1b78',
@@ -327,7 +324,6 @@ class TestComponents(TestCase):
                 'release': 'v2.4.0',
                 'arch': 's390x',
                 'summary_license': '',
-                'synced': True
             }
         ]
         self.group_components_data = {
@@ -340,7 +336,6 @@ class TestComponents(TestCase):
                     'release': '151.el8',
                     'arch': 's390x',
                     'summary_license': '',
-                    'synced': True
                 },
                 {
                     'uuid': 'fe7f82c1-db81-4045-84d6-c81a9da8d146',
@@ -350,7 +345,6 @@ class TestComponents(TestCase):
                     'release': '15.el8_3',
                     'arch': 's390x',
                     'summary_license': '',
-                    'synced': True
                 }
             ],
             'NPM': [
@@ -362,7 +356,6 @@ class TestComponents(TestCase):
                     'release': '',
                     'arch': '',
                     'summary_license': '',
-                    'synced': True
                 }
             ],
             'OCI': [
@@ -374,7 +367,6 @@ class TestComponents(TestCase):
                     'release': 'v2.4.0',
                     'arch': 's390x',
                     'summary_license': '',
-                    'synced': True
                 }
             ]
         }

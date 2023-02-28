@@ -389,7 +389,6 @@ class KojiConnector:
             "summary_license": "",
             "arch": "",
             "is_source": True,
-            'synced': False
         }
 
     def parse_remote_source_components(self, rs_archive_url):

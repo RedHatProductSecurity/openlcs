@@ -37,8 +37,6 @@ class Command(BaseCommand):
             version=data.get("version"),
             release=data.get("release"),
             arch=data.get("arch"),
-            # components created here are from corgi
-            synced=True,
             defaults={
                 "purl": data.get("purl"),
                 "summary_license": data.get("summary_license"),
