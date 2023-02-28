@@ -30,6 +30,8 @@ class SourceAdmin(admin.ModelAdmin):
 @admin.register(Component)
 class ComponentAdmin(admin.ModelAdmin):
     search_fields = ['uuid', 'purl', 'type', 'name']
+    list_display = ('name', 'version', 'release', 'arch', 'type',
+                    'from_corgi', 'sync_status', 'sync_failure_reason')
 
 
 def activate_selected(modeladmin, request, queryset):
