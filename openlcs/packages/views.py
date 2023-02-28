@@ -758,6 +758,14 @@ source__state=&source__archive_type=&source__scan_flag=
 
         ``is_source``: Boolean, the component is_source.
 
+        ``from_corgi``: Boolean, True if component is from component registry
+
+        ``sync_status``: String, possible values includes "synced", \
+"unsynced" and "sync_failed".
+
+        ``sync_failure_reason``: String, reason of the failure, only \
+applicable when sync_status is "sync_failed".
+
         ``source__name``: String, the source's name.
 
         ``source__state``: String, the source's state.
@@ -808,6 +816,9 @@ source__state=&source__archive_type=&source__scan_flag=
                     "uuid": "de3da5cc-bbf2-4953-9e33-084506706073",
                     "summary_license": "GPLv2",
                     "is_source": true,
+                    "from_corgi": false,
+                    "sync_status": "unsynced",
+                    "sync_failure_reason": null
                 }
             ]
 
