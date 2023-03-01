@@ -36,6 +36,7 @@ class ObtainConfigView(generics.RetrieveAPIView):
             'CORGI_API_STAGE',
             'CORGI_API_PROD',
             'TOKEN_SECRET_KEY',
+            'REDIS_CACHE_LOCATION',
             'RELEASE_LIST_CACHE_TIMEOUT',
             'RELEASE_RETRIEVE_CACHE_TIMEOUT',
         ]
