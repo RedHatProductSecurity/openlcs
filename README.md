@@ -111,6 +111,13 @@ celery -A openlcsd worker --loglevel=INFO
 celery -A openlcsd worker --loglevel=DEBUG
 ```
 
+### Running OpenLCS beat service
+OpenLCS beat service can be started using the following (from the top directory of
+the repo):
+```shell
+cd openlcs && celery -A openlcs beat --loglevel=INFO
+```
+
 Hint: You can remove all currently queued tasks using `redis-cli FLUSHALL`.
 
 
