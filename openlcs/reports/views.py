@@ -4,6 +4,25 @@ from reports.models import LicenseDetection
 from reports.models import CopyrightDetection
 from reports.serializers import LicenseDetectionSerializer
 from reports.serializers import CopyrightDetectionSerializer
+import django_filters
+
+
+class LicenseDetectionFilter(django_filters.FilterSet):
+    """Class that filters queries to LicenseDetection list views."""
+    ld_id = django_filters.CharFilter(field_name='id', method='filter_id')
+    license_key = django_filters.CharFilter(
+            field_name='license_key', lookup_expr='iexact')
+
+    def filter_id(self, queryset, *args):
+        id_list = []
+        if args[0] == 'id':
+            id_list = [int(num.strip())
+                       for num in args[1].split(',')]
+        return queryset.filter(id__in=id_list)
+
+    class Meta:
+        model = LicenseDetection
+        fields = ('ld_id', 'license_key',)
 
 
 class LicenseDetectionViewSet(ModelViewSet):
@@ -12,6 +31,7 @@ class LicenseDetectionViewSet(ModelViewSet):
     """
     queryset = LicenseDetection.objects.all()
     serializer_class = LicenseDetectionSerializer
+    filter_class = LicenseDetectionFilter
 
     def list(self, request, *args, **kwargs):
         """
@@ -82,12 +102,31 @@ class LicenseDetectionViewSet(ModelViewSet):
         return super().retrieve(request, *args, **kwargs)
 
 
+class CopyrightDetectionFilter(django_filters.FilterSet):
+    """Class that filters queries to CopyrightDetection list views."""
+    ld_id = django_filters.CharFilter(field_name='id', method='filter_id')
+    statement = django_filters.CharFilter(
+            field_name='statement', lookup_expr='iexact')
+
+    def filter_id(self, queryset, *args):
+        id_list = []
+        if args[0] == 'id':
+            id_list = [int(num.strip())
+                       for num in args[1].split(',')]
+        return queryset.filter(id__in=id_list)
+
+    class Meta:
+        model = CopyrightDetection
+        fields = ('ld_id', 'statement',)
+
+
 class CopyrightDetectionViewSet(ModelViewSet):
     """
     API endpoint that allows copyright detected to be viewed.
     """
     queryset = CopyrightDetection.objects.all()
     serializer_class = CopyrightDetectionSerializer
+    filter_class = CopyrightDetectionFilter
 
     def list(self, request, *args, **kwargs):
         """

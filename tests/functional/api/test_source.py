@@ -16,8 +16,8 @@ def test_sources(openlcs_client):
             'archive_type': 'rpm',
             'scan_flag': 'copyright(scancode-toolkit 30.1.0)',
             'component_set': [],
-            'license_detections': [],
-            'copyright_detections': []
+            'license_detections': {},
+            'copyright_detections': {}
         },
         {
             'id': 2,
@@ -28,8 +28,8 @@ def test_sources(openlcs_client):
             'archive_type': 'rpm',
             'scan_flag': 'copyright(scancode-toolkit 30.1.0)',
             'component_set': [],
-            'license_detections': [],
-            'copyright_detections': []
+            'license_detections': {},
+            'copyright_detections': {}
         }
     ]
 
