@@ -229,12 +229,42 @@ class Component(CorgiComponentMixin):
             ),
         ]
 
+    @staticmethod
+    def get_or_create_component(component_data):
+        """
+        Get or create a component based on the given data.
+
+        Param `component_data` is a dictionary of (nested) component data.
+        We need to tell whether the component_data is from component registry
+        or not. My decision is to check key existence of `uuid`, if `uuid`
+        is in, it will be data from component registry.
+        """
+        # Keep this consistent with `self.Meta.constraints`.
+        unique_fields = ['name', 'version', 'release', 'arch', 'type']
+        # Explicitly specify below default fields. Other fields
+        # (`sync_status`` etc) should be manipulated elsewhere.
+        defaults = {
+            # data from corgi contains `uuid`, let's persist if applicable.
+            # there are chances when an existing component(not from corgi)
+            # instance shares identical `nvrat` with corgi component data,
+            # in this case, we make sure `uuid`, `from_corgi` fields are
+            # updated accordingly.
+            'uuid': component_data.get('uuid', uuid_module.uuid4()),
+            'from_corgi': True if 'uuid' in component_data else False,
+            'purl': component_data.get('purl', ''),
+        }
+        component, _ = Component.objects.get_or_create(
+            **{f: component_data.get(f, '') for f in unique_fields},
+            defaults=defaults,
+        )
+        return component
+
     @property
     def sync_needed(self):
         return self.from_corgi and self.sync_status != self.SyncStatus.SYNCED
 
     def sync_with_corgi(self, data):
-        if not self.sync_status:
+        if self.sync_needed:
             self.uuid = data.get("uuid")
             # FIXME: should we add a validation here? i.e,. is it possible to
             # have inconsistent name/version/release/arch/type while syncing?

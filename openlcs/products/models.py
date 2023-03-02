@@ -5,9 +5,11 @@ from django.contrib.contenttypes.fields import (
     GenericRelation,
 )
 from datetime import datetime
-from mptt.models import MPTTModel, TreeForeignKey
 from django.core.cache import cache
 from django.db.models.signals import post_delete, post_save
+from mptt.models import MPTTModel, TreeForeignKey
+from packages.models import Component
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -117,6 +119,38 @@ class ComponentTreeNode(MpttTreeNodeMixin):
 
     def __str__(self):
         return f'{self.content_object.type} node: {self.id}'
+
+    @classmethod
+    def build_component_tree(cls, component_data, parent=None):
+        """
+        Build component tree node from component data recursively.
+
+        This should be called only for nested component_data, i.e.,
+        "OCI"/"RPMMOD" component. Never call this for a "leaf" component.
+        """
+        component_type = component_data['type']
+        if component_type in ['OCI', 'RPMMOD']:
+            # Handle nested components
+            source_components = component_data.pop('source_components', [])
+            component = Component.get_or_create_component(component_data)
+            component_node = cls.objects.create(
+                parent=parent,
+                content_object=component,
+            )
+            for source_component_data in source_components:
+                cls.build_component_tree(
+                    source_component_data,
+                    parent=component_node
+                )
+            return component_node
+        else:
+            # rpm/golang/pypi/cargo etc goes here.
+            component = Component.get_or_create_component(component_data)
+            component_node = cls.objects.create(
+                parent=parent,
+                content_object=component,
+            )
+            return component_node
 
 
 class ProductTreeNode(MpttTreeNodeMixin):
