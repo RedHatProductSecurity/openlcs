@@ -9,7 +9,6 @@ from libs.parsers import parse_manifest_file
 from packages.mixins import (
     SourceImportMixin,
     SaveScanResultMixin,
-    SaveComponentsMixin
 )
 from packages.models import (
     Component,
@@ -28,7 +27,12 @@ from packages.serializers import (
     SourceSerializer,
     ComponentImportSerializer
 )
-from products.models import Product, Release
+from products.models import (
+    Product,
+    Release,
+    ProductTreeNode,
+    ComponentTreeNode
+)
 from tasks.models import Task
 from reports.models import FileCopyrightScan, FileLicenseScan
 from rest_framework import status
@@ -443,9 +447,7 @@ Token your_token'
         return super().retrieve(request, *args, **kwargs)
 
 
-class PackageImportTransactionView(APIView,
-                                   SourceImportMixin,
-                                   SaveComponentsMixin):
+class PackageImportTransactionView(APIView, SourceImportMixin):
     """
     Package import transaction
 
@@ -532,13 +534,13 @@ class PackageImportTransactionView(APIView,
                         if paths:
                             self.create_paths(source_obj, paths)
                         if component:
-                            component_obj = self.create_component(component)
+                            component_obj = Component.\
+                                update_or_create_component(component)
                             component_obj.source = source_obj
                             component_obj.save()
                             if product_release:
-                                self.release = Release.objects.filter(
-                                    name=product_release)[0]
-                                self.build_release_node(component_obj)
+                                ProductTreeNode.build_release_node(
+                                    component, product_release)
 
                         # link task to Source object
                         task_obj.content_object = source_obj
@@ -960,7 +962,7 @@ class CheckDuplicateImport(APIView):
                 'results': results})
 
 
-class SaveComponentsView(APIView, SaveComponentsMixin):
+class SaveComponentsView(APIView):
     """
     Save container data to database
     """
@@ -973,7 +975,18 @@ class SaveComponentsView(APIView, SaveComponentsMixin):
             return Response(data={'message': err.args},
                             status=status.HTTP_400_BAD_REQUEST)
         try:
-            self.save_group_components(**data)
+            components = data.get('components')
+            product_release = data.get('product_release')
+            component_type = data.get('component_type')
+
+            # Create container/module parent components
+            parent_component_data = components.pop(component_type)[0]
+            if product_release:
+                ProductTreeNode.build_release_node(
+                    parent_component_data, product_release)
+            ComponentTreeNode.build_component_tree(
+                parent_component_data, components)
+
             msg = 'Save container components successfully.'
             return Response(data={'message': msg}, status=status.HTTP_200_OK)
         except IntegrityError as err:

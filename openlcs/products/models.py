@@ -121,33 +121,32 @@ class ComponentTreeNode(MpttTreeNodeMixin):
         return f'{self.content_object.type} node: {self.id}'
 
     @classmethod
-    def build_component_tree(cls, component_data, parent=None):
+    def _build_component_tree(cls, component_data, parent=None):
         """
         Build component tree node from component data recursively.
-
         Param `component_data` is a dictionary of (nested) component data.
         If nested components are present, they should be in
         "source_components" key, this is where nested source components are
-        collected in corgi.get_source_components module, name it differently
-        if you get a better idea.
+        collected in corgi.get_source_components module
         When creating component, need to tell if the component_data is from
         component registry or not see`Component.update_or_create_component`
         for more details.
-
         This should be called only for nested component_data, i.e.,
         "OCI"/"RPMMOD" component. Never call this for a "leaf" component.
         """
+        component_ctype = ContentType.objects.get_for_model(Component)
         component_type = component_data['type']
         if component_type in ['OCI', 'RPMMOD']:
             # Handle nested components
             source_components = component_data.pop('source_components', [])
             component = Component.update_or_create_component(component_data)
-            component_node = cls.objects.create(
+            component_node, _ = cls.objects.get_or_create(
                 parent=parent,
-                content_object=component,
+                content_type=component_ctype,
+                object_id=component.id,
             )
             for source_component_data in source_components:
-                cls.build_component_tree(
+                cls._build_component_tree(
                     source_component_data,
                     parent=component_node
                 )
@@ -155,11 +154,37 @@ class ComponentTreeNode(MpttTreeNodeMixin):
         else:
             # rpm/golang/pypi/cargo etc goes here.
             component = Component.update_or_create_component(component_data)
-            component_node = cls.objects.create(
+            component_node, _ = cls.objects.get_or_create(
                 parent=parent,
-                content_object=component,
+                content_type=component_ctype,
+                object_id=component.id,
             )
             return component_node
+
+    @classmethod
+    def build_component_tree(cls, parent_component, child_component=None):
+        """
+        Build component tree node from component data.
+        Param `parent_component` is a dictionary of (nested) component data.
+        If nested components are present, they should be in
+        "source_components" key, this is where nested source components are
+        collected in corgi.get_source_components module
+        param `child_component` is a dict of child component data, key is
+        component type, value is component list. If u have a nested
+        parent_component param, you can ignore this param
+        """
+        if parent_component.get('source_components') is None:
+            parent_component['source_components'] = list()
+
+        source_components = parent_component['source_components']
+
+        # convert child_component to nested structure
+        if child_component:
+            for _, components in child_component.items():
+                for component in components:
+                    source_components.append(component)
+
+        cls._build_component_tree(parent_component)
 
 
 class ProductTreeNode(MpttTreeNodeMixin):
@@ -177,6 +202,29 @@ class ProductTreeNode(MpttTreeNodeMixin):
                 name='unique_content_object_with_null_parent',
             )
         ]
+
+    @classmethod
+    def build_release_node(cls, release_component: dict, product_release: str):
+        """
+        @params: release_component, component data
+        @params: product_release, release name
+        Build release tree nodes, each component in a release will be a node,
+        for a container/module, the release will be its parent node.
+        """
+        component_obj = Component.update_or_create_component(release_component)
+        release = Release.objects.filter(name=product_release)[0]
+        # Create release node
+        release_ctype = ContentType.objects.get_for_model(Release)
+        release_node, _ = cls.objects.get_or_create(
+            content_type=release_ctype,
+            object_id=release.id,
+            parent=None,
+        )
+
+        # Create release component node
+        component_obj.release_nodes.get_or_create(
+            parent=release_node,
+        )
 
     def __str__(self):
         if hasattr(self.content_object, 'type'):
