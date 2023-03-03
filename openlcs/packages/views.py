@@ -1089,6 +1089,39 @@ query params of the corgi `component` api endpoint.
         """
         return super().create(request, *args, **kwargs)
 
+    def partial_update(self, request, *args, **kwargs):
+        """
+        This function is customized to allow "append" mode by default when
+        updating `component_purls` field.
+
+        FIXME: The update of `component_purls` impacts the number of
+        components to sync, thus I think docs should not be exposed to
+        end user. Any different opinions?
+        """
+        subscription = self.get_object()
+        component_purls = request.data.get("component_purls")
+        update_mode = request.data.get("update_mode", "append")
+
+        if component_purls is not None:
+            purls_set = set(component_purls)
+            existing_purls_set = set(subscription.component_purls)
+            merged_purls_set = purls_set.union(existing_purls_set)
+            purls = list(merged_purls_set)
+
+            if update_mode == "append":
+                subscription.component_purls += purls
+            elif update_mode == "overwrite":
+                subscription.component_purls = purls
+
+        # do some clean up and delegate rest of updates to super()
+        request_data = request.data.copy()
+        request_data.pop("component_purls", None)
+        if "update_mode" in request_data:
+            request_data.pop("update_mode")
+
+        return super().partial_update(
+            request, data=request_data, *args, **kwargs)
+
     def patch(self, request, *args, **kwargs):
         """
         Update an existing component subscription instance.
