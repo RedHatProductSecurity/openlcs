@@ -319,5 +319,16 @@ class ComponentSubscription(models.Model):
         """
         return filter(lambda p: p not in self.component_purls, purls)
 
+    def update_component_purls(self, component_purls, update_mode="append"):
+        purls_set = set(component_purls)
+        merged_purls_set = purls_set.union(set(self.component_purls))
+        purls = list(merged_purls_set)
+
+        if update_mode == "append":
+            self.component_purls = purls
+        else:
+            self.component_purls = list(purls_set)
+        self.save()
+
     def __str__(self):
         return f"{self.name}"
