@@ -1392,10 +1392,11 @@ def collect_components(context, engine):
     connector = CorgiConnector(base_url=api_endpoint)
     source_components = []
 
-    def process_component(component):
+    def process_component(component, subscribed_purls=None):
         sources = []
         missings = []
-        found, retval = connector.get_source_component(component)
+        found, retval = connector.get_source_component(
+            component, subscribed_purls)
         if component.get("type") in ["OCI", "RPMMOD"]:
             # Nest source components in `olcs-sources`
             component["olcs_sources"] = found
@@ -1411,12 +1412,17 @@ def collect_components(context, engine):
         query_params = subscription.get("query_params")
         if not query_params:
             continue
+        # subscription purls obtained from previous sync
+        subscribed_purls = subscription.get("component_purls", [])
 
         components = connector.get_paginated_data(query_params)
         subscription_sources, subscription_missings = [], []
 
         for component in components:
-            sources, missings = process_component(component)
+            if component["purl"] in subscribed_purls:
+                # excludes all non-oci/non-rpmmod components in previous sync.
+                continue
+            sources, missings = process_component(component, subscribed_purls)
             subscription_sources.extend(sources)
             subscription_missings.extend(missings)
 
@@ -1432,19 +1438,31 @@ def collect_components(context, engine):
 
 def populate_subscription_purls(context, engine):
     """
+    Update component purls for subscriptions.
+
     @requires: source_components
     @requires: client
     @feeds: None
     """
     source_components = context["source_components"]
     for source_component in source_components:
-        for sid, data in source_component.items():
-            purls = data.get("purls")
-            if purls:
-                # FIXME: update `component_purls` to latest
-                # FIXME: find delta components and skip those already processed
-                # client.patch(f"subscriptions/{sid}", purls)
-                engine.logger.debug(f"Subscription id: {sid}")
+        subscription_id = source_component["subscription_id"]
+        sources = source_component["sources"]
+        subscription_purl_set = set()
+        for component in sources:
+            if component["type"] in ["OCI", "RPMMOD"]:
+                provides = component.get("provides", [])
+                # Store provides purls.
+                subscription_purl_set.update([p["purl"] for p in provides])
+            else:
+                subscription_purl_set.add(component["purl"])
+
+        client = context["client"]
+        client.patch(
+            f"subscriptions/{subscription_id}",
+            data={"component_purls": list(subscription_purl_set)})
+        engine.logger.debug(
+            f"Populated purls for subscription {subscription_id}")
 
 
 def translate_components(context, engine):
@@ -1497,7 +1515,7 @@ flow_get_corgi_components = [
     get_config,
     get_active_subscriptions,
     collect_components,
-    # populate_subscription_purls,
+    populate_subscription_purls,
     translate_components,
     trigger_corgi_components_inputs
 ]
