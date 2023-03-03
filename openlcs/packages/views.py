@@ -1103,15 +1103,8 @@ query params of the corgi `component` api endpoint.
         update_mode = request.data.get("update_mode", "append")
 
         if component_purls is not None:
-            purls_set = set(component_purls)
-            existing_purls_set = set(subscription.component_purls)
-            merged_purls_set = purls_set.union(existing_purls_set)
-            purls = list(merged_purls_set)
-
-            if update_mode == "append":
-                subscription.component_purls += purls
-            elif update_mode == "overwrite":
-                subscription.component_purls = purls
+            subscription.update_component_purls(component_purls,
+                                                update_mode)
 
         # do some clean up and delegate rest of updates to super()
         request_data = request.data.copy()
