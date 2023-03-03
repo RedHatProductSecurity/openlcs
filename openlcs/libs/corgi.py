@@ -312,7 +312,8 @@ class CorgiConnector:
         else:
             return (False, link)
 
-    def get_container_source_components(self, component, max_workers=5):
+    def get_container_source_components(self, component, subscribed_purls=None,
+                                        max_workers=5):
         """
         Extract source components from a corgi container component
 
@@ -340,7 +341,13 @@ class CorgiConnector:
             logger.debug("Binary build %s retrieved.", component['nevra'])
 
         oci_provides = component.get("provides", [])
-        links = [provide.get("link") for provide in oci_provides]
+        links = []
+        for provide in oci_provides:
+            purl = provide.get("purl")
+            # exclude those that are already retrieved earlier
+            if subscribed_purls and purl in subscribed_purls:
+                continue
+            links.append(provide.get("link"))
         logger.debug("List of provides(%d) collected", len(links))
 
         components_extracted = list()
@@ -364,12 +371,13 @@ class CorgiConnector:
             components_extracted, "uuid")
         return (components, list(components_missing))
 
-    def get_source_component(self, component):
+    def get_source_component(self, component, subscribed_purls=None):
         component_type = component.get("type")
         if component_type == "RPM":
             return self.get_srpm_component(component)
         elif component_type in ["OCI", "RPMMOD"]:
-            return self.get_container_source_components(component)
+            return self.get_container_source_components(
+                component, subscribed_purls)
         else:
             return (True, component)
 
