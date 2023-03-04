@@ -219,6 +219,9 @@ NVRs__####
         ``copyright_scan``: boolean option, 'true' if not specified, \
 **OPTIONAL**
 
+        ``priority``: string option, specific task priority. Value can be \
+one of the "high", "medium", "low". "low" if not specified, **OPTIONAL**
+
         Example(bulk import two packages with license and copyright scannings):
 
             curl -X POST -H "Content-Type: application/json" -H \

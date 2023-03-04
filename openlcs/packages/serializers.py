@@ -3,6 +3,7 @@ import os
 import sys
 
 from libs.swh_tools import swhid_check
+from libs.celery_helper import generate_priority_kwargs, ALLOW_PRIORITY
 from packages.models import (
     Component,
     File,
@@ -158,7 +159,11 @@ class ImportSerializer(AbstractSerializerMixin):
             params['owner_id'] = user_id
             params['token'] = token
             params['token_sk'] = token_sk
-            celery_task = app.send_task(task_flow, [params])
+            celery_task = app.send_task(
+                task_flow,
+                [params],
+                **generate_priority_kwargs(params['priority'])
+            )
             task = Task.objects.create(
                 owner_id=user_id,
                 meta_id=celery_task.task_id,
@@ -180,6 +185,14 @@ class ImportScanOptionsMixin(ImportSerializer):
 
     license_scan = serializers.BooleanField(required=False)
     copyright_scan = serializers.BooleanField(required=False)
+    priority = serializers.CharField(required=False)
+
+    def validate_priority(self, value):
+        if value not in ALLOW_PRIORITY:
+            raise serializers.ValidationError(
+                f"priority must be one of {ALLOW_PRIORITY}"
+            )
+        return value
 
 
 class ReleaseImportMixin(ImportSerializer):
@@ -198,6 +211,7 @@ class ReleaseImportMixin(ImportSerializer):
         data = self.validated_data
         params['license_scan'] = data.get('license_scan', True)
         params['copyright_scan'] = data.get('copyright_scan', True)
+        params['priority'] = data.get('priority', 'low')
         src_dir = data.get('src_dir', None)
         component_type = data.get('component_type', None)
         product_release = data.get('product_release')

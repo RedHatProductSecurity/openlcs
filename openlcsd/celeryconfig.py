@@ -24,7 +24,12 @@ task_time_limit = 432000
 # so that we get a chance to retry it before force stop it.
 task_soft_time_limit = 430200
 
-broker_transport_options = {'visibility_timeout': 86400}
+broker_transport_options = {
+    'visibility_timeout': 86400,
+    'priority_steps': [0, 1, 2],
+    'sep': ':',
+    'queue_order_strategy': 'priority',
+}
 
 # List of modules to import when celery starts.
 imports = (

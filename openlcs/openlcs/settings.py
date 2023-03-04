@@ -190,6 +190,13 @@ CELERY_BEAT_SCHEDULE = {
     #     'kwargs': {'provenance':  'sync_corgi'}
     # }
 }
+# https://docs.celeryq.dev/en/v5.2.7/userguide/routing.html#redis-message-priorities
+CELERY_BROKER_TRANSPORT_OPTIONS = {
+    'visibility_timeout': 86400,
+    'priority_steps': [0, 1, 2],
+    'sep': ':',
+    'queue_order_strategy': 'priority',
+}
 
 LOGGER_DIR = '/var/log/openlcs/'
 

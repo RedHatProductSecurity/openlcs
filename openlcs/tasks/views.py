@@ -14,6 +14,7 @@ from rest_framework.filters import SearchFilter
 from openlcs.celery import app
 from tasks.models import Task, TaskMeta
 from tasks.serializers import TaskSerializer
+from libs.celery_helper import generate_priority_kwargs, ALLOW_PRIORITY
 
 # task status list for DRF’s browsable API
 TASK_STATUS_CHOICES = (
@@ -223,6 +224,11 @@ to search.
             curl -X POST -H "Content-Type: application/json" -H \
 'Authorization: Token your_token' %(HOST_NAME)s/%(API_PATH)s/tasks/instance_pk/retry/
 
+        ####__Supported query params__####
+                
+        ``priority``: string option, specific/override task priority. Value can be \
+one of the "high", "medium", "low". "low" if not specified, **OPTIONAL**
+
         ####__Response__####
 
             {"task_id":XXX}
@@ -239,8 +245,27 @@ to search.
             err_msg = f"The source directory {src_dir} does not exist."
             return Response(err_msg, status=status.HTTP_400_BAD_REQUEST)
 
+        # validate priority parameter
+        priority = request.data.get('priority')
+        if priority is not None and priority not in ALLOW_PRIORITY:
+            return Response(
+                f"priority must be one of {ALLOW_PRIORITY}",
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        # override priority
+        if priority:
+            params['priority'] = priority
+        # old task do not have priority parameter and
+        # API not receive priority parameter, set it to low
+        if params.get('priority') is None:
+            params['priority'] = 'low'
+
         task_flow = 'flow.tasks.flow_default'
-        celery_task = app.send_task(task_flow, [params])
+        celery_task = app.send_task(
+            task_flow,
+            [params],
+            **generate_priority_kwargs(params['priority'])
+        )
         t = Task.objects.create(
             meta_id=celery_task.task_id,
             owner_id=request.user.id,
