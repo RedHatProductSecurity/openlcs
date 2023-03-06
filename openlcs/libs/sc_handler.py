@@ -191,11 +191,20 @@ class SourceContainerHandler(object):
             os.remove(layer_file_path)
 
         # Move all the misc files, directories to "metadata" directory.
-        nested_items = os.listdir(self.dest_dir)
-        for nested_item in nested_items:
+        dest_nested_items = os.listdir(self.dest_dir)
+        src_dir = os.path.dirname(self.src_file)
+        src_nested_items = os.listdir(src_dir)
+        item_paths = []
+        for nested_item in dest_nested_items:
             if nested_item not in ['extra_src_dir', 'rpm_dir', 'metadata']:
-                item_path = os.path.join(self.dest_dir, nested_item)
-                shutil.move(item_path, misc_dir)
+                item_paths.append(os.path.join(self.dest_dir, nested_item))
+        # Move all the metadata files from src_dir to metadata directory for
+        # getting container source from registry.
+        for nested_item in src_nested_items:
+            item_paths.append(os.path.join(src_dir, nested_item))
+        for item_path in item_paths:
+            shutil.move(item_path, misc_dir)
+
         return misc_dir
 
     def unpack_source_container_image(self):
