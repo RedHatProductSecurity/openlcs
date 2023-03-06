@@ -33,6 +33,11 @@ class LicenseDetectionViewSet(ModelViewSet):
     serializer_class = LicenseDetectionSerializer
     filter_class = LicenseDetectionFilter
 
+    def get_serializer_context(self):
+        content = super().get_serializer_context()
+        content['source_id'] = self.request.GET.get('source_id')
+        return content
+
     def list(self, request, *args, **kwargs):
         """
         Get a list of license detections.
@@ -57,7 +62,7 @@ class LicenseDetectionViewSet(ModelViewSet):
                     "start_line": 6,
                     "end_line": 17,
                     "false_positive": false,
-                    "file_scan": 1
+                    "file_data": {}
                 },
                 {
                     "id": 73,
@@ -67,7 +72,7 @@ class LicenseDetectionViewSet(ModelViewSet):
                     "start_line": 4,
                     "end_line": 4,
                     "false_positive": false,
-                    "file_scan": 2
+                    "file_data": {}
                 }
             ]
         """
@@ -96,7 +101,7 @@ class LicenseDetectionViewSet(ModelViewSet):
                 "start_line": 6,
                 "end_line": 17,
                 "false_positive": false,
-                "file_scan": 1
+                "file_data": {}
             }
         """
         return super().retrieve(request, *args, **kwargs)
@@ -128,6 +133,11 @@ class CopyrightDetectionViewSet(ModelViewSet):
     serializer_class = CopyrightDetectionSerializer
     filter_class = CopyrightDetectionFilter
 
+    def get_serializer_context(self):
+        content = super().get_serializer_context()
+        content['source_id'] = self.request.GET.get('source_id')
+        return content
+
     def list(self, request, *args, **kwargs):
         """
         Get a list of copyright detections.
@@ -151,7 +161,7 @@ class CopyrightDetectionViewSet(ModelViewSet):
                     "false_positive": false,
                     "start_line": 4,
                     "end_line": 4,
-                    "file_scan": 1
+                    "file_data": {}
                 },
                 {
                     "id": 2,
@@ -160,7 +170,7 @@ class CopyrightDetectionViewSet(ModelViewSet):
                     "false_positive": false,
                     "start_line": 5,
                     "end_line": 5,
-                    "file_scan": 2
+                    "file_data": {}
                 }
             ]
         """
@@ -187,7 +197,7 @@ class CopyrightDetectionViewSet(ModelViewSet):
                 "false_positive": false,
                 "start_line": 4,
                 "end_line": 4,
-                "file_scan": 1
+                "file_data": {}
             }
         """
         return super().retrieve(request, *args, **kwargs)

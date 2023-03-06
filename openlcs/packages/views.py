@@ -119,7 +119,7 @@ class SourceViewSet(ModelViewSet):
     parser_classes = [JSONParser, FileUploadParser]
 
     def list(self, request, *args, **kwargs):
-        """
+        """ # noqa
         Get a list of sources.
 
         ####__Request__####
@@ -146,14 +146,17 @@ class SourceViewSet(ModelViewSet):
                     "component_set": [
                         1
                     ],
-                    "license_detections": [
-                        "bsd-simplified",
-                        "gpl-2.0-plus",
-                    ],
-                    "copyright_detections": [
-                        "Copyright (c) 2005 Ben Gardner <bgardner@wabtec.com>",
-                        "Copyright (c) 2013 Fusion-io, Inc.",
-                    ]
+                    "license_detections":{
+                        "public-domain": "http://{HOSTNAME}/rest/v1/licensedetections/?source_id=1&license_key=public-domain",
+                        "gpl-2.0-plus": "http://{HOSTNAME}/rest/v1/licensedetections/?source_id=1&license_key=gpl-2.0-plus",
+                        "bsd-simplified": "http://{HOSTNAME}/rest/v1/licensedetections/?source_id=1&license_key=bsd-simplified",
+                        ...
+                    },
+                    "copyright_detections": {
+                        "Copyright (c) 2013 Fusion-io.": "http://{HOSTNAME}/rest/v1/copyrightdetections/?source_id=1&statement=Copyright (c) 2013 Fusion-io.",
+                        "Copyright (c) 2010-2017 par": "http://{HOSTNAME}/rest/v1/copyrightdetections/?source_id=1&statement=Copyright (c) 2010-2017 par",
+                        ...
+                    }
                 }
             ]
 
@@ -161,7 +164,7 @@ class SourceViewSet(ModelViewSet):
         return super().list(request, *args, **kwargs)
 
     def retrieve(self, request, *args, **kwargs):
-        """
+        """ # noqa
         Get a specific source.
 
         ####__Request__####
@@ -177,14 +180,17 @@ Token your_token'
 
             {
                 "id": 1,
-                "license_detections": [
-                    "bsd-simplified",
-                    "gpl-2.0-plus",
-                ],
-                "copyright_detections": [
-                    "Copyright (c) 2005 Ben Gardner <bgardner@wabtec.com>",
-                    "Copyright (c) 2013 Fusion-io, Inc.",
-                ],
+                "license_detections":{
+                    "public-domain": "http://{HOSTNAME}/rest/v1/licensedetections/?source_id=1&license_key=public-domain",
+                    "gpl-2.0-plus": "http://{HOSTNAME}/rest/v1/licensedetections/?source_id=1&license_key=gpl-2.0-plus",
+                    "bsd-simplified": "http://{HOSTNAME}/rest/v1/licensedetections/?source_id=1&license_key=bsd-simplified",
+                    ...
+                },
+                "copyright_detections": {
+                    "Copyright (c) 2013 Fusion-io.": "http://{HOSTNAME}/rest/v1/copyrightdetections/?source_id=1&statement=Copyright (c) 2013 Fusion-io.",
+                    "Copyright (c) 2010-2017 par": "http://{HOSTNAME}/rest/v1/copyrightdetections/?source_id=1&statement=Copyright (c) 2010-2017 par",
+                    ...
+                },
                 "checksum": \
 "45f5aacb70f6eddac629375bd4739471ece1a2747123338349df069919e909ac",
                 "name": "ansible-2.4.2.0-2.el7",
@@ -682,7 +688,7 @@ class ComponentViewSet(ModelViewSet):
     search_fields = ['type', 'name', 'version', 'release', 'arch']
 
     def list(self, request, *args, **kwargs):
-        """
+        """ # noqa
         Get a list of components.
 
         ####__Request__####
@@ -711,8 +717,17 @@ class ComponentViewSet(ModelViewSet):
                         "component_set": [
                             5
                         ],
-                        "license_detections": [],
-                        "copyright_detections": []
+                        "license_detections":{
+                            "public-domain": "http://{HOSTNAME}/rest/v1/licensedetections/?source_id=1&license_key=public-domain",
+                            "gpl-2.0-plus": "http://{HOSTNAME}/rest/v1/licensedetections/?source_id=1&license_key=gpl-2.0-plus",
+                            "bsd-simplified": "http://{HOSTNAME}/rest/v1/licensedetections/?source_id=1&license_key=bsd-simplified",
+                            ...
+                        },
+                        "copyright_detections": {
+                            "Copyright (c) 2013 Fusion-io.": "http://{HOSTNAME}/rest/v1/copyrightdetections/?source_id=1&statement=Copyright (c) 2013 Fusion-io.",
+                            "Copyright (c) 2010-2017 par": "http://{HOSTNAME}/rest/v1/copyrightdetections/?source_id=1&statement=Copyright (c) 2010-2017 par",
+                            ...
+                        }
                     },
                     "provides": [],
                     "type": "RPM",
@@ -793,18 +808,17 @@ applicable when sync_status is "sync_failed".
                         "component_set": [
                             1
                         ],
-                        "license_detections": [
-                            "gpl-2.0-plus",
-                            "gpl-2.0",
-                            "gpl-1.0-plus",
-                            "public-domain",
-                            "bsd-simplified"
-                        ],
-                        "copyright_detections": [
-                            "(c) 2012-2017 Jens Axboe <axboe@kernel.dk>",
-                            "Copyright (c) 2013 Fusion-io, Inc.",
-                            "(c) 2002 William Lee Irwin III",
-                        ]
+                        "license_detections":{
+                            "public-domain": "http://{HOSTNAME}/rest/v1/licensedetections/?source_id=1&license_key=public-domain",
+                            "gpl-2.0-plus": "http://{HOSTNAME}/rest/v1/licensedetections/?source_id=1&license_key=gpl-2.0-plus",
+                            "bsd-simplified": "http://{HOSTNAME}/rest/v1/licensedetections/?source_id=1&license_key=bsd-simplified",
+                            ...
+                        },
+                        "copyright_detections": {
+                            "Copyright (c) 2013 Fusion-io.": "http://{HOSTNAME}/rest/v1/copyrightdetections/?source_id=1&statement=Copyright (c) 2013 Fusion-io.",
+                            "Copyright (c) 2010-2017 par": "http://{HOSTNAME}/rest/v1/copyrightdetections/?source_id=1&statement=Copyright (c) 2010-2017 par",
+                            ...
+                        }
                     },
                     "type": "RPM",
                     "provides": [],
@@ -845,7 +859,7 @@ applicable when sync_status is "sync_failed".
         return super().list(request, *args, **kwargs)
 
     def retrieve(self, request, *args, **kwargs):
-        """
+        """ # noqa
         Get a specific component.
 
         ####__Request__####
@@ -873,8 +887,17 @@ applicable when sync_status is "sync_failed".
                     "component_set": [
                         5
                     ],
-                    "license_detections": [],
-                    "copyright_detections": []
+                    "license_detections":{
+                        "public-domain": "http://{HOSTNAME}/rest/v1/licensedetections/?source_id=1&license_key=public-domain",
+                        "gpl-2.0-plus": "http://{HOSTNAME}/rest/v1/licensedetections/?source_id=1&license_key=gpl-2.0-plus",
+                        "bsd-simplified": "http://{HOSTNAME}/rest/v1/licensedetections/?source_id=1&license_key=bsd-simplified",
+                        ...
+                    },
+                    "copyright_detections": {
+                        "Copyright (c) 2013 Fusion-io.": "http://{HOSTNAME}/rest/v1/copyrightdetections/?source_id=1&statement=Copyright (c) 2013 Fusion-io.",
+                        "Copyright (c) 2010-2017 par": "http://{HOSTNAME}/rest/v1/copyrightdetections/?source_id=1&statement=Copyright (c) 2010-2017 par",
+                        ...
+                    }
                 },
                 "type": "RPM",
                 "provides": [],

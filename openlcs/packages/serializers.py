@@ -74,10 +74,11 @@ class SourceSerializer(serializers.ModelSerializer):
             'license_key', flat=True)
         ld_url_prefix = 'http://{}/rest/v1/licensedetections/'.format(
                         settings.HOSTNAME)
+        source_id = obj.id
         license_detections = dict()
         for lk in license_data.distinct():
-            detail_url = '{}?license_key={}'.format(
-                        ld_url_prefix, urlquote(lk))
+            detail_url = '{}?source_id={}&license_key={}'.format(
+                        ld_url_prefix, source_id, urlquote(lk))
             license_detections[lk] = detail_url
         return license_detections
 
@@ -86,10 +87,11 @@ class SourceSerializer(serializers.ModelSerializer):
             'statement', flat=True)
         cr_url_prefix = 'http://{}/rest/v1/copyrightdetections/'.format(
                         settings.HOSTNAME)
+        source_id = obj.id
         copyright_detections = dict()
         for stm in copyrights.distinct():
-            detail_url = '{}?statement={}'.format(
-                        cr_url_prefix, urlquote(stm))
+            detail_url = '{}?source_id={}&statement={}'.format(
+                        cr_url_prefix, source_id, urlquote(stm))
             copyright_detections[stm] = detail_url
         return copyright_detections
 
