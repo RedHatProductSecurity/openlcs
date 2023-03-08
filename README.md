@@ -115,9 +115,9 @@ but need login to the server firstly.
 OpenLCS worker can be started using the following (from the top directory of
 the repo):
 ```shell
-celery -A openlcsd worker --loglevel=INFO
+celery -A openlcsd worker --loglevel=INFO -Q celery,celery:1,celery:2 -Ofair --prefetch-multiplier=1
 # If you want to debug using celery log, use:
-celery -A openlcsd worker --loglevel=DEBUG
+celery -A openlcsd worker --loglevel=DEBUG -Q celery,celery:1,celery:2 -Ofair --prefetch-multiplier=1
 ```
 
 ### Running OpenLCS beat service

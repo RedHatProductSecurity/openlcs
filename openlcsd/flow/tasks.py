@@ -1153,7 +1153,8 @@ def fork_specified_type_imports(
             cli.headers['Authorization'].split()[-1],
             context['config']['TOKEN_SECRET_KEY']
         ),
-        'token_sk': context['config']['TOKEN_SECRET_KEY']
+        'token_sk': context['config']['TOKEN_SECRET_KEY'],
+        'priority': context['priority']
     }
     # Fork srpm tasks for source container that downloaded src in src_dir
     if src_dir:
@@ -1186,7 +1187,8 @@ def fork_remote_source_components_imports(
             cli.headers['Authorization'].split()[-1],
             context['config']['TOKEN_SECRET_KEY']
         ),
-        'token_sk': context['config']['TOKEN_SECRET_KEY']
+        'token_sk': context['config']['TOKEN_SECRET_KEY'],
+        'priority': context['priority']
     }
     # Fork remote source tasks for source container that
     # downloaded src in src_dir
@@ -1221,7 +1223,8 @@ def fork_components_imports(context, engine, parent, components):
             context['config']['TOKEN_SECRET_KEY']
         ),
         'token_sk': context['config']['TOKEN_SECRET_KEY'],
-        'provenance': context.get('provenance')
+        'provenance': context.get('provenance'),
+        'priority': context['priority']
     }
     if parent:
         data['parent'] = parent
@@ -1501,6 +1504,8 @@ def trigger_corgi_components_inputs(context, engine):
     """
     Trigger fork tasks directly using Corgi source.
     """
+    # set corgi source forked task medium priority
+    context['priority'] = "medium"
     corgi_sources = context.get('corgi_sources')
     for corgi_source in corgi_sources:
         if parent := corgi_source.get('parent'):
