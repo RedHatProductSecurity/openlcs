@@ -485,16 +485,14 @@ def get_source_metadata(context, engine):
             }}
         )
     elif component := context.get('component'):
+        # Use a shallow copy so we won't polluate the original component.
+        component_info = component.copy()
+        declared_license = component_info.pop("declared_license", "")
+        component_info["summary_license"] = declared_license
+        component_info["is_source"] = True
+        component_info["from_corgi"] = True
         source_info.update(
-            {"component": {
-                "name": component.get('name'),
-                "version": component.get('version'),
-                "release": component.get('release'),
-                "arch": 'src',
-                "type": component.get('type'),
-                "summary_license": context.get("declared_license", ""),
-                "is_source": True
-            }}
+            {"component": component_info}
         )
     else:
         msg = "Failed to get component information."
