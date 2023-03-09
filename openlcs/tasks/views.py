@@ -60,10 +60,13 @@ class TaskFilter(filters.FilterSet):
     def filter_status(self, queryset, name, value):
         if not value:
             return queryset
-
-        meta_ids = TaskMeta.objects.filter(
-            status=value).values_list('task_id', flat=True)
-        return queryset.filter(meta_id__in=meta_ids)
+        if value == 'PENDING':
+            meta_ids = TaskMeta.objects.values_list('task_id', flat=True)
+            return queryset.exclude(meta_id__in=meta_ids)
+        else:
+            meta_ids = TaskMeta.objects.filter(
+                status=value).values_list('task_id', flat=True)
+            return queryset.filter(meta_id__in=meta_ids)
 
     def filter_date_done(self, queryset, name, value):
         """

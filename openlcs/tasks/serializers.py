@@ -11,7 +11,6 @@ class TaskSerializer(serializers.ModelSerializer):
     Task Serializer
     """
     owner = serializers.StringRelatedField()
-    status = serializers.SerializerMethodField()
     date_done = serializers.SerializerMethodField()
     traceback = serializers.SerializerMethodField()
     object_url = serializers.SerializerMethodField()
@@ -20,13 +19,6 @@ class TaskSerializer(serializers.ModelSerializer):
         model = Task
         fields = ('id', 'meta_id', 'owner', 'params', 'status', 'date_done',
                   'traceback', 'object_url', 'parent_task_id')
-
-    def get_status(self, obj):
-        try:
-            taskmeta = TaskMeta.objects.get(task_id=obj.meta_id)
-        except TaskMeta.DoesNotExist:
-            return None
-        return taskmeta.status
 
     def get_date_done(self, obj):
         try:
