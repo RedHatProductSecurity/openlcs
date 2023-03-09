@@ -951,7 +951,7 @@ def sync_result_to_corgi(context, engine):
     component = context.get("component")
     if not component:
         return
-    client = context.pop('client')
+    client = context['client']
     olcs_component_api_url = client.get_abs_url("components")
     component_uuid = component["uuid"]
     response = client.get("components", params={"uuid": component_uuid})

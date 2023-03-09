@@ -230,7 +230,7 @@ class Component(CorgiComponentMixin):
         ]
 
     @staticmethod
-    def get_or_create_component(component_data):
+    def update_or_create_component(component_data):
         """
         Get or create a component based on the given data.
 
@@ -253,7 +253,7 @@ class Component(CorgiComponentMixin):
             'from_corgi': True if 'uuid' in component_data else False,
             'purl': component_data.get('purl', ''),
         }
-        component, _ = Component.objects.get_or_create(
+        component, _ = Component.objects.update_or_create(
             **{f: component_data.get(f, '') for f in unique_fields},
             defaults=defaults,
         )

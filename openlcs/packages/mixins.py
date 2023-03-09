@@ -101,7 +101,7 @@ class SaveComponentsMixin:
 
     @staticmethod
     def create_component(component_data):
-        return Component.get_or_create_component(component_data)
+        return Component.update_or_create_component(component_data)
 
     def build_release_node(self, release_component):
         """

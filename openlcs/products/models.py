@@ -125,6 +125,15 @@ class ComponentTreeNode(MpttTreeNodeMixin):
         """
         Build component tree node from component data recursively.
 
+        Param `component_data` is a dictionary of (nested) component data.
+        If nested components are present, they should be in
+        "source_components" key, this is where nested source components are
+        collected in corgi.get_source_components module, name it differently
+        if you get a better idea.
+        When creating component, need to tell if the component_data is from
+        component registry or not see`Component.update_or_create_component`
+        for more details.
+
         This should be called only for nested component_data, i.e.,
         "OCI"/"RPMMOD" component. Never call this for a "leaf" component.
         """
@@ -132,7 +141,7 @@ class ComponentTreeNode(MpttTreeNodeMixin):
         if component_type in ['OCI', 'RPMMOD']:
             # Handle nested components
             source_components = component_data.pop('source_components', [])
-            component = Component.get_or_create_component(component_data)
+            component = Component.update_or_create_component(component_data)
             component_node = cls.objects.create(
                 parent=parent,
                 content_object=component,
@@ -145,7 +154,7 @@ class ComponentTreeNode(MpttTreeNodeMixin):
             return component_node
         else:
             # rpm/golang/pypi/cargo etc goes here.
-            component = Component.get_or_create_component(component_data)
+            component = Component.update_or_create_component(component_data)
             component_node = cls.objects.create(
                 parent=parent,
                 content_object=component,
