@@ -80,7 +80,6 @@ class CorgiConnector:
     def get_sync_fields(self, component_uuid):
         """
         Determines which fields to sync for a specified component.
-
         """
         sync_fields = [
             "openlcs_scan_url",
