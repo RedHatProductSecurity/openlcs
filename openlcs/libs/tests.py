@@ -644,3 +644,59 @@ class TestGetTaskRepository(TestCase):
         # In case no "x86_64" repo found, the first element will be returned
         self.assertEqual(connector.get_task_repository(build2),
                          repositories[0])
+
+
+class TestCorgiConnector(TestCase):
+
+    @mock.patch.object(CorgiConnector, 'get')
+    def test_get_paginated_data(self, mock_get):
+        mock_paginated_response = {
+            "previous": None,
+            # Set "next" to None so we control the while loop
+            "next": None,
+            # Simulate the response, no need to have all fields configured
+            "results": [
+                {
+                    "uuid": "3ab010ea-774b-48a2-ac25-672fa8b24982",
+                    "purl": "pkg:rpm/foo@1.0.0"
+                },
+                {
+                    "uuid": "a7d6d360-890d-44c7-ba4c-d2068231c55f",
+                    "purl": "pkg:rpm/bar@2.0.0"
+                }
+            ]
+        }
+        mock_single_instance_response = {
+            "uuid": "56288f5b-6ccc-4260-ba06-5fa7503c12cd",
+            "purl": "pkg:rpm/baz@3.0.0"
+        }
+        mock_get.side_effect = [
+            mock_paginated_response,
+            mock_single_instance_response,
+        ]
+
+        connector = CorgiConnector(
+            base_url=os.getenv("CORGI_API_STAGE"))
+        data = list(connector.get_paginated_data())
+
+        expected_multiple_instance_paginated = [
+            {
+                "uuid": "3ab010ea-774b-48a2-ac25-672fa8b24982",
+                "purl": "pkg:rpm/foo@1.0.0"
+            },
+            {
+                "uuid": "a7d6d360-890d-44c7-ba4c-d2068231c55f",
+                "purl": "pkg:rpm/bar@2.0.0"
+            }
+        ]
+        expected_single_instance = [{
+            "uuid": "56288f5b-6ccc-4260-ba06-5fa7503c12cd",
+            "purl": "pkg:rpm/baz@3.0.0"
+        }]
+
+        # Assert that the results match the expected results
+        self.assertEqual(data, expected_multiple_instance_paginated)
+
+        # Retrieving single instance if `query_param` is purl based.
+        data = list(connector.get_paginated_data())
+        self.assertEqual(data, expected_single_instance)
