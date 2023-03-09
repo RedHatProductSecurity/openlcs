@@ -818,7 +818,7 @@ def save_package_data(context, engine):
     if component := context.get('component'):
         component_nvr = component.get('nvr')
     else:
-        package_nvr = context('package_nvr')
+        package_nvr = context.get('package_nvr')
         component_nvr = package_nvr if package_nvr else context.get('rs_comp')
     engine.logger.info(f"Start to send {component_nvr} data to hub for "
                        f"further processing...")
