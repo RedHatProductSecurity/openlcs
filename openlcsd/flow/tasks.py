@@ -1161,9 +1161,18 @@ def fork_specified_type_imports(
         data.update({'src_dir': src_dir})
     msg = 'Start to fork imports for {} components...'.format(len(nvr_list))
     engine.logger.info(msg)
-    cli.post(url, data=data)
-    msg = '-- Forked import tasks for below source components:{}'.format(
-            "\n\t" + "\n\t".join(nvr_list))
+    nvrs = "\n\t" + "\n\t".join(nvr_list)
+    resp = cli.post(url, data=data)
+    try:
+        # Raise it in case we made a bad request:
+        # http://docs.python-requests.org/en/master/user/quickstart/#response-status-codes  # noqa
+        resp.raise_for_status()
+    except HTTPError:
+        err_msg = f'-- Failed to fork import tasks for components: {nvrs}. ' \
+                  f'Reason: {resp.text}'
+        engine.logger.error(err_msg)
+        raise RuntimeError(err_msg) from None
+    msg = f'-- Forked import tasks for components: {nvrs}'
     engine.logger.info(msg)
     engine.logger.info('Done')
 
@@ -1194,15 +1203,24 @@ def fork_remote_source_components_imports(
     # downloaded src in src_dir
     if src_dir:
         data.update({'src_dir': src_dir})
-    msg = 'Start to fork imports for {} remote source components...'.format(
-        len(rs_comps))
+    msg = 'Start to fork imports for {} components...'.format(len(rs_comps))
     engine.logger.info(msg)
-    cli.post(url, data=data)
-    components = ""
+    components_string = ""
     for rs_comp in rs_comps:
-        components += "\n\t" + 'name(%s) version(%s) type(%s)' % (
+        components_string += "\n\t" + 'name(%s) version(%s) type(%s)' % (
             rs_comp.get('name'), rs_comp.get('version'), rs_comp.get('type'))
-    msg = f'-- Forked import tasks for below source components:{components}'
+    resp = cli.post(url, data=data)
+    try:
+        # Raise it in case we made a bad request:
+        # http://docs.python-requests.org/en/master/user/quickstart/#response-status-codes  # noqa
+        resp.raise_for_status()
+    except HTTPError:
+        err_msg = f'-- Failed to fork import tasks for components: ' \
+                  f'{components_string}. Reason: {resp.text}'
+        engine.logger.error(err_msg)
+        raise RuntimeError(err_msg) from None
+
+    msg = f'-- Forked import tasks for components: {components_string}'
     engine.logger.info(msg)
     engine.logger.info('Done')
 
@@ -1228,14 +1246,22 @@ def fork_components_imports(context, engine, parent, components):
     }
     if parent:
         data['parent'] = parent
-    msg = 'Start to fork imports for {} original components...'.format(
-        len(components))
+    msg = 'Start to fork imports for {} components...'.format(len(components))
     engine.logger.info(msg)
-    cli.post(url, data=data)
-    components_string = "\n\t".join([component.get('nvr')
-                                     for component in components])
-    msg = '-- Forked import tasks for original components:{}'.format(
-            "\n\t" + components_string)
+    components_string = "\n\t" + "\n\t".join([component.get('nvr')
+                                              for component in components])
+    resp = cli.post(url, data=data)
+    try:
+        # Raise it in case we made a bad request:
+        # http://docs.python-requests.org/en/master/user/quickstart/#response-status-codes  # noqa
+        resp.raise_for_status()
+    except HTTPError:
+        err_msg = f'-- Failed to fork import tasks for components: ' \
+                  f'{components_string}. Reason: {resp.text}'
+        engine.logger.error(err_msg)
+        raise RuntimeError(err_msg) from None
+
+    msg = f'-- Forked import tasks for components: {components_string}'
     engine.logger.info(msg)
     engine.logger.info('Done')
 

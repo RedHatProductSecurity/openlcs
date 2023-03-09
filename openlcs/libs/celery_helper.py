@@ -14,8 +14,8 @@ class UnsupportedPriority(Exception):
 
 def generate_priority_kwargs(priority: str) -> dict:
     """
-    generate celery task needed kwargs for specified priority
-    priority can be one of the `high`, `medium`, `low`
+    Generate celery task needed kwargs for specified priority.
+    Priority can be one of the `high`, `medium`, `low`
     """
     if priority not in ALLOW_PRIORITY:
         raise UnsupportedPriority

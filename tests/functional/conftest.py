@@ -39,6 +39,7 @@ def pytest_configure():
     del conf_vars['sys']
     del conf_vars['parent_dir']
     del conf_vars['Fernet']
+    del conf_vars['crontab']
     settings.configure(**conf_vars)
 
 

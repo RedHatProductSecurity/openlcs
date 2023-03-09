@@ -13,7 +13,7 @@ import os
 import sys
 from pathlib import Path
 
-# from celery.schedules import crontab
+from celery.schedules import crontab
 from cryptography.fernet import Fernet
 # from datetime import timedelta
 
@@ -184,11 +184,11 @@ CELERY_BEAT_SCHEDULE = {
     #     'task': 'openlcsd.flow.periodic_tasks.print_task_id',
     #     'schedule': timedelta(seconds=1)
     # },
-    # 'run_corgi_sync': {
-    #     'task': 'openlcsd.flow.periodic_tasks.run_corgi_sync',
-    #     'schedule': timedelta(minutes=3),
-    #     'kwargs': {'provenance':  'sync_corgi'}
-    # }
+    'run_corgi_sync': {
+        'task': 'openlcsd.flow.periodic_tasks.run_corgi_sync',
+        'schedule': crontab(minute=0, hour=0),  # Execute daily at midnight.
+        'kwargs': {'provenance': 'sync_corgi'}
+    }
 }
 # https://docs.celeryq.dev/en/v5.2.7/userguide/routing.html#redis-message-priorities
 CELERY_BROKER_TRANSPORT_OPTIONS = {
