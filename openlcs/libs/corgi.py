@@ -257,10 +257,19 @@ class CorgiConnector:
         """
         url = f"{self.base_url}{api_path}"
         while url:
+            data = self.get(url, query_params=query_params)
             try:
-                data = self.get(url, query_params=query_params)
-                yield from data["results"]
-                url = data.get("next")
+                if isinstance(data, dict) and "results" in data:
+                    # Paginated response with "results" key
+                    yield from data["results"]
+                    url = data.get("next")
+                else:
+                    # Hack to survive an edge case(query by purl or possibly
+                    # other unidentified fields) that when only one instance
+                    # is retrieved, the api endpoint returns the model repr
+                    # instead of following the drf pagination convention.
+                    yield data
+                    break
             except HTTPError as e:
                 # non-200 responses
                 logger.error("HTTP Error: %s", e)
