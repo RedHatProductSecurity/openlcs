@@ -947,9 +947,47 @@ def save_scan_result(context, engine):
     engine.logger.info("Finished saving scan result to database.")
 
 
+def sync_result_to_corgi(context, engine):
+    component = context.get("component")
+    if not component:
+        return
+    client = context.pop('client')
+    olcs_component_api_url = client.get_abs_url("components")
+    component_uuid = component["uuid"]
+    response = client.get("components", params={"uuid": component_uuid})
+    response.raise_for_status()
+    response = response.json()
+    # Each component has one identical source.
+    olcs_component = response["results"][0]
+    source = olcs_component["source"]
+    if not source:
+        # Component without source info means no scan is done.
+        # FIXME: are there any other circumstances cause no source?
+        return
+    license_detections = source["license_detections"]
+    copyright_detections = source["copyright_detections"]
+    summary_license = olcs_component["summary_license"]
+    component_data = {
+        "uuid": component_uuid,
+        "openlcs_scan_url": f"{olcs_component_api_url}{olcs_component['id']}",
+        "openlcs_scan_version": source["scan_flag"],
+        "license_declared": summary_license,
+        # FIXME: Corgi by default concatenate list of licenses using "AND"
+        "license_concluded": " AND ".join(license_detections),
+        "copyright_text": ", ".join(copyright_detections),
+    }
+    connector = CorgiConnector(base_url=os.getenv("CORGI_API_STAGE"))
+    response = connector.sync_to_corgi(component_data)
+    engine.logger.info(f"Component({component_uuid}) synced to corgi.")
+    client.patch(
+        f"components/{olcs_component['id']}",
+        data={"sync_status": "synced"})
+    engine.logger.info(f"Component({component_uuid}) synced in OLCS.")
+
+
 def get_source_components(context, engine):
     component = context.get("component")
-    connector = CorgiConnector()
+    connector = CorgiConnector(base_url=os.getenv("CORGI_API_STAGE"))
     components, components_missing = connector.get_source_component(component)
     if components_missing:
         context['components_missing'] = components_missing
@@ -1334,6 +1372,7 @@ flow_default = [
                                                 copyright_scan,
                                             ),
                                             save_scan_result,
+                                            sync_result_to_corgi,
                                         ],
                                     )
                                 ]

@@ -85,9 +85,9 @@ class CorgiConnector:
         sync_fields = [
             "openlcs_scan_url",
             "openlcs_scan_version",
+            "license_declared",
             "license_concluded",
             "copyright_text",
-            "license_declared",
         ]
         # FIXME: if the original component data is preserved, we don't need
         # to `get` it again.
@@ -96,7 +96,7 @@ class CorgiConnector:
         # Update of non-empty `license_declared` in corgi is forbidden.
         # overwrite of other fields are possible. See also CORGI-475
         if component.get("license_declared"):
-            sync_fields.pop("license_declared")
+            sync_fields.remove("license_declared")
 
         return sync_fields
 
@@ -104,16 +104,15 @@ class CorgiConnector:
         """
         sync specified fields to corgi(via PUT)
         """
-        uuid = component_data.get("uuid")
-        fields = self.get_sync_fields(uuid)
+        component_uuid = component_data.get("uuid")
+        fields = self.get_sync_fields(component_uuid)
         # FIXME: use constraint SPDX identifiers for declared licenses
         # see also CORGI-440
         data = {k: v for k, v in component_data.items() if k in fields and v}
-        url = f"{self.base_url}components/{uuid}/olcs_test"
+        url = f"{self.base_url}components/{component_uuid}/olcs_test"
         response = self.session.put(url, data=data)
-        # FIXME: update component `sync_status` to "SYNCED"
-        # FIXME: error handling
-        return response
+        response.raise_for_status()
+        return response.json()
 
     @staticmethod
     def get_component_flat(data):
@@ -434,14 +433,3 @@ class CorgiConnector:
 
         err_msg = f"Failed to find {nvr} component instance from Corgi."
         raise ValueError(err_msg)
-
-
-if __name__ == '__main__':
-    connector = CorgiConnector(
-        base_url="https://corgi-stage.prodsec.redhat.com/api/v1/")
-    component_data = {
-        "uuid": "fd3b4a53-0925-4a1b-b3c1-e352acaf1d83",
-        "openlcs_scan_url": "http://example.com/dummy-url",
-        "license_concluded": "MIT AND BSD",
-    }
-    connector.sync_to_corgi(component_data)
