@@ -218,11 +218,11 @@ def get_source_container_build(context, engine):
             sc_build["id"] = sc_build.get("build_id")
         # Get the binary build for the import source container nvr.
         if package_nvr == sc_build.get('nvr'):
-            msg = 'Found source container build %s for %s in Brew/Koji'
-            engine.logger.info(msg % (sc_build.get('nvr'), package_nvr))
             binary_nvr = koji_connector.get_binary_nvr(package_nvr)
             binary_build = koji_connector.get_build(binary_nvr)
         else:
+            msg = 'Found source container build %s for %s in Brew/Koji'
+            engine.logger.info(msg % (sc_build.get('nvr'), package_nvr))
             binary_build = context.get('build')
         context['binary_build'] = binary_build
         context['build'] = sc_build
