@@ -3,7 +3,26 @@ import shutil
 import subprocess
 import tempfile
 from kobo.shortcuts import run
-from libs.common import get_mime_type
+from libs.common import get_mime_type, get_extension
+
+
+SUPPORTED_FILE_EXTENSIONS = [
+        '.tar', '.zip', '.zipx', '.war', '.sar', '.ear', '.xz', '.lzma',
+        '.gz', '.gzip', '.wmz', '.arz', '.bz', '.bz2', '.bzip2', '.lzip',
+        '.rar', '.ar', '.7z', '.cpio', '.z', '.gem', '.apk', '.aar', '.xpi',
+        '.ipa', '.jar', '.zip', '.egg', '.whl', '.pyz', '.pex', '.cab',
+        '.msi', '.pkg', '.mpkg', '.xar', '.nupkg', '.a', '.lib', '.out', '.ka',
+        '.deb', '.udeb', '.rpm', '.srpm', '.mvl', '.vip', '.dmg',
+        '.sparseimage', '.tar.gz', '.tgz', '.tar.bz', '.tbz,', '.tar.bz2',
+        '.tbz2', '.tar.Z', '.tZ', '.tar.lzo', '.tzo', '.tar.lz', '.tlz',
+        '.tar.xz', '.txz', '.tar.7z', '.t7z', '.lha', '.lzh', '.alz', '.ace',
+        '.arj', '.arc', '.lzo', '.lz', '.rz', '.lrz'
+]
+
+SP_EXTENSIONS = [
+        '.tar.gz', '.tar.bz', '.tar.bz2', '.tar.Z', '.tar.lzo', '.tar.lz',
+        '.tar.xz', '.tar.7z'
+]
 
 
 class UnpackArchive(object):
@@ -75,21 +94,18 @@ class UnpackArchive(object):
         abs_path = os.path.abspath(file_name)
         file_name = os.path.basename(file_name)
         file_path = main_dir or os.path.dirname(abs_path)
-        cmd = ("file -i -b -L '%s' | grep -q 'text'" % file_name)
-        retcode, _ = run(cmd, workdir=file_path, can_fail=True)
-        if retcode == 0:
-            return None
-
-        tmp_dir = tempfile.mkdtemp(prefix='tmpunpack_', dir=main_dir)
-        cmd = ("atool -X '%(tmp_dir)s' -q '%(file_path)s/%(file_name)s' "
-               ">/dev/null" % locals())
-        try:
-            run(cmd, workdir=file_path)
-            return tmp_dir
-        except RuntimeError:
-            shutil.rmtree(tmp_dir)
-            err_msg = 'Unable to decompress file %s.' % file_name
-            raise ValueError(err_msg) from None
+        _, file_extension = get_extension(file_name, SP_EXTENSIONS)
+        if file_extension in SUPPORTED_FILE_EXTENSIONS:
+            tmp_dir = tempfile.mkdtemp(prefix='tmpunpack_', dir=main_dir)
+            cmd = ("atool -X '%(tmp_dir)s' -q '%(file_path)s/%(file_name)s' "
+                   ">/dev/null" % locals())
+            try:
+                run(cmd, workdir=file_path)
+                return tmp_dir
+            except RuntimeError:
+                shutil.rmtree(tmp_dir)
+                err_msg = 'Unable to decompress file %s.' % file_name
+                raise ValueError(err_msg) from None
 
     def unpack_archives_using_extractcode(self, src_dir=None):
         """
