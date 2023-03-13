@@ -19,6 +19,7 @@ if openlcs_dir not in sys.path:
 from libs.common import group_components  # noqa: E402
 from libs.common import find_srpm_source  # noqa: E402
 from libs.common import remove_duplicates_from_list_by_key  # noqa: E402
+from libs.exceptions import MissingBinaryBuildException
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
@@ -389,9 +390,10 @@ class CorgiConnector:
                 binary_nevra = re.sub(
                     f"({binary_build_name})-source", r"\1", nevra)
                 message = (f"Failed to find binary build {binary_nevra} for "
-                           f"{nevra}")
-                # logger.error(message)
-                raise ValueError(message)
+                           f"{nevra} in component registry")
+                logger.debug(message)
+                raise MissingBinaryBuildException(message)
+
             link = sources[0].get("link")
             component = self.get(link)
             logger.debug("Binary build %s retrieved.", component['nevra'])
