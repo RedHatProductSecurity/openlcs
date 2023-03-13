@@ -1488,9 +1488,15 @@ def collect_components(context, engine):
             if component["purl"] in subscribed_purls:
                 # excludes all non-oci/non-rpmmod components in previous sync.
                 continue
-            sources, missings = process_component(component, subscribed_purls)
-            subscription_sources.extend(sources)
-            subscription_missings.extend(missings)
+            try:
+                sources, missings = process_component(component, subscribed_purls)
+            except ValueError as e:
+                engine.logger.error(str(e))
+                subscription_missings.append(component["purl"])
+                continue
+            else:
+                subscription_sources.extend(sources)
+                subscription_missings.extend(missings)
 
         result = {
             "subscription_id": subscription["id"],
