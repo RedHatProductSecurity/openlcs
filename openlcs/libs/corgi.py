@@ -255,7 +255,7 @@ class CorgiConnector:
                 raise RuntimeError(e) from None
             finally:
                 event_loop.close()
-        if parent_component:
+        if components and parent_component:
             components.append(parent_component)
         return group_components(components) if components else {}
 

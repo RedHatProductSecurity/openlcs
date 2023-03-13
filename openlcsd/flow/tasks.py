@@ -1022,7 +1022,7 @@ def get_components_product_from_corgi(context, engine):
     config = context.get("config")
     cc = CorgiConnector(
         config.get("CORGI_API_PROD"))
-    nvr = context.get("package_nvr")
+    nvr = context.get('build').get('nvr')
     return cc.get_components_data(nvr, "OCI")
 
 
