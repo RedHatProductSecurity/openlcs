@@ -210,7 +210,7 @@ class CorgiConnector:
         # https://www.python-httpx.org/advanced/#ssl-certificates
         cert = os.getenv("REQUESTS_CA_BUNDLE")
         context = httpx.create_ssl_context(verify=cert)
-        with httpx.Client(timeout=None, verify=context) as client:
+        with httpx.Client(timeout=60, verify=context) as client:
             response = client.get(component_link)
             if response.status_code == 200:
                 content = response.json()
