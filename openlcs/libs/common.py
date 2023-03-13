@@ -273,3 +273,14 @@ def run_and_capture(cmd, dest_dir):
     err_msg = f"Failed to run command {cmd}: {error.decode('utf-8')}" \
         if ret_code else None
     return ret_code, err_msg
+
+
+def get_extension(file_name, sp_extensions):
+    """
+    Return the extension of a filename. If the filename has special extension,
+    like tar.gz, it also could return the right extension with tar.gz.
+    """
+    for extension in sp_extensions:
+        if file_name.endswith(extension):
+            return file_name[:-len(extension)], file_name[-len(extension):]
+    return os.path.splitext(file_name)
