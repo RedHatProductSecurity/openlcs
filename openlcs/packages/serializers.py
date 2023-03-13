@@ -1,7 +1,6 @@
 import copy
 import os
 import sys
-
 from libs.swh_tools import swhid_check
 from libs.celery_helper import generate_priority_kwargs, ALLOW_PRIORITY
 from packages.models import (
@@ -14,6 +13,8 @@ from packages.models import (
 from products.models import Release
 from rest_framework import serializers
 from tasks.models import Task
+from django.conf import settings
+from django.utils.http import urlquote
 
 # pylint:disable=no-name-in-module,import-error
 from openlcs.celery import app
@@ -70,16 +71,30 @@ class SourceSerializer(serializers.ModelSerializer):
                   "copyright_detections"]
 
     def get_license_detections(self, obj):
-        license_keys = obj.get_license_detections().values_list(
-            'license_key', flat=True
-        )
-        return license_keys.distinct()
+        license_data = obj.get_license_detections().values_list(
+            'license_key', flat=True)
+        ld_url_prefix = 'http://{}/rest/v1/licensedetections/'.format(
+                        settings.HOSTNAME)
+        source_id = obj.id
+        license_detections = dict()
+        for lk in license_data.distinct():
+            detail_url = '{}?source_id={}&license_key={}'.format(
+                        ld_url_prefix, source_id, urlquote(lk))
+            license_detections[lk] = detail_url
+        return license_detections
 
     def get_copyright_detections(self, obj):
         copyrights = obj.get_copyright_detections().values_list(
-            'statement', flat=True
-        )
-        return copyrights.distinct()
+            'statement', flat=True)
+        cr_url_prefix = 'http://{}/rest/v1/copyrightdetections/'.format(
+                        settings.HOSTNAME)
+        source_id = obj.id
+        copyright_detections = dict()
+        for stm in copyrights.distinct():
+            detail_url = '{}?source_id={}&statement={}'.format(
+                        cr_url_prefix, source_id, urlquote(stm))
+            copyright_detections[stm] = detail_url
+        return copyright_detections
 
 
 class PathSerializer(serializers.ModelSerializer):
