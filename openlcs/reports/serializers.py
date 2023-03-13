@@ -33,7 +33,8 @@ class LicenseDetectionSerializer(serializers.ModelSerializer):
                 package_path = Path.objects.filter(
                         file_id=file_id, source_id=source_id)
                 path = package_path.values_list('path', flat=True)
-                file_path = path[0]
+                if path and len(path) >= 1:
+                    file_path = path[0]
             except Path.DoesNotExist:
                 file_path = ''
 
@@ -76,7 +77,8 @@ class CopyrightDetectionSerializer(serializers.ModelSerializer):
                 package_path = Path.objects.filter(
                         file_id=file_id, source_id=source_id)
                 path = package_path.values_list('path', flat=True)
-                file_path = path[0]
+                if path and len(path) >= 1:
+                    file_path = path[0]
             except Path.DoesNotExist:
                 file_path = ''
         file_scan = {
