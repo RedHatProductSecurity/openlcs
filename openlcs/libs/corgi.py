@@ -379,8 +379,19 @@ class CorgiConnector:
         if name.endswith("-source"):
             logger.debug("This is a source container build")
             sources = component.get("sources")
+            # There are cases when a "-source" components in corgi does not
+            # have a corresponding binary build. See also OLCS-459
             if not sources:
-                return None
+                # Remove trailing "-sources" from name
+                binary_build_name = re.sub(r"-source$", "", name)
+                nevra = component.get("nevra")
+                # Get nevra for corresponding binary build
+                binary_nevra = re.sub(
+                    f"({binary_build_name})-source", r"\1", nevra)
+                message = (f"Failed to find binary build {binary_nevra} for "
+                           f"{nevra}")
+                # logger.error(message)
+                raise ValueError(message)
             link = sources[0].get("link")
             component = self.get(link)
             logger.debug("Binary build %s retrieved.", component['nevra'])
