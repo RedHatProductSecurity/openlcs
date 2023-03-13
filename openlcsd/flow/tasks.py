@@ -37,6 +37,7 @@ from openlcs.libs.swh_tools import get_swhids_with_paths
 from openlcs.libs.unpack import UnpackArchive
 from openlcs.utils.common import DateEncoder
 from openlcs.libs.encrypt_decrypt import encrypt_with_secret_key
+from openlcs.libs.exceptions import MissingBinaryBuildException
 
 
 def get_config(context, engine):
@@ -1490,7 +1491,7 @@ def collect_components(context, engine):
                 continue
             try:
                 sources, missings = process_component(component, subscribed_purls)
-            except ValueError as e:
+            except MissingBinaryBuildException as e:
                 engine.logger.error(str(e))
                 subscription_missings.append(component["purl"])
                 continue
