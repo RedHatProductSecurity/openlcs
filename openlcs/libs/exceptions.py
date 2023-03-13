@@ -1,5 +1,5 @@
 class OpenLCSException(Exception):
-    pass
+    pass  # pylint: disable=unnecessary-pass
 
 
 class MissingBinaryBuildException(OpenLCSException):
@@ -9,4 +9,4 @@ class MissingBinaryBuildException(OpenLCSException):
 
     See also OLCS-459
     """
-    pass
+    pass  # pylint: disable=unnecessary-pass

@@ -2,6 +2,7 @@ import logging
 from workflow.engine import GenericWorkflowEngine
 from workflow.engine import ProcessingFactory
 from workflow.engine import TransitionActions
+from workflow.engine import Break
 from workflow.utils import classproperty
 
 
@@ -65,6 +66,12 @@ class OpenlcsTransitionActions(TransitionActions):
         """Gracefully stop the execution of the engine."""
         super(OpenlcsTransitionActions, OpenlcsTransitionActions).StopProcessing(    # noqa
                 obj, eng, callbacks, exc_info)
+
+    @staticmethod
+    def MissingBinaryBuildException(obj, eng, callbacks, exc_info):
+        """Action to take when MissingBinaryBuildException is raised."""
+        eng.log.error(str(exc_info[1]))
+        raise Break
 
     @staticmethod
     def Exception(obj, eng, callbacks, exc_info):

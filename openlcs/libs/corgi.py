@@ -19,7 +19,7 @@ if openlcs_dir not in sys.path:
 from libs.common import group_components  # noqa: E402
 from libs.common import find_srpm_source  # noqa: E402
 from libs.common import remove_duplicates_from_list_by_key  # noqa: E402
-from libs.exceptions import MissingBinaryBuildException
+from libs.exceptions import MissingBinaryBuildException  # noqa: E402
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
@@ -381,16 +381,10 @@ class CorgiConnector:
             logger.debug("This is a source container build")
             sources = component.get("sources")
             # There are cases when a "-source" components in corgi does not
-            # have a corresponding binary build. See also OLCS-459
+            # have a corresponding binary build, see also OLCS-459.
             if not sources:
-                # Remove trailing "-sources" from name
-                binary_build_name = re.sub(r"-source$", "", name)
-                nevra = component.get("nevra")
-                # Get nevra for corresponding binary build
-                binary_nevra = re.sub(
-                    f"({binary_build_name})-source", r"\1", nevra)
-                message = (f"Failed to find binary build {binary_nevra} for "
-                           f"{nevra} in component registry")
+                message = (f"Failed to find binary build for component['nevra]"
+                           f"in component registry")
                 logger.debug(message)
                 raise MissingBinaryBuildException(message)
 

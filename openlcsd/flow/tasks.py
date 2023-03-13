@@ -1490,9 +1490,12 @@ def collect_components(context, engine):
                 # excludes all non-oci/non-rpmmod components in previous sync.
                 continue
             try:
-                sources, missings = process_component(component, subscribed_purls)
+                sources, missings = process_component(
+                    component, subscribed_purls)
             except MissingBinaryBuildException as e:
                 engine.logger.error(str(e))
+                # FIMXE: subsequent calls for missing binary build component
+                # will likely to fail again.
                 subscription_missings.append(component["purl"])
                 continue
             else:
