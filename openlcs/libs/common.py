@@ -147,7 +147,8 @@ def get_component_name_version_combination(component):
     Get a combination of name, version in component.
     """
     name_version_items = component.get('name').split('/')
-    name_version_items.append(component.get('version'))
+    version_items = component.get('version').split('/')
+    name_version_items.extend(version_items)
     return '-'.join(name_version_items)
 
 
