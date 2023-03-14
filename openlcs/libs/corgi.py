@@ -383,8 +383,8 @@ class CorgiConnector:
             # There are cases when a "-source" components in corgi does not
             # have a corresponding binary build, see also OLCS-459.
             if not sources:
-                message = (f"Failed to find binary build for component['nevra]"
-                           f"in component registry")
+                message = (f"Failed to find binary build for "
+                           f"{component['nevra']} in component registry")
                 logger.debug(message)
                 raise MissingBinaryBuildException(message)
 

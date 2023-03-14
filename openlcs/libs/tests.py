@@ -22,6 +22,7 @@ from libs.parsers import parse_manifest_file
 from libs.scanner import LicenseScanner
 from libs.scanner import CopyrightScanner
 from libs.unpack import UnpackArchive
+from libs.exceptions import MissingBinaryBuildException
 
 
 class TestUnpack(TestCase):
@@ -648,6 +649,9 @@ class TestGetTaskRepository(TestCase):
 
 class TestCorgiConnector(TestCase):
 
+    def setUp(self):
+        self.connector = CorgiConnector(base_url=os.getenv("CORGI_API_STAGE"))
+
     @mock.patch.object(CorgiConnector, 'get')
     def test_get_paginated_data(self, mock_get):
         mock_paginated_response = {
@@ -675,10 +679,7 @@ class TestCorgiConnector(TestCase):
             mock_single_instance_response,
         ]
 
-        connector = CorgiConnector(
-            base_url=os.getenv("CORGI_API_STAGE"))
-        data = list(connector.get_paginated_data())
-
+        data = list(self.connector.get_paginated_data())
         expected_multiple_instance_paginated = [
             {
                 "uuid": "3ab010ea-774b-48a2-ac25-672fa8b24982",
@@ -698,5 +699,24 @@ class TestCorgiConnector(TestCase):
         self.assertEqual(data, expected_multiple_instance_paginated)
 
         # Retrieving single instance if `query_param` is purl based.
-        data = list(connector.get_paginated_data())
+        data = list(self.connector.get_paginated_data())
         self.assertEqual(data, expected_single_instance)
+
+    def test_get_container_source_components_with_no_sources(self):
+        component = {
+            "name": "mock-container-source",
+            "version": "1.0.0",
+            "release": "1",
+            "arch": "x86_64",
+            "type": "OCI",
+            "nevra": "mock-container-source-1.0.0-1.x86_64",
+            "sources": []
+        }
+
+        with self.assertRaises(MissingBinaryBuildException) as exc:
+            self.connector.get_container_source_components(component)
+
+        raised_exception = exc.exception
+        message = (f"Failed to find binary build for {component['nevra']} "
+                   f"in component registry",)
+        self.assertEqual(raised_exception.args, message)
