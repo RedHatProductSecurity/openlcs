@@ -317,15 +317,6 @@ CORGI_COMPONENT_TYPES = [
 REDIS_CACHE_LOCATION = os.environ.get('REDIS_CACHE_LOCATION',
                                       'redis://localhost:6379/1')
 
-try:
-    # pylint:disable=wildcard-import,unused-wildcard-import
-    parent_dir = os.path.abspath(os.path.dirname(__file__))
-    if parent_dir not in sys.path:
-        sys.path.append(parent_dir)
-    from settings_local import *  # noqa
-except ImportError:
-    pass
-
 CACHES = {
     'default': {
         'BACKEND': 'django_redis.cache.RedisCache',
@@ -336,3 +327,12 @@ CACHES = {
         },
     },
 }
+
+try:
+    # pylint:disable=wildcard-import,unused-wildcard-import
+    parent_dir = os.path.abspath(os.path.dirname(__file__))
+    if parent_dir not in sys.path:
+        sys.path.append(parent_dir)
+    from settings_local import *  # noqa
+except ImportError:
+    pass
