@@ -236,12 +236,12 @@ def find_srpm_source(sources):
     """
     A shortcut to find the first item in `sources` that has a `purl`
     starting with "pkg:rpm" and contains "arch=src".
-    Returns the "link" of matched source or None otherwise.
+    Returns the matched source or None otherwise.
     """
     pattern = re.compile(r'pkg:rpm.*arch=src')
     for source in sources:
         if pattern.search(source['purl']):
-            return source['link']
+            return source
     return None
 
 
