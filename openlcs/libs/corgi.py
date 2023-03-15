@@ -1,7 +1,9 @@
 import asyncio
+import functools
 import httpx
 import logging
 import os
+from packageurl import PackageURL
 import re
 import requests
 from requests.exceptions import RequestException, HTTPError
@@ -61,18 +63,10 @@ class CorgiConnector:
             # corgi api endpoint available in environment variable
             base_url = os.getenv("CORGI_API_PROD")
         self.base_url = base_url
-        # corgi stage support this at the moment.
-        self.default_exclude_fields = (
-            "products",
-            "product_versions",
-            "product_streams",
-            "product_variants",
-            "channels",
-        )
         self.session = requests.Session()
 
     @staticmethod
-    def get_include_fields(component_type: str):
+    def get_include_fields(component_type=""):
         """
         Returns bare-minimum include fields needed based on component_type.
 
@@ -100,6 +94,36 @@ class CorgiConnector:
             fields.remove("software_build")
 
         return fields
+
+    # Inspired from https://gitlab.com/mh21/ocp-sso-token/-/blob/
+    # main/ocp_sso_token/ocp_oauth_login.py#L21
+    @functools.cached_property
+    def rpm_includes(self):
+        return self.get_include_fields(component_type="rpm")
+
+    @functools.cached_property
+    def oci_includes(self):
+        return self.get_include_fields(component_type="oci")
+
+    @functools.cached_property
+    def rpmmod_includes(self):
+        return self.get_include_fields(component_type="rpmmod")
+
+    @functools.cached_property
+    def default_includes(self):
+        return self.get_include_fields()
+
+    @staticmethod
+    def truncate_rpm_component_sources(component):
+        """
+        "sources" can be an extreamly long list, this function truncate the
+        redundant ones, leaving the idential source rpm.
+        """
+        sources = iter(component["sources"])
+        source = find_srpm_source(sources)
+        # Truncate unneeded sources.
+        component["sources"] = [source] if source is not None else []
+        return component
 
     @corgi_include_exclude_fields_wrapper
     def get(self, url, query_params=None, timeout=30, max_retries=5,
@@ -135,7 +159,7 @@ class CorgiConnector:
         # FIXME: if the original component data is preserved, we don't need
         # to `get` it again.
         url = f"{self.base_url}components/{component_uuid}"
-        component = self.get(url)
+        component = self.get(url, includes=sync_fields)
         # Update of non-empty `license_declared` in corgi is forbidden.
         # overwrite of other fields are possible. See also CORGI-475
         if component.get("license_declared"):
@@ -372,21 +396,26 @@ class CorgiConnector:
             # This is not likely to happen since corgi promises
             # to always have corresponding srpm.
             return (False, component.get("purl"))
-        link = find_srpm_source(sources)
+        link = sources[0].get("link")
         if link:
             logger.info("Querying component: %s", link)
-            component = self.get(link)
+            component = self.get(link, includes=self.rpm_includes)
             return (True, component) if component else (False, link)
         else:
             return (False, component.get("purl"))
 
-    def _fetch_component(self, link):
+    def _fetch_component(self, link, component_type):
         """
         shortcut to retrieve container "provides" component
         """
-        component = self.get(link, excludes=self.default_exclude_fields)
+        # rpm/oci/rpmmod are cached properties
+        includes = getattr(self, f"{component_type.lower()}_includes",
+                           self.default_includes)
+        component = self.get(link, includes=includes)
         if component:
             if component.get("type") == "RPM":
+                component = CorgiConnector.truncate_rpm_component_sources(
+                    component)
                 return self.get_srpm_component(component)
             # FIXME: examine what to return for non-rpm components.
             return (True, component)
@@ -424,18 +453,22 @@ class CorgiConnector:
                 raise MissingBinaryBuildException(message)
 
             link = sources[0].get("link")
-            component = self.get(link)
+            component = self.get(link, includes=self.oci_includes)
             logger.debug("Binary build %s retrieved.", component['nevra'])
 
+        # Get rid of the heaven burden of "provides" by poping it
         oci_provides = component.get("provides", [])
-        links = []
+        # Store deduplicated provides
+        provides = []
         for provide in oci_provides:
             purl = provide.get("purl")
             # exclude those that are already retrieved earlier
             if subscribed_purls and purl in subscribed_purls:
                 continue
-            links.append(provide.get("link"))
-        logger.debug("List of provides(%d) collected", len(links))
+            purl_dict = PackageURL.from_string(purl).to_dict()
+            component_type = purl_dict.get("type", "")
+            provides.append((provide.get("link"), component_type))
+        logger.debug("List of provides(%d) collected", len(provides))
 
         components_extracted = list()
         components_missing = set()
@@ -444,7 +477,9 @@ class CorgiConnector:
         ) as executor:
             tasks = {
                 executor.submit(
-                    self._fetch_component, link): link for link in links}
+                    self._fetch_component, link, component_type
+                ): link for link, component_type in provides
+            }
             for task in concurrent.futures.as_completed(tasks):
                 success, result = task.result()
                 if success:
