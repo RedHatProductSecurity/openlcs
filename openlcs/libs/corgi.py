@@ -337,19 +337,11 @@ class CorgiConnector:
         else:
             return (False, component.get("purl"))
 
-    def _fetch_component(self, link, additional_excludes=None):
+    def _fetch_component(self, link):
         """
         shortcut to retrieve container "provides" component
-
-        :params additional_excludes: additional exclude fields besides defaults
         """
-        if additional_excludes is None:
-            # provides is useful for "OCI" components, but can be a noise
-            # for rpm-based components.
-            excludes = self.default_exclude_fields + tuple(["provides"])
-        else:
-            excludes = self.default_exclude_fields + tuple(additional_excludes)
-        component = self.get(link, excludes=excludes)
+        component = self.get(link, excludes=self.default_exclude_fields)
         if component:
             if component.get("type") == "RPM":
                 return self.get_srpm_component(component)
