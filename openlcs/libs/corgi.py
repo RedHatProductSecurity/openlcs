@@ -29,6 +29,29 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 
+def corgi_include_exclude_fields_wrapper(func):
+    def wrapper(*args, **kwargs):
+        query_params = kwargs.get('query_params', {})
+        # work around for latencies by excluding costly related fields
+        # queries, see also CORGI-482, another benefit is to minimize
+        # the data returned, see OLCS-471
+        includes = kwargs.pop('includes', None)
+        excludes = kwargs.pop('excludes', None)
+        # For apis other than the `/components` endpoint, includes/excludes
+        # don't do any harm fortunately.
+        if excludes:
+            query_params['exclude_fields'] = ','.join(excludes)
+        if includes:
+            query_params['include_fields'] = ','.join(includes)
+            # includes/excludes are mutually exclusive, the former
+            # takes precedence.
+            query_params.pop('exclude_fields', None)
+        kwargs['query_params'] = query_params
+        return func(*args, **kwargs)
+
+    return wrapper
+
+
 class CorgiConnector:
     """
     Get parent component data list from Corgi
@@ -48,19 +71,9 @@ class CorgiConnector:
         )
         self.session = requests.Session()
 
-    def get(self, url, query_params=None, includes=None, excludes=None,
-            timeout=30, max_retries=5, retry_delay=10):
-        if not query_params:
-            query_params = {}
-        if excludes is None:
-            excludes = self.default_exclude_fields
-        # work around for latencies by excluding costly related fields
-        # queries, see also CORGI-482
-        query_params['exclude_fields'] = ','.join(excludes)
-        # "includes" and "exclude" are mutually exclusive, only one can work.
-        if includes:
-            del query_params['exclude_fields']
-            query_params['include_fields'] = includes
+    @corgi_include_exclude_fields_wrapper
+    def get(self, url, query_params=None, timeout=30, max_retries=5,
+            retry_delay=10, includes=None, excludes=None):
         for i in range(max_retries + 1):
             try:
                 response = self.session.get(
