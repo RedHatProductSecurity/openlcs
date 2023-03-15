@@ -33,22 +33,23 @@ logging.basicConfig(level=logging.INFO)
 
 def corgi_include_exclude_fields_wrapper(func):
     def wrapper(*args, **kwargs):
-        query_params = kwargs.get('query_params', {})
-        # work around for latencies by excluding costly related fields
-        # queries, see also CORGI-482, another benefit is to minimize
-        # the data returned, see OLCS-471
-        includes = kwargs.pop('includes', None)
-        excludes = kwargs.pop('excludes', None)
-        # For apis other than the `/components` endpoint, includes/excludes
-        # don't do any harm fortunately.
-        if excludes:
-            query_params['exclude_fields'] = ','.join(excludes)
-        if includes:
-            query_params['include_fields'] = ','.join(includes)
-            # includes/excludes are mutually exclusive, the former
-            # takes precedence.
-            query_params.pop('exclude_fields', None)
-        kwargs['query_params'] = query_params
+        # Only apply on components endpoint
+        _, url = args
+        if url.endswith('/components'):
+            query_params = kwargs.get('query_params', {})
+            # work around for latencies by excluding costly related fields
+            # queries, see also CORGI-482, another benefit is to minimize
+            # the data returned, see OLCS-471
+            includes = kwargs.pop('includes', None)
+            excludes = kwargs.pop('excludes', None)
+            if excludes:
+                query_params['exclude_fields'] = ','.join(excludes)
+            if includes:
+                query_params['include_fields'] = ','.join(includes)
+                # includes/excludes are mutually exclusive, the former
+                # takes precedence.
+                query_params.pop('exclude_fields', None)
+            kwargs['query_params'] = query_params
         return func(*args, **kwargs)
 
     return wrapper
@@ -74,23 +75,24 @@ class CorgiConnector:
         """
         fields = []
         # basic fields needed, all calls should include these fields
+        # any type-indenpendent fields should go here.
         base_fields = [
             "uuid", "name", "version", "release", "arch", "type",
-            "purl", "link", "nvr", "nevra", "download_url",
+            "purl", "link", "nvr", "nevra", "download_url", "related_url",
             "license_declared", "software_build"
         ]
         fields.extend(base_fields)
 
         if component_type.upper() == "RPM":
-            fields.remove("download_url")
             # sources could be a long list, need to truncate after obtained
             fields.append("sources")
-        elif component_type.upper() in ["OCI", "RPMMOD"]:
             fields.remove("download_url")
+        elif component_type.upper() in ["OCI", "RPMMOD"]:
             fields.append("provides")
+            fields.remove("download_url")
         else:
             # FIXME: any specific fields needed for other types?
-            # software_build does not make much sense for non-rpm/non-ocis.
+            # software_build makes no sense for non-rpm/non-ocis components.
             fields.remove("software_build")
 
         return fields
@@ -456,7 +458,6 @@ class CorgiConnector:
             component = self.get(link, includes=self.oci_includes)
             logger.debug("Binary build %s retrieved.", component['nevra'])
 
-        # Get rid of the heaven burden of "provides" by poping it
         oci_provides = component.get("provides", [])
         # Store deduplicated provides
         provides = []
@@ -469,7 +470,7 @@ class CorgiConnector:
             component_type = purl_dict.get("type", "")
             # OCI component of a different arch may present in "provides".
             # Get rid of it.
-            if component_type == "OCI":
+            if component_type.upper() == "OCI":
                 continue
             provides.append((provide.get("link"), component_type))
         logger.debug("List of provides(%d) collected", len(provides))
