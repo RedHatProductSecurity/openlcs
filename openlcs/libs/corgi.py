@@ -467,6 +467,10 @@ class CorgiConnector:
                 continue
             purl_dict = PackageURL.from_string(purl).to_dict()
             component_type = purl_dict.get("type", "")
+            # OCI component of a different arch may present in "provides".
+            # Get rid of it.
+            if component_type == "OCI":
+                continue
             provides.append((provide.get("link"), component_type))
         logger.debug("List of provides(%d) collected", len(provides))
 
