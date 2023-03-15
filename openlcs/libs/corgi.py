@@ -71,6 +71,36 @@ class CorgiConnector:
         )
         self.session = requests.Session()
 
+    @staticmethod
+    def get_include_fields(component_type: str):
+        """
+        Returns bare-minimum include fields needed based on component_type.
+
+        Only used for corgi's /components endpoint.
+        """
+        fields = []
+        # basic fields needed, all calls should include these fields
+        base_fields = [
+            "uuid", "name", "version", "release", "arch", "type",
+            "purl", "link", "nvr", "nevra", "download_url",
+            "license_declared", "software_build"
+        ]
+        fields.extend(base_fields)
+
+        if component_type.upper() == "RPM":
+            fields.remove("download_url")
+            # sources could be a long list, need to truncate after obtained
+            fields.append("sources")
+        elif component_type.upper() in ["OCI", "RPMMOD"]:
+            fields.remove("download_url")
+            fields.append("provides")
+        else:
+            # FIXME: any specific fields needed for other types?
+            # software_build does not make much sense for non-rpm/non-ocis.
+            fields.remove("software_build")
+
+        return fields
+
     @corgi_include_exclude_fields_wrapper
     def get(self, url, query_params=None, timeout=30, max_retries=5,
             retry_delay=10, includes=None, excludes=None):
