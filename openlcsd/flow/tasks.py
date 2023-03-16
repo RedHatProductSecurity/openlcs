@@ -999,11 +999,12 @@ def sync_result_to_corgi(context, engine):
 def get_source_components(context, engine):
     component = context.get("component")
     connector = CorgiConnector(base_url=os.getenv("CORGI_API_STAGE"))
-    components, components_missing = connector.get_source_component(component)
-    if components_missing:
-        context['components_missing'] = components_missing
+    gen = connector.get_source_component(component)
+    components, missings = CorgiConnector.source_component_to_list(gen)
+    if missings:
+        context['components_missing'] = missings
         msg = f'Failed to sync these component(s) data from Corgi: ' \
-              f'{components_missing}'
+              f'{missings}'
         engine.logger.warning(msg)
     context["components"] = components
 
@@ -1474,17 +1475,16 @@ def collect_components(context, engine):
     def process_component(component, subscribed_purls=None):
         sources = []
         missings = []
-        found, retval = connector.get_source_component(
+        gen = connector.get_source_component(
             component, subscribed_purls)
+        components, missings = CorgiConnector.source_component_to_list(gen)
         if component.get("type") in ["OCI", "RPMMOD"]:
-            # Nest source components in `olcs-sources`
-            component["olcs_sources"] = found
+            # Nest source components in `olcs_sources`
+            component["olcs_sources"] = components
             sources.append(component)
-            missings.extend(retval)
-        elif found:
-            sources.append(retval)
         else:
-            missings.append(retval)
+            sources.extend(components)
+            missings.extend(missings)
         return (sources, missings)
 
     for subscription in subscriptions:

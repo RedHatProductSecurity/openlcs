@@ -392,19 +392,19 @@ class CorgiConnector:
         if component["type"] != "RPM":
             raise ValueError(f"Unsupported component type {component['type']}")
         if component["arch"] == "src":
-            return (True, component)
+            return component
         sources = component.get("sources")
         if not sources:
             # This is not likely to happen since corgi promises
             # to always have corresponding srpm.
-            return (False, component.get("purl"))
+            return component.get("purl")
         link = sources[0].get("link")
         if link:
             logger.info("Querying component: %s", link)
             component = self.get(link, includes=self.rpm_includes)
-            return (True, component) if component else (False, link)
+            return component if component is not None else link
         else:
-            return (False, component.get("purl"))
+            return component.get("purl")
 
     def _fetch_component(self, link, component_type):
         """
@@ -420,9 +420,9 @@ class CorgiConnector:
                     component)
                 return self.get_srpm_component(component)
             # FIXME: examine what to return for non-rpm components.
-            return (True, component)
+            return component
         else:
-            return (False, link)
+            return link
 
     def get_container_source_components(self, component, subscribed_purls=None,
                                         max_workers=5):
@@ -475,38 +475,50 @@ class CorgiConnector:
             provides.append((provide.get("link"), component_type))
         logger.debug("List of provides(%d) collected", len(provides))
 
-        components_extracted = list()
-        components_missing = set()
         with concurrent.futures.ThreadPoolExecutor(
             max_workers=max_workers
         ) as executor:
-            tasks = {
-                executor.submit(
-                    self._fetch_component, link, component_type
-                ): link for link, component_type in provides
-            }
-            for task in concurrent.futures.as_completed(tasks):
-                success, result = task.result()
-                if success:
-                    components_extracted.append(result)
-                    logger.debug("Provides %s retrieved.", result['nevra'])
-                else:
-                    components_missing.add(result)
-                    logger.error("Provides %s missing.", result)
-        # Remove duplicates
-        components = remove_duplicates_from_list_by_key(
-            components_extracted, "uuid")
-        return (components, list(components_missing))
+            tasks = {}
+            remaining_provides = len(provides)
+            while remaining_provides > 0:
+                for provide in iter(provides):
+                    link, component_type = provide
+                    task = executor.submit(self._fetch_component,
+                                           link, component_type)
+                    tasks[task] = link
+                    if len(tasks) > 50:
+                        break
+                for task in concurrent.futures.as_completed(tasks):
+                    remaining_provides -= 1
+                    result = task.result()
+                    yield result
+                    del tasks[task]
 
     def get_source_component(self, component, subscribed_purls=None):
         component_type = component.get("type")
         if component_type == "RPM":
-            return self.get_srpm_component(component)
+            yield self.get_srpm_component(component)
         elif component_type in ["OCI", "RPMMOD"]:
-            return self.get_container_source_components(
+            yield from self.get_container_source_components(
                 component, subscribed_purls)
         else:
-            return (True, component)
+            yield component
+
+    @classmethod
+    def source_component_to_list(cls, gen):
+        """
+        Called after `CorgiConnector.get_source_component`, to change the
+        generator returned to a tuple of list.
+        """
+        components = []
+        missings = []
+        for data in gen:
+            if isinstance(data, dict):
+                components.append(data)
+            else:
+                missings.append(data)
+        components = remove_duplicates_from_list_by_key(components, "uuid")
+        return (components, missings)
 
     def get_component_instance_from_nvr(self, nvr):
         params = {'nvr': nvr}
