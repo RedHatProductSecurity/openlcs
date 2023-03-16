@@ -483,7 +483,7 @@ class TestParseMetadata(TestCase):
         self.golang_tarball = testdata_root / 'golang/v1.3.1.zip'
         self.yarn_tarball = testdata_root / 'yarn/json5-2.1.3.tgz'
         self.maven_pomfile = testdata_root / 'maven/xmltool-3.3.pom'
-        self.cargo_tarball = testdata_root / 'cargo/netavark-1.4.0.tgz'
+        self.cargo_tarball = testdata_root / 'cargo/zvariant_derive-2.10.0.crate'  # noqa
         self.gem_tarball = testdata_root / 'gem/zip-zip-0.3.gem'
         self.gem_gemspec = testdata_root / 'gem/json-schema.gemspec'
 
@@ -560,9 +560,10 @@ class TestParseMetadata(TestCase):
         parser = CargoMeta(self.cargo_tarball)
         package = parser.parse_metadata()
         self.assertEqual(
-            package.homepage_url, "https://github.com/containers/netavark"
+            package.repository_homepage_url,
+            "https://crates.io/crates/zvariant_derive"
         )
-        self.assertEqual(package.declared_license, 'Apache-2.0')
+        self.assertEqual(package.declared_license, 'MIT')
 
     def test_gem(self):
         parser = GemMeta(self.gem_tarball)
