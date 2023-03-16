@@ -2,17 +2,51 @@ import json
 import subprocess
 import traceback
 
+from kobo.shortcuts import run
 
-class LicenseScanner(object):
+
+class BaseScanner(object):
+    def __init__(self, config, src_dir=None, logger=None):
+        self.config = config
+        self.src_dir = src_dir
+        self.logger = logger
+
+    def get_scancode_version(self):
+        scancode_cli = self.config.get('SCANCODE_CLI', '/bin/scancode')
+        cmd = ('%s -V | grep -i "scancode version"' % scancode_cli)
+        try:
+            _, output = run(cmd, stdout=False)
+        except RuntimeError:
+            err_msg = 'Failed to get the scancode version used.'
+            raise RuntimeError(err_msg) from None
+        version = output.decode("utf-8").split(': ')[1].rstrip('\n')
+        return version
+
+    def get_scanner_version(self, scanner='scancode'):
+        """
+        Get the scanner together with its version used for scanning,
+        default scanner is ScanCode.
+        """
+        get_version_method = getattr(self, 'get_' + scanner + '_version', None)
+        if get_version_method is None:
+            raise ValueError("No version info for %s." % scanner)
+        else:
+            version = get_version_method()
+            self.detector = scanner + ": " + version
+
+    def scan(self, scanner='scancode'):
+        self.get_scanner_version(scanner)
+        scan_method = getattr(self, scanner + '_scan', None)
+        if scan_method is None:
+            raise ValueError("Scanner %s does not support." % self.scanner)
+        else:
+            return scan_method()
+
+
+class LicenseScanner(BaseScanner):
     """
     Package source license detection.
     """
-
-    def __init__(self, src_dir, config, logger=None):
-        self.src_dir = src_dir
-        self.config = config
-        self.logger = logger
-
     def scancode_scan(self):
         scancode_license_score = self.config.get('SCANCODE_LICENSE_SCORE', 20)
         scancode_timeout = self.config.get('SCANCODE_TIMEOUT', 300)
@@ -63,32 +97,19 @@ class LicenseScanner(object):
                              lic.get('start_line'), lic.get('end_line'),
                              is_text_matched, rid)
                         )
+                license_list = list(set(license_list))
 
         if self.logger is not None:
             for err_msg in license_errors:
                 self.logger.error(err_msg)
 
-        return (list(set(license_list)), license_errors, has_exception)
-
-    def scan(self, scanner=None):
-        if scanner is None:
-            scanner = 'scancode'
-        scan_method = getattr(self, scanner + '_scan', None)
-        if scan_method is None:
-            raise ValueError("License scanner %s does not exist." % scanner)
-        else:
-            return scan_method()
+        return (self.detector, license_list, license_errors, has_exception)
 
 
-class CopyrightScanner(object):
+class CopyrightScanner(BaseScanner):
     """
     Package source copyright statement detection.
     """
-
-    def __init__(self, src_dir, config, logger=None):
-        self.src_dir = src_dir
-        self.config = config
-        self.logger = logger
 
     def scancode_scan(self, **options):
         """ Get the copyright statements in this package. """
@@ -139,13 +160,4 @@ class CopyrightScanner(object):
             for err_msg in copyright_errors:
                 self.logger.error(err_msg)
 
-        return (copyright_dict, copyright_errors, has_exception)
-
-    def scan(self, scanner=None):
-        if scanner is None:
-            scanner = 'scancode'
-        scan_method = getattr(self, scanner + '_scan', None)
-        if scan_method is None:
-            raise ValueError("Copyright scanner %s does not exist." % scanner)
-        else:
-            return scan_method()
+        return (self.detector, copyright_dict, copyright_errors, has_exception)

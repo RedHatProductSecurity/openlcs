@@ -121,12 +121,12 @@ class SaveScanResultMixin:
             ]
             LicenseDetection.objects.bulk_create(objs)
 
-    def update_scan_flag(self, source, scan_type):
+    def update_scan_flag(self, source, scan_type, detector):
         scan_flag = source.scan_flag
         if scan_type == "license_scan":
-            new_scan_flag = "license(" + settings.LICENSE_SCANNER + ")"
+            new_scan_flag = "license(" + detector + ")"
         else:
-            new_scan_flag = "copyright(" + settings.COPYRIGHT_SCANNER + ")"
+            new_scan_flag = "copyright(" + detector + ")"
         if scan_flag and new_scan_flag not in scan_flag:
             scan_flag = scan_flag + "," + new_scan_flag
         else:
@@ -184,7 +184,7 @@ class SaveScanResultMixin:
             licenses = kwargs.pop('licenses')
             if not licenses.get('has_exception'):
                 data = licenses.get('data')
-                license_detector = settings.LICENSE_SCANNER
+                license_detector = kwargs.pop('license_detector')
                 filters = [Q(file__in=file_ids), Q(detector=license_detector)]
 
                 # Retry max_retries times to bypass possible concurrency issue.
@@ -204,7 +204,8 @@ class SaveScanResultMixin:
                                 new_file_ids, license_detector)
                             self.save_license_detections(
                                 path_file_dict, data, license_detector)
-                            self.update_scan_flag(source, "license_scan")
+                            self.update_scan_flag(
+                                    source, "license_scan", license_detector)
                     except IntegrityError as err:
                         if i == max_retries - 1:
                             err_msg = (f'Failed to save license scan result.'
@@ -218,7 +219,7 @@ class SaveScanResultMixin:
             copyrights = kwargs.pop('copyrights')
             if not copyrights.get('has_exception'):
                 data = copyrights.get('data')
-                copyright_detector = settings.COPYRIGHT_SCANNER
+                copyright_detector = kwargs.pop('copyright_detector')
                 filters = [Q(file__in=file_ids),
                            Q(detector=copyright_detector)]
 
@@ -239,7 +240,8 @@ class SaveScanResultMixin:
                                 new_file_ids, copyright_detector)
                             self.save_copyright_detections(
                                 path_file_dict, data, copyright_detector)
-                            self.update_scan_flag(source, "copyright_scan")
+                            self.update_scan_flag(
+                                source, "copyright_scan", copyright_detector)
                     except IntegrityError as err:
                         if i == max_retries - 1:
                             err_msg = (f'Failed to save copyright scan result.'

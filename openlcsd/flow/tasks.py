@@ -30,6 +30,7 @@ from openlcs.libs.metadata import GolangMeta
 from openlcs.libs.metadata import NpmMeta
 from openlcs.libs.metadata import GemMeta
 from openlcs.libs.parsers import sha256sum
+from openlcs.libs.scanner import BaseScanner
 from openlcs.libs.scanner import LicenseScanner
 from openlcs.libs.scanner import CopyrightScanner
 from openlcs.libs.sc_handler import SourceContainerHandler
@@ -526,6 +527,15 @@ def check_source_status(context, engine):
     context['source_scan_flag'] = response.get('source_scan_flag')
 
 
+def get_scanner(context, engine):
+    # 'scanner' param could be added as an input when multiple scanners.
+    # Default is scancode.
+    config = context.get('config')
+    base_scanner = BaseScanner(config=config)
+    base_scanner.get_scanner_version()
+    context['detector'] = base_scanner.detector
+
+
 def check_source_scan_status(context, engine):
     """
     Check if the source have been scanned.
@@ -551,9 +561,9 @@ def check_source_scan_status(context, engine):
 
     # If the source exist, check if it needs to scan.
     if context.get('source_api_url'):
-        config = context.get('config')
-        license_flag = "license(" + config.get('LICENSE_SCANNER') + ")"
-        copyright_flag = "copyright(" + config.get('COPYRIGHT_SCANNER') + ")"
+        detector = context.get('detector')
+        license_flag = "license(" + detector + ")"
+        copyright_flag = "copyright(" + detector + ")"
         source_scan_flag = context['source_scan_flag']
         if source_scan_flag:
             if license_scan_tag and license_flag not in source_scan_flag:
@@ -774,6 +784,7 @@ def deduplicate_source(context, engine):
             try:
                 # Deduplicate files.
                 data = {'swhids': swhids,
+                        'detector': context.get('detector'),
                         'license_scan': context.get('license_scan'),
                         'copyright_scan': context.get('copyright_scan')}
                 response = get_data_using_post(context.get('client'),
@@ -858,13 +869,14 @@ def license_scan(context, engine):
     # Scanner could be provided when multiple scanners supported in the future.
     engine.logger.info("Start to scan source licenses with Scancode...")
     scanner = LicenseScanner(
-            src_dir=src_dir, config=config, logger=engine.logger)
-    (licenses, errors, has_exception) = scanner.scan()
+            config=config, src_dir=src_dir, logger=engine.logger)
+    (detector, licenses, errors, has_exception) = scanner.scan()
     engine.logger.info("Done")
     scan_result = {
         "source_checksum": context.get("source_info").get("source").get(
             "checksum")}
     scan_result.update({
+        "license_detector": detector,
         "license_scan": context.get('license_scan'),
         "path_with_swhids": context.get('path_with_swhids'),
         "licenses": {
@@ -890,14 +902,15 @@ def copyright_scan(context, engine):
     config = context.get('config')
     engine.logger.info("Start to scan copyrights with Scancode...")
     scanner = CopyrightScanner(
-            src_dir=src_dir, config=config, logger=engine.logger)
-    (copyrights, errors, has_exception) = scanner.scan()
+            config=config, src_dir=src_dir, logger=engine.logger)
+    (detector, copyrights, errors, has_exception) = scanner.scan()
     engine.logger.info("Done")
     scan_result = context.get('scan_result', {})
     if "source_checksum" not in scan_result:
         scan_result["source_checksum"] = context.get("source_info").get(
             "source").get("checksum")
     scan_result.update({
+        "copyright_detector": detector,
         "copyright_scan": context.get('copyright_scan'),
         "path_with_swhids": context.get('path_with_swhids'),
         "copyrights": {
@@ -1383,6 +1396,7 @@ flow_default = [
                                 [
                                     download_component_source,
                                     get_source_metadata,
+                                    get_scanner,
                                     check_source_scan_status,
                                     IF(
                                         lambda o, e: not o.get("source_scanned"), # noqa

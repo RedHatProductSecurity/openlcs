@@ -200,8 +200,6 @@ CELERY_BROKER_TRANSPORT_OPTIONS = {
 
 LOGGER_DIR = '/var/log/openlcs/'
 
-LICENSE_SCANNER = 'scancode-toolkit 30.1.0'
-COPYRIGHT_SCANNER = 'scancode-toolkit 30.1.0'
 # Scancode settings
 SCANCODE_LICENSE_SCORE = 20
 SCANCODE_PROCESSES = 1
