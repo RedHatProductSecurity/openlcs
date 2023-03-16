@@ -227,7 +227,7 @@ class TestLicenseScan(TestCase):
         scanner = LicenseScanner(
             src_dir=self.src_dir,
             config=TestLicenseScan.config)
-        (licenses, errors, has_exception) = scanner.scan(scanner='scancode')
+        (_, licenses, errors, has_exception) = scanner.scan(scanner='scancode')
 
         self.assertEqual(licenses[0][0], 'license_file')
         self.assertEqual(licenses[0][1], 'zlib')
@@ -264,7 +264,7 @@ class TestCopyrightScan(TestCase):
         scanner = CopyrightScanner(
             src_dir=self.src_dir,
             config=TestCopyrightScan.config)
-        (copyrights, errors, has_exception) = scanner.scan(scanner='scancode')
+        (detector, copyrights, errors, has_exception) = scanner.scan()
         detail = copyrights.get('detail_copyrights')
         detail_key = next(iter(detail))
         self.assertEqual(detail_key, 'copyright_file')
@@ -273,6 +273,7 @@ class TestCopyrightScan(TestCase):
         )
         self.assertEqual(errors, [])
         self.assertFalse(has_exception)
+        self.assertTrue('scancode' in detector)
 
     def tearDown(self):
         shutil.rmtree(self.src_dir, ignore_errors=True)

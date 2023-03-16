@@ -31,8 +31,6 @@ class ObtainConfigView(generics.RetrieveAPIView):
             'LOGGER_DIR',
             'RETRY_DIR',
             'ORPHAN_CATEGORY',
-            'LICENSE_SCANNER',
-            'COPYRIGHT_SCANNER',
             'CORGI_API_STAGE',
             'CORGI_API_PROD',
             'TOKEN_SECRET_KEY',

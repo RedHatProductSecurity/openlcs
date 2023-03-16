@@ -597,6 +597,7 @@ class CheckDuplicateFiles(APIView):
         swhids = request.data.get('swhids')
         license_scan = request.data.get('license_scan')
         copyright_scan = request.data.get('copyright_scan')
+        detector = request.data.get('detector')
         existing_swhids = []
         license_swhids = []
         copyright_swhids = []
@@ -609,18 +610,14 @@ class CheckDuplicateFiles(APIView):
 
         # Duplicate files that license scanned.
         if license_scan:
-            license_detector = settings.LICENSE_SCANNER
             license_swhids = FileLicenseScan.objects.filter(
                 Q(file__swhid__in=existing_swhids,
-                  detector=license_detector)).values_list('file__swhid',
-                                                          flat=True)
+                  detector=detector)).values_list('file__swhid', flat=True)
         # Duplicate files that copyright scanned.
         if copyright_scan:
-            copyright_detector = settings.COPYRIGHT_SCANNER
             copyright_swhids = FileCopyrightScan.objects.filter(
                 Q(file__swhid__in=existing_swhids,
-                  detector=copyright_detector)).values_list('file__swhid',
-                                                            flat=True)
+                    detector=detector)).values_list('file__swhid', flat=True)
         # Deduplicate files.
         if license_scan and copyright_scan:
             duplicate_swhids = list(
