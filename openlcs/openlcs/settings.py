@@ -186,7 +186,7 @@ CELERY_BEAT_SCHEDULE = {
     # },
     'run_corgi_sync': {
         'task': 'openlcsd.flow.periodic_tasks.run_corgi_sync',
-        'schedule': crontab(minute=0, hour=0),  # Execute daily at midnight.
+        'schedule': crontab(minute=35, hour=7),  # Execute daily at midnight.
         'kwargs': {'provenance': 'sync_corgi'}
     }
 }

@@ -134,7 +134,7 @@ api-tests:
 
 # ======== build-dev-image ========
 build-dev-image:
-  <<: *only-main
+  #<<: *only-main
   tags:
     - pelc-shell-runner
   stage: build-dev-image
@@ -161,7 +161,7 @@ build-dev-image:
 
 deploy-to-dev:
   <<: *ansible-tower-cli-image
-  <<: *only-main
+  # <<: *only-main
   stage: deploy-to-dev
   script:
    - tower-cli config verify_ssl false
