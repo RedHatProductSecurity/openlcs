@@ -125,7 +125,7 @@ class SourceViewSet(ModelViewSet):
     parser_classes = [JSONParser, FileUploadParser]
 
     def list(self, request, *args, **kwargs):
-        """ # noqa
+        """
         Get a list of sources.
 
         ####__Request__####
@@ -153,14 +153,21 @@ class SourceViewSet(ModelViewSet):
                         1
                     ],
                     "license_detections":{
-                        "public-domain": "http://{HOSTNAME}/rest/v1/licensedetections/?source_id=1&license_key=public-domain",
-                        "gpl-2.0-plus": "http://{HOSTNAME}/rest/v1/licensedetections/?source_id=1&license_key=gpl-2.0-plus",
-                        "bsd-simplified": "http://{HOSTNAME}/rest/v1/licensedetections/?source_id=1&license_key=bsd-simplified",
+                        "public-domain": "%(HOST_NAME)s/%(API_PATH)s/\
+licensedetections/?source_id=1&license_key=public-domain",
+                        "gpl-2.0-plus": "%(HOST_NAME)s/%(API_PATH)s/\
+licensedetections/?source_id=1&license_key=gpl-2.0-plus",
+                        "bsd-simplified": "%(HOST_NAME)s/%(API_PATH)s/\
+licensedetections/?source_id=1&license_key=bsd-simplified",
                         ...
                     },
                     "copyright_detections": {
-                        "Copyright (c) 2013 Fusion-io.": "http://{HOSTNAME}/rest/v1/copyrightdetections/?source_id=1&statement=Copyright (c) 2013 Fusion-io.",
-                        "Copyright (c) 2010-2017 par": "http://{HOSTNAME}/rest/v1/copyrightdetections/?source_id=1&statement=Copyright (c) 2010-2017 par",
+                        "Copyright (c) 2013 Fusion-io.": \
+"%(HOST_NAME)s/%(API_PATH)s/copyrightdetections/?source_id=1\
+&statement=Copyright (c) 2013 Fusion-io.",
+                        "Copyright (c) 2010-2017 par": \
+"%(HOST_NAME)s/%(API_PATH)s/copyrightdetections/?source_id=1\
+&statement=Copyright (c) 2010-2017 par",
                         ...
                     }
                 }
@@ -170,7 +177,7 @@ class SourceViewSet(ModelViewSet):
         return super().list(request, *args, **kwargs)
 
     def retrieve(self, request, *args, **kwargs):
-        """ # noqa
+        """
         Get a specific source.
 
         ####__Request__####
@@ -187,14 +194,21 @@ Token your_token'
             {
                 "id": 1,
                 "license_detections":{
-                    "public-domain": "http://{HOSTNAME}/rest/v1/licensedetections/?source_id=1&license_key=public-domain",
-                    "gpl-2.0-plus": "http://{HOSTNAME}/rest/v1/licensedetections/?source_id=1&license_key=gpl-2.0-plus",
-                    "bsd-simplified": "http://{HOSTNAME}/rest/v1/licensedetections/?source_id=1&license_key=bsd-simplified",
+                    "public-domain": "%(HOST_NAME)s/%(API_PATH)s/\
+licensedetections/?source_id=1&license_key=public-domain",
+                    "gpl-2.0-plus": "%(HOST_NAME)s/%(API_PATH)s/\
+licensedetections/?source_id=1&license_key=gpl-2.0-plus",
+                    "bsd-simplified": "%(HOST_NAME)s/%(API_PATH)s/\
+licensedetections/?source_id=1&license_key=bsd-simplified",
                     ...
                 },
                 "copyright_detections": {
-                    "Copyright (c) 2013 Fusion-io.": "http://{HOSTNAME}/rest/v1/copyrightdetections/?source_id=1&statement=Copyright (c) 2013 Fusion-io.",
-                    "Copyright (c) 2010-2017 par": "http://{HOSTNAME}/rest/v1/copyrightdetections/?source_id=1&statement=Copyright (c) 2010-2017 par",
+                    "Copyright (c) 2013 Fusion-io.": \
+"%(HOST_NAME)s/%(API_PATH)s/copyrightdetections/?source_id=1\
+&statement=Copyright (c) 2013 Fusion-io.",
+                    "Copyright (c) 2010-2017 par": \
+"%(HOST_NAME)s/%(API_PATH)s/copyrightdetections/?source_id=1\
+&statement=Copyright (c) 2010-2017 par",
                     ...
                 },
                 "checksum": \
@@ -307,8 +321,10 @@ file first, it should contain the following parameters:
                 if not releases.exists():
                     # Release could be created once schema is locked down
                     err_msg = f"Product does Not exist: {release_name}."
-                    return Response(data={'message': err_msg},
-                                    status=status.HTTP_400_BAD_REQUEST)
+                    return Response(
+                        data={'message': err_msg},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
 
         data = manifest_data if manifest_data else request.data
         # Import packages based on "API bulk package nvrs import".
@@ -320,8 +336,10 @@ file first, it should contain the following parameters:
         elif 'components' in data:
             serializer = self.component_import_serializer(data=data)
         else:
-            return Response("Missing arguments in request.",
-                            status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                "Missing arguments in request.",
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         if serializer.is_valid():
             parent_task_id = request.data.get('parent_task_id', '')
             token = request.data.get('token')
@@ -330,8 +348,9 @@ file first, it should contain the following parameters:
                 request.user.id, parent_task_id, token, token_sk
             )
         else:
-            return Response(data=serializer.errors,
-                            status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                data=serializer.errors, status=status.HTTP_400_BAD_REQUEST
+            )
         return Response(data=resp)
 
 
@@ -451,7 +470,7 @@ class PackageImportTransactionView(APIView, SourceImportMixin):
     """
     Package import transaction
 
-    data example:  # noqa
+    data example:
     {
         "task_id": "7030f5da-7282-4960-a716-7d8d8328b9c2",
         "source_info":{
@@ -462,16 +481,19 @@ class PackageImportTransactionView(APIView, SourceImportMixin):
             ],
             "source":{
                 "name":"xtab.doc.tar.xz",
-                "checksum":"597cf23c7b32beaee76dc7ec42f6f04903a3d8239a4b820adf3a3350b93cd65e",
+                "checksum": \
+"597cf23c7b32beaee76dc7ec42f6f04903a3d8239a4b820adf3a3350b93cd65e",
                 "archive_type":"rpm"
             },
             "paths":[
                 {
-                    "file":"swh:1:cnt:1fa0d32c021a24447540ab6dca496948de8088aa",
+                    "file": \
+"swh:1:cnt:1fa0d32c021a24447540ab6dca496948de8088aa",
                     "path":"/test5"
                 },
                 {
-                    "file":"swh:1:cnt:1fa0d32c021a24447540ab6dca496948de8088bb",
+                    "file": \
+"swh:1:cnt:1fa0d32c021a24447540ab6dca496948de8088bb",
                     "path":"/test6"
                 }
             ],
@@ -487,6 +509,7 @@ class PackageImportTransactionView(APIView, SourceImportMixin):
         }
     }
     """
+
     def post(self, request, *args, **kwargs):
         try:
             file_path = request.data.get("file_path")
@@ -494,8 +517,8 @@ class PackageImportTransactionView(APIView, SourceImportMixin):
                 data = json.load(f)
         except Exception as err:
             return Response(
-                data={'message': err.args},
-                status=status.HTTP_400_BAD_REQUEST)
+                data={'message': err.args}, status=status.HTTP_400_BAD_REQUEST
+            )
 
         task_id = data.get('task_id')
         source_info = data.get('source_info')
@@ -507,7 +530,8 @@ class PackageImportTransactionView(APIView, SourceImportMixin):
         if not any([swhids, source, paths, component]):
             return Response(
                 data={'message': 'No data provided.'},
-                status=status.HTTP_400_BAD_REQUEST)
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         # get task object for update
         task_obj = Task.objects.get(meta_id=task_id)
@@ -686,15 +710,18 @@ class ComponentViewSet(ModelViewSet):
     """
     API endpoint that allows components to be viewed.
     """
+
     queryset = Component.objects.all()
     serializer_class = ComponentSerializer
     filter_backends = (
-            django_filters.rest_framework.DjangoFilterBackend, SearchFilter)
+        django_filters.rest_framework.DjangoFilterBackend,
+        SearchFilter,
+    )
     filter_class = ComponentFilter
-    search_fields = ['type', 'name', 'version', 'release', 'arch']
+    search_fields = ["type", "name", "version", "release", "arch"]
 
     def list(self, request, *args, **kwargs):
-        """ # noqa
+        """
         Get a list of components.
 
         ####__Request__####
@@ -724,14 +751,21 @@ class ComponentViewSet(ModelViewSet):
                             5
                         ],
                         "license_detections":{
-                            "public-domain": "http://{HOSTNAME}/rest/v1/licensedetections/?source_id=1&license_key=public-domain",
-                            "gpl-2.0-plus": "http://{HOSTNAME}/rest/v1/licensedetections/?source_id=1&license_key=gpl-2.0-plus",
-                            "bsd-simplified": "http://{HOSTNAME}/rest/v1/licensedetections/?source_id=1&license_key=bsd-simplified",
+                            "public-domain": "%(HOST_NAME)s/%(API_PATH)s/\
+licensedetections/?source_id=1&license_key=public-domain",
+                            "gpl-2.0-plus": "%(HOST_NAME)s/%(API_PATH)s/\
+licensedetections/?source_id=1&license_key=gpl-2.0-plus",
+                            "bsd-simplified": "%(HOST_NAME)s/%(API_PATH)s/\
+licensedetections/?source_id=1&license_key=bsd-simplified",
                             ...
                         },
                         "copyright_detections": {
-                            "Copyright (c) 2013 Fusion-io.": "http://{HOSTNAME}/rest/v1/copyrightdetections/?source_id=1&statement=Copyright (c) 2013 Fusion-io.",
-                            "Copyright (c) 2010-2017 par": "http://{HOSTNAME}/rest/v1/copyrightdetections/?source_id=1&statement=Copyright (c) 2010-2017 par",
+                            "Copyright (c) 2013 Fusion-io.": \
+"%(HOST_NAME)s/%(API_PATH)s/copyrightdetections/?source_id=1\
+&statement=Copyright (c) 2013 Fusion-io.",
+                            "Copyright (c) 2010-2017 par": \
+"%(HOST_NAME)s/%(API_PATH)s/copyrightdetections/?source_id=1\
+&statement=Copyright (c) 2010-2017 par",
                             ...
                         }
                     },
@@ -815,14 +849,21 @@ applicable when sync_status is "sync_failed".
                             1
                         ],
                         "license_detections":{
-                            "public-domain": "http://{HOSTNAME}/rest/v1/licensedetections/?source_id=1&license_key=public-domain",
-                            "gpl-2.0-plus": "http://{HOSTNAME}/rest/v1/licensedetections/?source_id=1&license_key=gpl-2.0-plus",
-                            "bsd-simplified": "http://{HOSTNAME}/rest/v1/licensedetections/?source_id=1&license_key=bsd-simplified",
+                            "public-domain": "%(HOST_NAME)s/%(API_PATH)s/\
+licensedetections/?source_id=1&license_key=public-domain",
+                            "gpl-2.0-plus": "%(HOST_NAME)s/%(API_PATH)s/\
+licensedetections/?source_id=1&license_key=gpl-2.0-plus",
+                            "bsd-simplified": "%(HOST_NAME)s/%(API_PATH)s/\
+licensedetections/?source_id=1&license_key=bsd-simplified",
                             ...
                         },
                         "copyright_detections": {
-                            "Copyright (c) 2013 Fusion-io.": "http://{HOSTNAME}/rest/v1/copyrightdetections/?source_id=1&statement=Copyright (c) 2013 Fusion-io.",
-                            "Copyright (c) 2010-2017 par": "http://{HOSTNAME}/rest/v1/copyrightdetections/?source_id=1&statement=Copyright (c) 2010-2017 par",
+                            "Copyright (c) 2013 Fusion-io.": \
+"%(HOST_NAME)s/%(API_PATH)s/copyrightdetections/?source_id=1\
+&statement=Copyright (c) 2013 Fusion-io.",
+                            "Copyright (c) 2010-2017 par": \
+"%(HOST_NAME)s/%(API_PATH)s/copyrightdetections/?source_id=1\
+&statement=Copyright (c) 2010-2017 par",
                             ...
                         }
                     },
@@ -865,7 +906,7 @@ applicable when sync_status is "sync_failed".
         return super().list(request, *args, **kwargs)
 
     def retrieve(self, request, *args, **kwargs):
-        """ # noqa
+        """
         Get a specific component.
 
         ####__Request__####
@@ -894,14 +935,21 @@ applicable when sync_status is "sync_failed".
                         5
                     ],
                     "license_detections":{
-                        "public-domain": "http://{HOSTNAME}/rest/v1/licensedetections/?source_id=1&license_key=public-domain",
-                        "gpl-2.0-plus": "http://{HOSTNAME}/rest/v1/licensedetections/?source_id=1&license_key=gpl-2.0-plus",
-                        "bsd-simplified": "http://{HOSTNAME}/rest/v1/licensedetections/?source_id=1&license_key=bsd-simplified",
+                        "public-domain": "\
+licensedetections/?source_id=1&license_key=public-domain",
+                        "gpl-2.0-plus": "%(HOST_NAME)s/%(API_PATH)s/\
+licensedetections/?source_id=1&license_key=gpl-2.0-plus",
+                        "bsd-simplified": "%(HOST_NAME)s/%(API_PATH)s/\
+licensedetections/?source_id=1&license_key=bsd-simplified",
                         ...
                     },
                     "copyright_detections": {
-                        "Copyright (c) 2013 Fusion-io.": "http://{HOSTNAME}/rest/v1/copyrightdetections/?source_id=1&statement=Copyright (c) 2013 Fusion-io.",
-                        "Copyright (c) 2010-2017 par": "http://{HOSTNAME}/rest/v1/copyrightdetections/?source_id=1&statement=Copyright (c) 2010-2017 par",
+                        "Copyright (c) 2013 Fusion-io.": \
+"%(HOST_NAME)s/%(API_PATH)s/copyrightdetections/?source_id=1\
+&statement=Copyright (c) 2013 Fusion-io.",
+                        "Copyright (c) 2010-2017 par": \
+"%(HOST_NAME)s/%(API_PATH)s/copyrightdetections/?source_id=1\
+&statement=Copyright (c) 2010-2017 par",
                         ...
                     }
                 },
@@ -1031,16 +1079,16 @@ class ComponentSubscriptionViewSet(ModelViewSet):
                 "pkg:rpm/redhat/python-pyjwt@1.7.1-8.el9pc?arch=src",
                 "pkg:rpm/redhat/python-webencodings@0.5.1-3.el9pc?arch=src",
                 "pkg:oci/aap-must-gather-container-source?tag=0.0.1-216.1",
-                "pkg:oci/automation-controller-operator-container-source?tag=2.2.1-30.1",
-                "pkg:oci/automation-controller-container-source?tag=4.2.1-29.1",
+                "pkg:oci/automation-controller-operator-container",
+                "pkg:oci/automation-controller-container-source",
                 "pkg:oci/ee-29-container-source?tag=1.0.0-219.1",
                 "pkg:oci/automation-hub-container-source?tag=4.5.2-31.1",
-                "pkg:oci/ansible-python-toolkit-container-source?tag=1.0.0-189.1",
+                "pkg:oci/ansible-python-toolkit-container-source",
                 "pkg:oci/ansible-builder-container-source?tag=1.1.0-99.1",
                 "pkg:oci/automation-hub-web-container-source?tag=4.5.2-29.1",
                 "pkg:oci/ee-minimal-container-source?tag=1.0.0-234.1",
                 "pkg:oci/ee-supported-container-source?tag=1.0.0-196.1",
-                "pkg:oci/platform-resource-runner-container-source?tag=2.2.1-26.1",
+                "pkg:oci/platform-resource-runner-container-source",
                 "pkg:rpm/redhat/receptor@1.3.0-1.el9ap?arch=src",
                 "...",
                 "<list-is-too-long-and-omitted...>",
@@ -1129,10 +1177,6 @@ query params of the corgi `component` api endpoint.
         """
         This function is customized to allow "append" mode by default when
         updating `component_purls` field.
-
-        FIXME: The update of `component_purls` impacts the number of
-        components to sync, thus I think docs should not be exposed to
-        end user. Any different opinions?
         """
         subscription = self.get_object()
         component_purls = request.data.get("component_purls")
