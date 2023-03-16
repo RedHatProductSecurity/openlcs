@@ -144,9 +144,7 @@ class CargoMeta(MetaBase):
     def __init__(self, source_tarball):
         super().__init__(source_tarball)
         self.metafile = "Cargo.toml"
-        # The tarball extension in source container needs more checking
-        # see OLCS-403
-        self.extensions = (".tgz",)
+        self.extensions = (".crate",)
 
     def get_metadata(self, filepath):
         """

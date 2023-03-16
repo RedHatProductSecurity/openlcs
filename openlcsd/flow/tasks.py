@@ -392,7 +392,7 @@ def get_source_metadata(context, engine):
     is downloaded.
 
     @requires: 'tmp_src_filepath' for rpm, 'tmp_pom_filepath' for maven build.
-    @feeds: 'source_url' - string, package upstream source URL.
+    @feeds: 'project_url' - string, package upstream source URL.
     @feeds: 'declared_license' - string, package declared license.
     """
 
@@ -445,23 +445,20 @@ def get_source_metadata(context, engine):
         engine.logger.warning(str(e))
 
     if package is not None:
-        # Package has below urls which could be referenced as source url:
-        # homepage_url --> vcs_url --> code_view_url --> download_url
-        # download_url is version related which is not preferred.
+        # Package below urls which could be referenced as project url,
+        # e.g.,
         # homepage_url: http://cxf.apache.org
-        # vcs_url: git+http://gitbox.apache.org/repos/asf/cxf.git
+        # repository_homepage_url: https://crates.io/crates/zvariant_derive
         # code_view_url: https://gitbox.apache.org/repos/asf?p=cxf.git;a=summary    # noqa
-        # download_url: https://pkg.freebsd.org/freebsd:10:x86:64/latest/All/dmidecode-2.12.txz    # noqa
-        urls = ['homepage_url', 'vcs_url', 'code_view_url', 'download_url']
+        # homepage_url --> repository_homepage_url --> code_view_url
+        urls = ['homepage_url', 'repository_homepage_url', 'code_view_url']
         for url in urls:
             if hasattr(package, url):
-                context['source_url'] = getattr(package, url)
+                context['project_url'] = getattr(package, url)
                 break
-        # Use declared_license from packagecode output which could support
-        # more package types instead of rebuilding wheels.
         context['declared_license'] = package.declared_license
     else:
-        context['source_url'] = ''
+        context['project_url'] = ''
         context['declared_license'] = ''
 
     source_info = {
@@ -469,7 +466,7 @@ def get_source_metadata(context, engine):
         "source": {
             "checksum": source_checksum,
             "name": source_name,
-            "url": context.get("source_url"),
+            "url": context.get("project_url"),
             "archive_type": list(build_type.keys())[0]
         },
 
