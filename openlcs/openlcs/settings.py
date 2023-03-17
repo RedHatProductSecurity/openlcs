@@ -172,18 +172,7 @@ CELERY_RESULT_BACKEND = 'db+postgresql://{USER}:{PASSWORD}@{HOST}/{NAME}'.format
 CELERY_TASK_TRACK_STARTED = True
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 CELERY_BEAT_SCHEDULE = {
-    # TODO add periodic task conf
-    # refer to https://docs.celeryq.dev/en/v5.2.7/userguide/periodic-tasks.html#periodic-tasks  # noqa
-
-    # 'test-task': {
-    #     'task': 'openlcsd.flow.periodic_tasks.test_task',
-    #     'schedule': crontab(minute='*', hour='*', day_of_week='*',
-    #              day_of_month='*', month_of_year='*')
-    # },
-    # 'test-task-1': {
-    #     'task': 'openlcsd.flow.periodic_tasks.print_task_id',
-    #     'schedule': timedelta(seconds=1)
-    # },
+    # Refer to https://docs.celeryq.dev/en/v5.2.7/userguide/periodic-tasks.html#periodic-tasks  # noqa
     'run_corgi_sync': {
         'task': 'openlcsd.flow.periodic_tasks.run_corgi_sync',
         'schedule': crontab(minute=0, hour=0),  # Execute daily at midnight.

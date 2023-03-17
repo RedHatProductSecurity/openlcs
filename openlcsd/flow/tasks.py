@@ -1369,8 +1369,9 @@ flow_default = [
                 ],
                 [
                     IF_ELSE(
-                        lambda o, e: 'image' in o.get('build_type'),
-                        # Work flow for import container build
+                        lambda o, e: 'image' in o.get('build_type') and not o.get('parent'),  # noqa
+                        # Work flow for import container build,
+                        # but not for container metadata
                         [
                             get_source_container_build,
                             download_source_image,
@@ -1554,7 +1555,7 @@ def populate_subscription_purls(context, engine):
 
 def translate_components(context, engine):
     """
-    Accept list of raw components, translate into OLCS-recoginzable inputs.
+    Accept list of raw components, translate into OLCS-recognizable inputs.
     """
     corgi_sources = []
     single_components = []
@@ -1584,7 +1585,7 @@ def translate_components(context, engine):
     context['corgi_sources'] = corgi_sources
 
 
-def trigger_corgi_components_inputs(context, engine):
+def trigger_corgi_components_imports(context, engine):
     """
     Trigger fork tasks directly using Corgi source.
     """
@@ -1606,7 +1607,7 @@ flow_get_corgi_components = [
     collect_components,
     populate_subscription_purls,
     translate_components,
-    trigger_corgi_components_inputs
+    trigger_corgi_components_imports
 ]
 
 
