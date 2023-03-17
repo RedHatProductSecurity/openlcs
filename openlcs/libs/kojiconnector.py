@@ -578,8 +578,7 @@ class KojiConnector:
         Copy source of the source container from registry.
         """
         source_url = 'docker://' + repository
-        dest = 'dir:' + dest_dir
-        copy_cmd = ['skopeo', 'copy', source_url, dest]
+        copy_cmd = ['skopeo', 'copy', '-q', source_url, 'dir:' + dest_dir]
         try:
             subprocess.check_call(copy_cmd)
         except subprocess.CalledProcessError as e:
