@@ -35,7 +35,7 @@ def corgi_include_exclude_fields_wrapper(func):
     def wrapper(*args, **kwargs):
         # Only apply on components endpoint
         _, url = args
-        if url.endswith('/components'):
+        if "/components" in url:
             query_params = kwargs.get('query_params', {})
             # work around for latencies by excluding costly related fields
             # queries, see also CORGI-482, another benefit is to minimize
@@ -62,7 +62,7 @@ class CorgiConnector:
     def __init__(self, base_url=None):
         if base_url is None:
             # corgi api endpoint available in environment variable
-            base_url = os.getenv("CORGI_API_PROD")
+            base_url = os.getenv("CORGI_API_STAGE")
         self.base_url = base_url
         self.session = requests.Session()
 
@@ -121,6 +121,9 @@ class CorgiConnector:
         "sources" can be an extreamly long list, this function truncate the
         redundant ones, leaving the idential source rpm.
         """
+        # srpm component has no sources
+        if component["arch"] == "src":
+            return component
         sources = iter(component["sources"])
         source = find_srpm_source(sources)
         # Truncate unneeded sources.
@@ -402,7 +405,9 @@ class CorgiConnector:
         if link:
             logger.info("Querying component: %s", link)
             component = self.get(link, includes=self.rpm_includes)
-            return component if component is not None else link
+            if component:
+                return component
+            return link
         else:
             return component.get("purl")
 
@@ -425,7 +430,7 @@ class CorgiConnector:
             return link
 
     def get_container_source_components(self, component, subscribed_purls=None,
-                                        max_workers=5):
+                                        max_workers=4, max_queue_length=6):
         """
         Extract source components from a corgi container component
 
@@ -440,7 +445,9 @@ class CorgiConnector:
         component (dict): The OCI component info
 
         Returns:
-        Tuple: (components found / missings)
+        Generator: the execution result from `future.result()`, consisting
+        of data(dict) for successful query or data(purl string) for failures.
+        See also `source_component_to_list` on how it's consumed.
         """
         name = component.get("name")
         if name.endswith("-source"):
@@ -474,19 +481,22 @@ class CorgiConnector:
                 continue
             provides.append((provide.get("link"), component_type))
         logger.debug("List of provides(%d) collected", len(provides))
+        remaining_provides = len(provides)
+        provides_iter = iter(provides)
 
         with concurrent.futures.ThreadPoolExecutor(
             max_workers=max_workers
         ) as executor:
             tasks = {}
-            remaining_provides = len(provides)
             while remaining_provides > 0:
-                for provide in iter(provides):
+                for provide in provides_iter:
                     link, component_type = provide
                     task = executor.submit(self._fetch_component,
                                            link, component_type)
                     tasks[task] = link
-                    if len(tasks) > 50:
+                    # number of tasks to be in the queue. Larger number means
+                    # slightly higher memory consumption.
+                    if len(tasks) > max_queue_length:
                         break
                 for task in concurrent.futures.as_completed(tasks):
                     remaining_provides -= 1
@@ -497,6 +507,8 @@ class CorgiConnector:
     def get_source_component(self, component, subscribed_purls=None):
         component_type = component.get("type")
         if component_type == "RPM":
+            component = CorgiConnector.truncate_rpm_component_sources(
+                component)
             yield self.get_srpm_component(component)
         elif component_type in ["OCI", "RPMMOD"]:
             yield from self.get_container_source_components(
