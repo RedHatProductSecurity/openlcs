@@ -32,7 +32,7 @@ class BaseScanner(object):
             raise ValueError("No version info for %s." % scanner)
         else:
             version = get_version_method()
-            self.detector = scanner + ": " + version
+            self.detector = scanner + " " + version
 
     def scan(self, scanner='scancode'):
         self.get_scanner_version(scanner)

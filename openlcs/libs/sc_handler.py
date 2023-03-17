@@ -30,7 +30,13 @@ CORGI_OSBS_RS_TYPE_MAPPING = {
     'CARGO': 'cargo',
     'GEM': 'rubygems'
 }
-RS_TARBALL_EXTENSIONS = ['.tgz', '.tar.gz', '.zip', '.gem']
+RS_TARBALL_EXTENSIONS = [
+    '.tgz',
+    '.tar.gz',
+    '.zip',
+    '.gem',
+    '.crate'
+]
 
 
 class SourceContainerHandler(object):
