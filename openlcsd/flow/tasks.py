@@ -1558,30 +1558,21 @@ def translate_components(context, engine):
     Accept list of raw components, translate into OLCS-recognizable inputs.
     """
     corgi_sources = []
-    single_components = []
-    component_keys = ['uuid', 'type', 'nvr', 'name', 'version', 'release',
-                      'arch', 'software_build', 'download_url']
+    flat_components = []
     source_components = context.get('source_components')
     for source_component in source_components:
         sources = source_component.get('sources')
         for source in sources:
-            source_type = source.get('type')
-            if source_type in ['OCI', 'RPMMOD']:
-                olcs_sources = source.get('olcs_sources')
-                corgi_source = {
-                    'parent': {key: source.get(key) for key in component_keys},
-                    'components': [
-                        {key: olcs_source.get(key) for key in component_keys}
-                        for olcs_source in olcs_sources]
-                }
+            if source.get('type') in ['OCI', 'RPMMOD']:
+                olcs_sources = source.pop('olcs_sources')
+                corgi_source = {'parent': source, 'components': olcs_sources}
                 corgi_sources.append(corgi_source)
             else:
-                single_components.append(
-                    {key: source.get(key) for key in component_keys})
-
-    single_components = remove_duplicates_from_list_by_key(
-        single_components, 'uuid')
-    corgi_sources.append({'parent': {}, 'components': single_components})
+                flat_components.append(source)
+    if flat_components:
+        flat_components = remove_duplicates_from_list_by_key(
+            flat_components, 'uuid')
+        corgi_sources.append({'parent': {}, 'components': flat_components})
     context['corgi_sources'] = corgi_sources
 
 
