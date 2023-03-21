@@ -716,7 +716,9 @@ class TestCorgiConnector(TestCase):
         }
 
         with self.assertRaises(MissingBinaryBuildException) as exc:
-            self.connector.get_container_source_components(component)
+            for _ in self.connector.get_container_source_components(
+                    component):
+                pass
 
         raised_exception = exc.exception
         message = (f"Failed to find binary build for {component['nevra']} "
