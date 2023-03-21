@@ -1465,6 +1465,11 @@ def collect_components(context, engine):
     feeds: source_components
 
     source_components are with below form:
+    {
+        "subscription_id": Integer, # id of the subscription model instance
+        "sources": List(dict),      # List of the component data dictionary
+        "missings": List(str)       # component link or purl
+    }
     """
     subscriptions = context.get("subscriptions", [])
     # FIXME: switch to corgi-prod after CORGI-482 is fixed.
