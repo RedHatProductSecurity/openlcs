@@ -1597,13 +1597,19 @@ def trigger_corgi_components_imports(context, engine):
                                 corgi_source.get('components'))
 
 
+# sub-flow of `flow_get_corgi_components`
+process_collected_components = [
+    populate_subscription_purls,
+    translate_components,
+    trigger_corgi_components_imports
+]
+
+
 flow_get_corgi_components = [
     get_config,
     get_active_subscriptions,
     collect_components,
-    populate_subscription_purls,
-    translate_components,
-    trigger_corgi_components_imports
+    process_collected_components,
 ]
 
 
