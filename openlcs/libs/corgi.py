@@ -550,9 +550,16 @@ class CorgiConnector:
         err_msg = f"Failed to find {nvr} component instance from Corgi."
         raise ValueError(err_msg)
 
-    def collect_components_from_subscriptions(self, subscriptions):
+    def collect_components_from_subscriptions(self,
+                                              subscriptions,
+                                              num_components=100):
         """
         Collect source components based on subscriptions.
+
+        Due to the fact the each subscription may have extreamly long number
+        of components which end up with high memory consumption if we return
+        data at once, this function provides a mechanism to dynamically yield
+        components, based on the `should_yield_data` inner function.
         """
         def process_component(component, subscribed_purls=None):
             sources = []
@@ -569,6 +576,16 @@ class CorgiConnector:
                 missings.extend(missings)
             return (sources, missings)
 
+        def should_yield_data(component, result):
+            """
+            Helper function, to decide whether to yield result under
+            specified condition.
+            """
+            return (
+                component["type"] == "OCI"
+                or len(result["sources"]) >= num_components
+            )
+
         for subscription in subscriptions:
             query_params = subscription.get("query_params")
             if not query_params:
@@ -577,28 +594,36 @@ class CorgiConnector:
             subscribed_purls = subscription.get("component_purls", [])
 
             components = self.get_paginated_data(query_params)
-
-            for component in components:
-                subscription_sources, subscription_missings = [], []
-                result = {}
-                if component["purl"] in subscribed_purls:
-                    # excludes components processed in previous sync.
-                    continue
+            result = {"subscription_id": subscription["id"]}
+            while True:
                 try:
-                    sources, missings = process_component(
-                        component, subscribed_purls)
-                except MissingBinaryBuildException as e:
-                    logger.error(str(e))
-                    # FIMXE: subsequent calls for missing binary build
-                    # component will likely to fail again.
-                    subscription_missings.append(component["purl"])
-                    continue
-                else:
-                    subscription_sources.extend(sources)
-                    subscription_missings.extend(missings)
-                    result = {
-                        "subscription_id": subscription["id"],
-                        "sources": subscription_sources,
-                        "missings": subscription_missings,
-                    }
+                    component = next(components)
+                except StopIteration:
                     yield result
+                    break
+                else:
+                    subscription_sources, subscription_missings = [], []
+                    if component["purl"] in subscribed_purls:
+                        # excludes components processed in previous sync.
+                        continue
+                    try:
+                        sources, missings = process_component(
+                            component, subscribed_purls)
+                    except MissingBinaryBuildException as e:
+                        logger.error(str(e))
+                        # FIMXE: subsequent calls for missing binary build
+                        # component will likely to fail again.
+                        subscription_missings.append(component["purl"])
+                        continue
+                    else:
+                        subscription_sources.extend(sources)
+                        subscription_missings.extend(missings)
+                        result.setdefault("sources", []).extend(
+                            subscription_sources)
+                        result.setdefault("missings", []).extend(
+                            subscription_missings)
+                        if should_yield_data(component, result):
+                            yield result
+                            # reset result to the original state
+                            del result["sources"]
+                            del result["missings"]
