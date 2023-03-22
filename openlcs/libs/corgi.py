@@ -549,3 +549,56 @@ class CorgiConnector:
 
         err_msg = f"Failed to find {nvr} component instance from Corgi."
         raise ValueError(err_msg)
+
+    def collect_components_from_subscriptions(self, subscriptions):
+        """
+        Collect source components based on subscriptions.
+        """
+        def process_component(component, subscribed_purls=None):
+            sources = []
+            missings = []
+            gen = self.get_source_component(
+                component, subscribed_purls)
+            components, missings = CorgiConnector.source_component_to_list(gen)
+            if component.get("type") in ["OCI", "RPMMOD"]:
+                # Nest source components in `olcs_sources`
+                component["olcs_sources"] = components
+                sources.append(component)
+            else:
+                sources.extend(components)
+                missings.extend(missings)
+            return (sources, missings)
+
+        for subscription in subscriptions:
+            query_params = subscription.get("query_params")
+            if not query_params:
+                continue
+            # subscription purls obtained from previous sync
+            subscribed_purls = subscription.get("component_purls", [])
+
+            components = self.get_paginated_data(query_params)
+
+            for component in components:
+                subscription_sources, subscription_missings = [], []
+                result = {}
+                if component["purl"] in subscribed_purls:
+                    # excludes components processed in previous sync.
+                    continue
+                try:
+                    sources, missings = process_component(
+                        component, subscribed_purls)
+                except MissingBinaryBuildException as e:
+                    logger.error(str(e))
+                    # FIMXE: subsequent calls for missing binary build
+                    # component will likely to fail again.
+                    subscription_missings.append(component["purl"])
+                    continue
+                else:
+                    subscription_sources.extend(sources)
+                    subscription_missings.extend(missings)
+                    result = {
+                        "subscription_id": subscription["id"],
+                        "sources": subscription_sources,
+                        "missings": subscription_missings,
+                    }
+                    yield result
