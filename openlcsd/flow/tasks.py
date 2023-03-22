@@ -38,7 +38,6 @@ from openlcs.libs.swh_tools import get_swhids_with_paths
 from openlcs.libs.unpack import UnpackArchive
 from openlcs.utils.common import DateEncoder
 from openlcs.libs.encrypt_decrypt import encrypt_with_secret_key
-from openlcs.libs.exceptions import MissingBinaryBuildException
 
 
 def get_config(context, engine):
@@ -1477,54 +1476,10 @@ def collect_components(context, engine):
     connector = CorgiConnector(base_url=api_endpoint)
     source_components = []
 
-    def process_component(component, subscribed_purls=None):
-        sources = []
-        missings = []
-        gen = connector.get_source_component(
-            component, subscribed_purls)
-        components, missings = CorgiConnector.source_component_to_list(gen)
-        if component.get("type") in ["OCI", "RPMMOD"]:
-            # Nest source components in `olcs_sources`
-            component["olcs_sources"] = components
-            sources.append(component)
-        else:
-            sources.extend(components)
-            missings.extend(missings)
-        return (sources, missings)
-
-    for subscription in subscriptions:
-        query_params = subscription.get("query_params")
-        if not query_params:
-            continue
-        # subscription purls obtained from previous sync
-        subscribed_purls = subscription.get("component_purls", [])
-
-        components = connector.get_paginated_data(query_params)
-        subscription_sources, subscription_missings = [], []
-
-        for component in components:
-            if component["purl"] in subscribed_purls:
-                # excludes all non-oci/non-rpmmod components in previous sync.
-                continue
-            try:
-                sources, missings = process_component(
-                    component, subscribed_purls)
-            except MissingBinaryBuildException as e:
-                engine.logger.error(str(e))
-                # FIMXE: subsequent calls for missing binary build component
-                # will likely to fail again.
-                subscription_missings.append(component["purl"])
-                continue
-            else:
-                subscription_sources.extend(sources)
-                subscription_missings.extend(missings)
-
-        result = {
-            "subscription_id": subscription["id"],
-            "sources": subscription_sources,
-            "missings": subscription_missings,
-        }
-        source_components.append(result)
+    for _ in connector.collect_components_from_subscriptions(subscriptions):
+        # FIXME: iterate over the yielded data and run follow-up workflow
+        # accordingly
+        pass
 
     context["source_components"] = source_components
 
