@@ -17,6 +17,7 @@ from packages.models import (
     Path,
     Source
 )
+from packages.permissions import ReadOnlyModelPermission
 from packages.serializers import (
     ComponentSerializer,
     ComponentSubscriptionSerializer,
@@ -1045,6 +1046,7 @@ class ComponentSubscriptionViewSet(ModelViewSet):
     """
     queryset = ComponentSubscription.objects.all()
     serializer_class = ComponentSubscriptionSerializer
+    permission_classes = [ReadOnlyModelPermission]
 
     def get_queryset(self):
         active = self.request.query_params.get('active', None)
@@ -1138,7 +1140,8 @@ class ComponentSubscriptionViewSet(ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         """
-        Create a component subscription instance.
+        Create a component subscription instance. Restricted to \
+admin users only.
 
         ####__Request__####
 
@@ -1168,7 +1171,7 @@ query params of the corgi `component` api endpoint.
                 "updated_at": "2023-01-19T02:55:12.582576Z"
             }
 
-            Error: HTTP 400 BAD REQUEST
+            Error: HTTP 400 BAD REQUEST or HTTP 403 Forbidden
 
         """
         return super().create(request, *args, **kwargs)
@@ -1197,7 +1200,8 @@ query params of the corgi `component` api endpoint.
 
     def patch(self, request, *args, **kwargs):
         """
-        Update an existing component subscription instance.
+        Update an existing component subscription instance. Restricted to \
+admin users only.
 
         ####__Request__####
 
@@ -1228,7 +1232,7 @@ query params of the corgi `component` api endpoint.
                 "created_at": "2023-01-19T02:55:12.582557Z",
                 "updated_at": "2023-01-19T03:51:13.878047Z"
             }
-            Error: HTTP 400 BAD REQUEST
+            Error: HTTP 400 BAD REQUEST or HTTP 403 Forbidden
 
         """
         return self.partial_update(request, *args, **kwargs)
