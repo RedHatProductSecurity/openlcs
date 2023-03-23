@@ -90,6 +90,13 @@ class LicenseDetection(models.Model):
 
     class Meta:
         app_label = 'reports'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['license_key', 'score', 'rule', 'start_line',
+                        'end_line', 'false_positive', 'file_scan'],
+                name='unique_license_detection'
+            ),
+        ]
 
     def __str__(self):
         return f'{self.file_scan}, {self.license_key}'
@@ -120,6 +127,13 @@ class CopyrightDetection(models.Model):
 
     class Meta:
         app_label = 'reports'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['statement', 'false_positive', 'start_line',
+                        'end_line', 'file_scan'],
+                name='unique_copyright_detection'
+            ),
+        ]
 
     def __str__(self):
         return f'{self.file_scan}, {self.statement}'

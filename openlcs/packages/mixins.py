@@ -109,6 +109,7 @@ class SaveScanResultMixin:
             [self.file_license_scan_dict.get(path_file_dict.get(x[0]))] + x[1:]
             for x in data]
         if licenses:
+            # Query license detection that need to be created.
             objs = [
                 LicenseDetection(
                     file_scan_id=lic[0],
@@ -119,7 +120,10 @@ class SaveScanResultMixin:
                     rule=lic[6],
                 ) for lic in licenses
             ]
-            LicenseDetection.objects.bulk_create(objs)
+            existing_objs = LicenseDetection.objects.all()
+            new_objs = [obj for obj in objs if obj not in existing_objs]
+            if new_objs:
+                LicenseDetection.objects.bulk_create(new_objs)
 
     def update_scan_flag(self, source, scan_type, detector):
         scan_flag = source.scan_flag
@@ -154,6 +158,7 @@ class SaveScanResultMixin:
             (self.file_copyright_scan_dict.get(path_file_dict.get(k)), v) for
             (k, v) in raw_data.items())
         if copyrights:
+            # Query copyrights detection that need to be created.
             objs = []
             for k, v in copyrights.items():
                 k_objs = [
@@ -165,8 +170,9 @@ class SaveScanResultMixin:
                     ) for statement in v
                 ]
                 objs.extend(k_objs)
-
-            if objs:
+            existing_objs = CopyrightDetection.objects.all()
+            new_objs = [obj for obj in objs if obj not in existing_objs]
+            if new_objs:
                 CopyrightDetection.objects.bulk_create(objs)
 
     def save_scan_result(self, **kwargs):
@@ -206,6 +212,7 @@ class SaveScanResultMixin:
                                 path_file_dict, data, license_detector)
                             self.update_scan_flag(
                                     source, "license_scan", license_detector)
+                        break
                     except IntegrityError as err:
                         if i == max_retries - 1:
                             err_msg = (f'Failed to save license scan result.'
@@ -242,6 +249,7 @@ class SaveScanResultMixin:
                                 path_file_dict, data, copyright_detector)
                             self.update_scan_flag(
                                 source, "copyright_scan", copyright_detector)
+                        break
                     except IntegrityError as err:
                         if i == max_retries - 1:
                             err_msg = (f'Failed to save copyright scan result.'

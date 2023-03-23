@@ -131,7 +131,7 @@ class CorgiComponentMixin(models.Model):
     """Model mixin for corgi component attributes
 
     Fields here are synced from corgi, and should not be overwritten.
-    If more corgi readonly fields are needed in future, put it here.
+    If more corgi readonly fields are needed in the future, put it here.
     """
 
     # Specify explicitly the `uuid` field if data is from corgi.
