@@ -372,6 +372,8 @@ class CorgiConnector:
                     # Paginated response with "results" key
                     yield from data["results"]
                     url = data.get("next")
+                    # query_params is needed once and only once
+                    query_params = None
                 else:
                     # Hack to survive an edge case(query by purl or possibly
                     # other unidentified fields) that when only one instance
