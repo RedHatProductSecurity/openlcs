@@ -285,3 +285,31 @@ def get_extension(file_name, sp_extensions):
         if file_name.endswith(extension):
             return file_name[:-len(extension)], file_name[-len(extension):]
     return os.path.splitext(file_name)
+
+
+class ExhaustibleIterator:
+    """
+    Extended iterator, to be able to tell if a generator is active/exhausted
+    without having to consume the data.
+    """
+    def __init__(self, generator):
+        self.generator = generator
+        self.exhausted = False
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self.exhausted:
+            raise StopIteration
+        try:
+            return next(self.generator)
+        except StopIteration:
+            self.exhausted = True
+            raise
+
+    def is_exhausted(self):
+        return self.exhausted
+
+    def is_active(self):
+        return not self.exhausted
