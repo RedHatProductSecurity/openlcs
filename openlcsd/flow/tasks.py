@@ -11,6 +11,7 @@ from checksumdir import dirhash
 from commoncode.fileutils import delete
 from workflow.patterns.controlflow import IF
 from workflow.patterns.controlflow import IF_ELSE
+from workflow.patterns.controlflow import FOR
 from packagedcode.rpm import RpmArchiveHandler
 from packagedcode.pypi import PypiSdistArchiveHandler
 from packagedcode.maven import parse as MavenPomXmlHandler
@@ -1458,12 +1459,9 @@ def get_active_subscriptions(context, engine):
 
 def collect_components(context, engine):
     """
-    Accept a list of subscriptions, and collect needed components
+    Accept a list of subscriptions, and yield collected components.
 
-    Requires: list of subscriptions
-    feeds: source_components
-
-    source_components are with below form:
+    Yield data follows below form:
     {
         "subscription_id": Integer, # id of the subscription model instance
         "sources": List(dict),      # List of the component data dictionary
@@ -1474,14 +1472,10 @@ def collect_components(context, engine):
     # FIXME: switch to corgi-prod after CORGI-482 is fixed.
     api_endpoint = os.getenv("CORGI_API_STAGE")
     connector = CorgiConnector(base_url=api_endpoint)
-    source_components = []
+    # source_components = []
+    # context["source_components"] = source_components
 
-    for _ in connector.collect_components_from_subscriptions(subscriptions):
-        # FIXME: iterate over the yielded data and run follow-up workflow
-        # accordingly
-        pass
-
-    context["source_components"] = source_components
+    yield from connector.collect_components_from_subscriptions(subscriptions)
 
 
 def populate_subscription_purls(context, engine):
@@ -1492,7 +1486,7 @@ def populate_subscription_purls(context, engine):
     @requires: client
     @feeds: None
     """
-    source_components = context["source_components"]
+    source_components = engine.extra_data["source_components"]
     for source_component in source_components:
         subscription_id = source_component["subscription_id"]
         sources = source_component["sources"]
@@ -1519,7 +1513,7 @@ def translate_components(context, engine):
     """
     corgi_sources = []
     flat_components = []
-    source_components = context.get('source_components')
+    source_components = engine.extra_data.get('source_components')
     for source_component in source_components:
         sources = source_component.get('sources')
         for source in sources:
@@ -1563,8 +1557,10 @@ process_collected_components = [
 flow_get_corgi_components = [
     get_config,
     get_active_subscriptions,
-    collect_components,
-    process_collected_components,
+    FOR(collect_components,
+        "source_components",
+        process_collected_components,
+    )
 ]
 
 
