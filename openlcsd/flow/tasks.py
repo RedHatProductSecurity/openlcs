@@ -11,7 +11,7 @@ from checksumdir import dirhash
 from commoncode.fileutils import delete
 from workflow.patterns.controlflow import IF
 from workflow.patterns.controlflow import IF_ELSE
-from workflow.patterns.controlflow import FOR
+from workflow.patterns.controlflow import WHILE
 from packagedcode.rpm import RpmArchiveHandler
 from packagedcode.pypi import PypiSdistArchiveHandler
 from packagedcode.maven import parse as MavenPomXmlHandler
@@ -22,6 +22,7 @@ from openlcs.libs.common import get_component_name_version_combination
 from openlcs.libs.common import get_nvr_list_from_components
 from openlcs.libs.common import remove_duplicates_from_list_by_key
 from openlcs.libs.common import run_and_capture
+from openlcs.libs.common import ExhaustibleIterator
 from openlcs.libs.corgi import CorgiConnector
 from openlcs.libs.driver import OpenlcsClient
 from openlcs.libs.kojiconnector import KojiConnector
@@ -1457,7 +1458,13 @@ def get_active_subscriptions(context, engine):
     context["subscriptions"] = subscriptions
 
 
-def collect_components(context, engine):
+def populate_source_components(context, engine):
+    iterator = context["components_generator"]
+    # Data returned is consumed one at a time here.
+    context["source_components"] = next(iterator)
+
+
+def collect_components(subscriptions):
     """
     Accept a list of subscriptions, and yield collected components.
 
@@ -1468,14 +1475,18 @@ def collect_components(context, engine):
         "missings": List(str)       # component link or purl
     }
     """
-    subscriptions = context.get("subscriptions", [])
+    # subscriptions = context.get("subscriptions", [])
     # FIXME: switch to corgi-prod after CORGI-482 is fixed.
     api_endpoint = os.getenv("CORGI_API_STAGE")
     connector = CorgiConnector(base_url=api_endpoint)
-    # source_components = []
-    # context["source_components"] = source_components
 
     yield from connector.collect_components_from_subscriptions(subscriptions)
+
+
+def populate_components_generator(context, engine):
+    subscriptions = context.get("subscriptions", [])
+    components = collect_components(subscriptions)
+    context["components_generator"] = ExhaustibleIterator(components)
 
 
 def populate_subscription_purls(context, engine):
@@ -1486,25 +1497,24 @@ def populate_subscription_purls(context, engine):
     @requires: client
     @feeds: None
     """
-    source_components = engine.extra_data["source_components"]
-    for source_component in source_components:
-        subscription_id = source_component["subscription_id"]
-        sources = source_component["sources"]
-        subscription_purl_set = set()
-        for component in sources:
-            if component["type"] in ["OCI", "RPMMOD"]:
-                provides = component.get("provides", [])
-                # Store provides purls.
-                subscription_purl_set.update([p["purl"] for p in provides])
-            else:
-                subscription_purl_set.add(component["purl"])
+    source_components = context["source_components"]
+    subscription_id = source_components["subscription_id"]
+    sources = source_components["sources"]
+    subscription_purl_set = set()
+    for component in sources:
+        if component["type"] in ["OCI", "RPMMOD"]:
+            provides = component.get("provides", [])
+            # Store provides purls.
+            subscription_purl_set.update([p["purl"] for p in provides])
+        else:
+            subscription_purl_set.add(component["purl"])
 
-        client = context["client"]
-        client.patch(
-            f"subscriptions/{subscription_id}",
-            data={"component_purls": list(subscription_purl_set)})
-        engine.logger.debug(
-            f"Populated purls for subscription {subscription_id}")
+    client = context["client"]
+    client.patch(
+        f"subscriptions/{subscription_id}",
+        data={"component_purls": list(subscription_purl_set)})
+    engine.logger.debug(
+        f"Populated purls for subscription {subscription_id}")
 
 
 def translate_components(context, engine):
@@ -1513,16 +1523,15 @@ def translate_components(context, engine):
     """
     corgi_sources = []
     flat_components = []
-    source_components = engine.extra_data.get('source_components')
-    for source_component in source_components:
-        sources = source_component.get('sources')
-        for source in sources:
-            if source.get('type') in ['OCI', 'RPMMOD']:
-                olcs_sources = source.pop('olcs_sources')
-                corgi_source = {'parent': source, 'components': olcs_sources}
-                corgi_sources.append(corgi_source)
-            else:
-                flat_components.append(source)
+    source_components = context["source_components"]
+    sources = source_components.get('sources')
+    for source in sources:
+        if source.get('type') in ['OCI', 'RPMMOD']:
+            olcs_sources = source.pop('olcs_sources')
+            corgi_source = {'parent': source, 'components': olcs_sources}
+            corgi_sources.append(corgi_source)
+        else:
+            flat_components.append(source)
     if flat_components:
         flat_components = remove_duplicates_from_list_by_key(
             flat_components, 'uuid')
@@ -1548,6 +1557,7 @@ def trigger_corgi_components_imports(context, engine):
 
 # sub-flow of `flow_get_corgi_components`
 process_collected_components = [
+    populate_source_components,
     populate_subscription_purls,
     translate_components,
     trigger_corgi_components_imports
@@ -1557,9 +1567,10 @@ process_collected_components = [
 flow_get_corgi_components = [
     get_config,
     get_active_subscriptions,
-    FOR(collect_components,
-        "source_components",
-        process_collected_components,
+    populate_components_generator,
+    WHILE(
+        lambda o, e: o.get("components_generator").is_active,
+        process_collected_components
     )
 ]
 
