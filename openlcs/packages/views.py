@@ -1136,99 +1136,99 @@ class ComponentSubscriptionViewSet(ModelViewSet):
         """
         return super().list(request, *args, **kwargs)
 
-    def create(self, request, *args, **kwargs):
-        """
-        Create a component subscription instance.
-
-        ####__Request__####
-
-            curl -X POST -H "Content-Type: application/json" \
--H 'Authorization: Token your_token' \
-%(HOST_NAME)s/%(API_PATH)s/subscriptions/ \
--d '{"name": "mysubscription", "query_params": \
-"{'ofuri': 'corgi-stream-ofuri'}"}'
-
-        ####__Required field in data__####
-
-        ``name``: String, the subscription name.
-
-        ``query_params``: Dict, a key-value store denoting supported \
-query params of the corgi `component` api endpoint.
-
-        ####__Response__####
-
-            Success: HTTP 201 Created
-            {
-                "id": 6,
-                "name": "mysubscription",
-                "query_params": "{ofuri: corgi-stream-ofuri}",
-                "component_purls": [],
-                "active": true,
-                "created_at": "2023-01-19T02:55:12.582557Z",
-                "updated_at": "2023-01-19T02:55:12.582576Z"
-            }
-
-            Error: HTTP 400 BAD REQUEST
-
-        """
-        return super().create(request, *args, **kwargs)
-
-    def partial_update(self, request, *args, **kwargs):
-        """
-        This function is customized to allow "append" mode by default when
-        updating `component_purls` field.
-        """
-        subscription = self.get_object()
-        component_purls = request.data.get("component_purls")
-        update_mode = request.data.get("update_mode", "append")
-
-        if component_purls is not None:
-            subscription.update_component_purls(component_purls,
-                                                update_mode)
-
-        # do some clean up and delegate rest of updates to super()
-        request_data = request.data.copy()
-        request_data.pop("component_purls", None)
-        if "update_mode" in request_data:
-            request_data.pop("update_mode")
-
-        return super().partial_update(
-            request, data=request_data, *args, **kwargs)
-
-    def patch(self, request, *args, **kwargs):
-        """
-        Update an existing component subscription instance.
-
-        ####__Request__####
-
-            curl -X PATCH -H "Content-Type: application/json" \
--H 'Authorization: Token your_token' \
-%(HOST_NAME)s/%(API_PATH)s/subscriptions/6/ \
--d '{"name": "mysubscription", "query_params": \
-"{'ofuri': 'corgi-stream-ofuri'}", 'active': 'false'}'
-
-        ####__Fields that can be updated__####
-
-        ``name``: String, the subscription name.
-
-        ``query_params``: Dict, a key-value store denoting supported \
-query params of the corgi `component` api endpoint.
-
-        ``active``: Boolean, set to false will disable the subscription.
-
-        ####__Response__####
-
-            Success: HTTP 200 OK
-            {
-                "id": 6,
-                "name": "mysubscription",
-                "query_params": "{ofuri: corgi-stream-ofuri}",
-                "component_purls": [],
-                "active": false,
-                "created_at": "2023-01-19T02:55:12.582557Z",
-                "updated_at": "2023-01-19T03:51:13.878047Z"
-            }
-            Error: HTTP 400 BAD REQUEST
-
-        """
-        return self.partial_update(request, *args, **kwargs)
+#     def create(self, request, *args, **kwargs):
+#         """
+#         Create a component subscription instance.
+#
+#         ####__Request__####
+#
+#             curl -X POST -H "Content-Type: application/json" \
+# -H 'Authorization: Token your_token' \
+# %(HOST_NAME)s/%(API_PATH)s/subscriptions/ \
+# -d '{"name": "mysubscription", "query_params": \
+# "{'ofuri': 'corgi-stream-ofuri'}"}'
+#
+#         ####__Required field in data__####
+#
+#         ``name``: String, the subscription name.
+#
+#         ``query_params``: Dict, a key-value store denoting supported \
+# query params of the corgi `component` api endpoint.
+#
+#         ####__Response__####
+#
+#             Success: HTTP 201 Created
+#             {
+#                 "id": 6,
+#                 "name": "mysubscription",
+#                 "query_params": "{ofuri: corgi-stream-ofuri}",
+#                 "component_purls": [],
+#                 "active": true,
+#                 "created_at": "2023-01-19T02:55:12.582557Z",
+#                 "updated_at": "2023-01-19T02:55:12.582576Z"
+#             }
+#
+#             Error: HTTP 400 BAD REQUEST
+#
+#         """
+#         return super().create(request, *args, **kwargs)
+#
+#     def partial_update(self, request, *args, **kwargs):
+#         """
+#         This function is customized to allow "append" mode by default when
+#         updating `component_purls` field.
+#         """
+#         subscription = self.get_object()
+#         component_purls = request.data.get("component_purls")
+#         update_mode = request.data.get("update_mode", "append")
+#
+#         if component_purls is not None:
+#             subscription.update_component_purls(component_purls,
+#                                                 update_mode)
+#
+#         # do some clean up and delegate rest of updates to super()
+#         request_data = request.data.copy()
+#         request_data.pop("component_purls", None)
+#         if "update_mode" in request_data:
+#             request_data.pop("update_mode")
+#
+#         return super().partial_update(
+#             request, data=request_data, *args, **kwargs)
+#
+#     def patch(self, request, *args, **kwargs):
+#         """
+#         Update an existing component subscription instance.
+#
+#         ####__Request__####
+#
+#             curl -X PATCH -H "Content-Type: application/json" \
+# -H 'Authorization: Token your_token' \
+# %(HOST_NAME)s/%(API_PATH)s/subscriptions/6/ \
+# -d '{"name": "mysubscription", "query_params": \
+# "{'ofuri': 'corgi-stream-ofuri'}", 'active': 'false'}'
+#
+#         ####__Fields that can be updated__####
+#
+#         ``name``: String, the subscription name.
+#
+#         ``query_params``: Dict, a key-value store denoting supported \
+# query params of the corgi `component` api endpoint.
+#
+#         ``active``: Boolean, set to false will disable the subscription.
+#
+#         ####__Response__####
+#
+#             Success: HTTP 200 OK
+#             {
+#                 "id": 6,
+#                 "name": "mysubscription",
+#                 "query_params": "{ofuri: corgi-stream-ofuri}",
+#                 "component_purls": [],
+#                 "active": false,
+#                 "created_at": "2023-01-19T02:55:12.582557Z",
+#                 "updated_at": "2023-01-19T03:51:13.878047Z"
+#             }
+#             Error: HTTP 400 BAD REQUEST
+#
+#         """
+#         return self.partial_update(request, *args, **kwargs)
