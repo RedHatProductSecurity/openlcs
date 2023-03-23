@@ -292,7 +292,7 @@ def download_package_archive(context, engine):
         build_id = build.get('id')
     else:
         software_build = component.get('software_build') if component else None
-        build_id = software_build.get('build_id')
+        build_id = software_build.get('build_id') if software_build else None
     engine.logger.info('Start to download package source...')
     try:
         if build_id:
