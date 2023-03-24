@@ -30,6 +30,14 @@ logger = logging.getLogger(__name__)
 # Turn on debug mode if you want more verbose logs
 logging.basicConfig(level=logging.INFO)
 
+CORGI_SYNC_FIELDS = [
+    "openlcs_scan_url",
+    "openlcs_scan_version",
+    "license_declared",
+    "license_concluded",
+    "copyright_text",
+]
+
 
 def corgi_include_exclude_fields_wrapper(func):
     def wrapper(*args, **kwargs):
@@ -150,34 +158,23 @@ class CorgiConnector:
                         e, retry_delay)
                     time.sleep(retry_delay)
 
-    def get_sync_fields(self, component_uuid):
+    @classmethod
+    def get_sync_fields(cls, component):
         """
         Determines which fields to sync for a specified component.
         """
-        sync_fields = [
-            "openlcs_scan_url",
-            "openlcs_scan_version",
-            "license_declared",
-            "license_concluded",
-            "copyright_text",
-        ]
-        # FIXME: if the original component data is preserved, we don't need
-        # to `get` it again.
-        url = f"{self.base_url}components/{component_uuid}"
-        component = self.get(url, includes=sync_fields)
-        # Update of non-empty `license_declared` in corgi is forbidden.
-        # overwrite of other fields are possible. See also CORGI-475
+        sync_fields = CORGI_SYNC_FIELDS
+        # Don't overwrite `license_declared` if corgi already has.
         if component.get("license_declared"):
             sync_fields.remove("license_declared")
 
         return sync_fields
 
-    def sync_to_corgi(self, component_data):
+    def sync_to_corgi(self, component_data, fields):
         """
         sync specified fields to corgi(via PUT)
         """
         component_uuid = component_data.get("uuid")
-        fields = self.get_sync_fields(component_uuid)
         # FIXME: use constraint SPDX identifiers for declared licenses
         # see also CORGI-440
         data = {k: v for k, v in component_data.items() if k in fields and v}

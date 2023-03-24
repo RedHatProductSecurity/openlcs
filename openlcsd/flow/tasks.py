@@ -962,7 +962,7 @@ def save_scan_result(context, engine):
 def sync_result_to_corgi(context, engine):
     component = context.get("component")
     if not component:
-        return
+        raise RuntimeError("Missing component in request!")
     client = context['client']
     olcs_component_api_url = client.get_abs_url("components")
     component_uuid = component["uuid"]
@@ -975,6 +975,13 @@ def sync_result_to_corgi(context, engine):
     if not source:
         # Component without source info means no scan is done.
         # FIXME: are there any other circumstances cause no source?
+        engine.logger.warning(f"Component({component_uuid}) sync to corgi "
+                              f"failed, no source found.")
+        client.patch(
+            f"components/{olcs_component['id']}",
+            data={"sync_status": "sync_failed",
+                  "sync_failure_reason": "scan_exception"})
+        # This is non-blocking.
         return
     license_detections = source["license_detections"]
     copyright_detections = source["copyright_detections"]
@@ -989,7 +996,8 @@ def sync_result_to_corgi(context, engine):
         "copyright_text": ", ".join(copyright_detections),
     }
     connector = CorgiConnector(base_url=os.getenv("CORGI_API_STAGE"))
-    response = connector.sync_to_corgi(component_data)
+    sync_fields = CorgiConnector.get_sync_fields(component)
+    response = connector.sync_to_corgi(component_data, fields=sync_fields)
     engine.logger.info(f"Component({component_uuid}) synced to corgi.")
     client.patch(
         f"components/{olcs_component['id']}",
