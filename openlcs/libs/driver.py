@@ -134,6 +134,8 @@ class OpenlcsClient(object):
                 data = response.json()
                 yield from data["results"]
                 url = data.get("next")
+                if query_params:
+                    query_params = None
             except (HTTPError, RequestException):
                 # FIXME: fail silently is not ideal
                 break
