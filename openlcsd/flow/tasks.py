@@ -1459,9 +1459,21 @@ def get_active_subscriptions(context, engine):
 
 
 def populate_source_components(context, engine):
-    iterator = context["components_generator"]
+    """Populate "source_components" by consuming from generator on demand,
+    flow will be stopped in case generator is exhausted.
+
+    @requires: components_generator
+    @feeds: source_components
+    """
+    generator = context["components_generator"]
     # Data returned is consumed one at a time here.
-    context["source_components"] = next(iterator)
+    try:
+        source_components = next(generator)
+    except StopIteration:
+        # Stop the flow since all chunks are consumed.
+        engine.break_current_loop()
+    else:
+        context["source_components"] = source_components
 
 
 def collect_components(subscriptions):
