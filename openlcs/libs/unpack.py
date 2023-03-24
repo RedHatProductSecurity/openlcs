@@ -7,16 +7,12 @@ from libs.common import get_mime_type, get_extension
 
 
 SUPPORTED_FILE_EXTENSIONS = [
-        '.tar', '.zip', '.zipx', '.war', '.sar', '.ear', '.xz', '.lzma',
-        '.gz', '.gzip', '.wmz', '.arz', '.bz', '.bz2', '.bzip2', '.lzip',
-        '.rar', '.ar', '.7z', '.cpio', '.z', '.gem', '.apk', '.aar', '.xpi',
-        '.ipa', '.jar', '.zip', '.egg', '.whl', '.pyz', '.pex', '.cab',
-        '.msi', '.pkg', '.mpkg', '.xar', '.nupkg', '.a', '.lib', '.out', '.ka',
-        '.deb', '.udeb', '.rpm', '.srpm', '.mvl', '.vip', '.dmg',
-        '.sparseimage', '.tar.gz', '.tgz', '.tar.bz', '.tbz,', '.tar.bz2',
-        '.tbz2', '.tar.Z', '.tZ', '.tar.lzo', '.tzo', '.tar.lz', '.tlz',
-        '.tar.xz', '.txz', '.tar.7z', '.t7z', '.lha', '.lzh', '.alz', '.ace',
-        '.arj', '.arc', '.lzo', '.lz', '.rz', '.lrz'
+        '.tar.gz', '.tgz', '.tar.bz', '.tbz', '.tar.bz2', '.tbz2', '.tar.Z',
+        '.tZ', '.tar.lzo', '.tzo', '.tar.lz', '.tlz', '.tar.xz', '.txz',
+        '.tar.7z', '.t7z', '.tar', '.zip', '.jar', '.war', '.rar', '.lha',
+        '.lzh', '.7z', '.alz', '.ace', '.a', '.arj', '.arc', '.rpm', '.deb',
+        '.cab', '.gz', '.bz', '.bz2', '.Z', '.lzma', '.lzo', '.lz', '.xz',
+        '.rz', '.lrz', '.7z', '.cpio'
 ]
 
 SP_EXTENSIONS = [
