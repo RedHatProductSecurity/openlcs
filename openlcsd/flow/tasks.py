@@ -969,8 +969,15 @@ def sync_result_to_corgi(context, engine):
     response = client.get("components", params={"uuid": component_uuid})
     response.raise_for_status()
     response = response.json()
+    results = response["results"]
+    # It's not clear to me how could results be empty without raising any
+    # exceptions, the non-existent component makes it impossible to mark
+    # the sync as failed.
+    if not results:
+        raise RuntimeError(f"Failed to sync data to corgi, component "
+                           f"{component_uuid} not found in OpenLCS.")
+    olcs_component = results[0]
     # Each component has one identical source.
-    olcs_component = response["results"][0]
     source = olcs_component["source"]
     if not source:
         # Component without source info means no scan is done.
