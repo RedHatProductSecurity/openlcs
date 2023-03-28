@@ -177,7 +177,7 @@ def filter_duplicate_import(context, engine):
         }
     msg = f'Start to check duplicate import for {data}'
     engine.logger.info(msg)
-    resp = cli.post(url, data=data, timeout=10)
+    resp = cli.post(url, data=data)
     if resp.status_code == 200:
         if results := resp.json().get('results'):
             if obj_url := results.get('obj_url'):
@@ -839,7 +839,7 @@ def save_package_data(context, engine):
             'task_id': context.get('task_id')
         }
         json.dump(file_content, destination, cls=DateEncoder)
-    resp = cli.post(url, data={"file_path": tmp_file_path}, timeout=300)
+    resp = cli.post(url, data={"file_path": tmp_file_path})
     context['client'] = cli
     try:
         # Raise it in case we made a bad request:
@@ -946,7 +946,7 @@ def save_scan_result(context, engine):
         err_msg = f"Failed to create scan result file: {e}"
         engine.logger.error(err_msg)
         raise RuntimeError(err_msg) from None
-    resp = cli.post(url, data={"file_path": tmp_file_path}, timeout=60)
+    resp = cli.post(url, data={"file_path": tmp_file_path})
     context['client'] = cli
     try:
         resp.raise_for_status()
@@ -1153,7 +1153,7 @@ def save_components(context, engine):
         prefix='save_components_', dir=context.get('post_dir'))
     with os.fdopen(fd, 'w') as destination:
         json.dump(data, destination, cls=DateEncoder)
-    resp = cli.post(url, data={"file_path": tmp_file_path}, timeout=30)
+    resp = cli.post(url, data={"file_path": tmp_file_path})
     context['client'] = cli
     try:
         resp.raise_for_status()
