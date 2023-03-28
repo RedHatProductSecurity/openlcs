@@ -34,7 +34,7 @@ class SourceImportMixin:
         Create source files.
         """
         if file_objs:
-            files = File.objects.bulk_create(file_objs)
+            files = File.objects.bulk_create(file_objs, ignore_conflicts=True)
             serializer = BulkFileSerializer({'files': files})
             return serializer.data
         else:
@@ -49,7 +49,7 @@ class SourceImportMixin:
             path_objs = [Path(source=source,
                               file=File.objects.get(swhid=p.get('file')),
                               path=p.get('path')) for p in paths]
-            paths = Path.objects.bulk_create(path_objs)
+            paths = Path.objects.bulk_create(path_objs, ignore_conflicts=True)
             serializer = BulkPathSerializer({'paths': paths})
             return serializer.data
         else:
@@ -99,7 +99,8 @@ class SaveScanResultMixin:
             objs = [
                 FileLicenseScan(file_id=file_id, detector=license_detector)
                 for file_id in new_file_ids]
-            file_license_scan_list = FileLicenseScan.objects.bulk_create(objs)
+            file_license_scan_list = FileLicenseScan.objects.bulk_create(
+                objs, ignore_conflicts=True)
             new_file_license_scan_dict = {item.file_id: item.id
                                           for item in file_license_scan_list}
             self.file_license_scan_dict.update(new_file_license_scan_dict)
@@ -123,7 +124,8 @@ class SaveScanResultMixin:
             existing_objs = LicenseDetection.objects.all()
             new_objs = [obj for obj in objs if obj not in existing_objs]
             if new_objs:
-                LicenseDetection.objects.bulk_create(new_objs)
+                LicenseDetection.objects.bulk_create(
+                    new_objs, ignore_conflicts=True)
 
     def update_scan_flag(self, source, scan_type, detector):
         scan_flag = source.scan_flag
@@ -145,7 +147,7 @@ class SaveScanResultMixin:
                 FileCopyrightScan(file_id=file_id, detector=copyright_detector)
                 for file_id in new_file_ids]
             file_copyright_scan_list = FileCopyrightScan.objects.bulk_create(
-                objs)
+                objs, ignore_conflicts=True)
             new_file_copyright_scan_dict = {
                 item.file_id: item.id for item in file_copyright_scan_list}
             self.file_copyright_scan_dict.update(new_file_copyright_scan_dict)
@@ -173,7 +175,8 @@ class SaveScanResultMixin:
             existing_objs = CopyrightDetection.objects.all()
             new_objs = [obj for obj in objs if obj not in existing_objs]
             if new_objs:
-                CopyrightDetection.objects.bulk_create(objs)
+                CopyrightDetection.objects.bulk_create(
+                    objs, ignore_conflicts=True)
 
     def save_scan_result(self, **kwargs):
         path_with_swhids = kwargs.pop('path_with_swhids')
