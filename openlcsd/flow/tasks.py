@@ -302,14 +302,23 @@ def download_package_archive(context, engine):
             # For remote source, we should use 'download_url' to download
             # pacakge archive
             if component and (download_url := component.get('download_url')):
-                tarball_extensions = ['.tgz', '.tar.gz', '.zip', '.gem']
+                cmd = None
+                tarball_extensions = [
+                    '.tgz', '.tar.gz', '.zip', '.gem', '.crate'
+                ]
                 for extension in tarball_extensions:
                     if download_url.endswith(extension):
                         cmd = f'wget -q --show-progress {download_url}'
-                        ret_code, err_msg = run_and_capture(cmd, tmp_dir)
-                        if ret_code:
-                            raise RuntimeError(err_msg)
                         break
+                comp_type = component.get('type')
+                with_download = download_url.endswith('download')
+                if cmd is None and comp_type == 'CARGO' and with_download:
+                    ofile = component.get('nvr') + '.crate'
+                    cmd = f'wget -O {ofile} -q --show-progress {download_url}'
+                if cmd:
+                    ret_code, err_msg = run_and_capture(cmd, tmp_dir)
+                    if ret_code:
+                        raise RuntimeError(err_msg)
                 else:
                     err_msg = f"Currently, we don't support this URL: " \
                               f"{download_url}."
