@@ -946,7 +946,7 @@ def save_scan_result(context, engine):
         err_msg = f"Failed to create scan result file: {e}"
         engine.logger.error(err_msg)
         raise RuntimeError(err_msg) from None
-    resp = cli.post(url, data={"file_path": tmp_file_path}, timeout=60)
+    resp = cli.post(url, data={"file_path": tmp_file_path}, timeout=300)
     context['client'] = cli
     try:
         resp.raise_for_status()
