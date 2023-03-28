@@ -163,7 +163,7 @@ class CorgiConnector:
         """
         Determines which fields to sync for a specified component.
         """
-        sync_fields = CORGI_SYNC_FIELDS
+        sync_fields = CORGI_SYNC_FIELDS.copy()
         # Don't overwrite `license_declared` if corgi already has.
         if component.get("license_declared"):
             sync_fields.remove("license_declared")
