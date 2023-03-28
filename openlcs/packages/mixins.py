@@ -34,7 +34,7 @@ class SourceImportMixin:
         Create source files.
         """
         if file_objs:
-            files = File.objects.bulk_create(file_objs, ignore_conflicts=True)
+            files = File.objects.bulk_create(file_objs)
             serializer = BulkFileSerializer({'files': files})
             return serializer.data
         else:
@@ -49,7 +49,7 @@ class SourceImportMixin:
             path_objs = [Path(source=source,
                               file=File.objects.get(swhid=p.get('file')),
                               path=p.get('path')) for p in paths]
-            paths = Path.objects.bulk_create(path_objs, ignore_conflicts=True)
+            paths = Path.objects.bulk_create(path_objs)
             serializer = BulkPathSerializer({'paths': paths})
             return serializer.data
         else:
@@ -99,8 +99,7 @@ class SaveScanResultMixin:
             objs = [
                 FileLicenseScan(file_id=file_id, detector=license_detector)
                 for file_id in new_file_ids]
-            file_license_scan_list = FileLicenseScan.objects.bulk_create(
-                objs, ignore_conflicts=True)
+            file_license_scan_list = FileLicenseScan.objects.bulk_create(objs)
             new_file_license_scan_dict = {item.file_id: item.id
                                           for item in file_license_scan_list}
             self.file_license_scan_dict.update(new_file_license_scan_dict)
@@ -147,7 +146,7 @@ class SaveScanResultMixin:
                 FileCopyrightScan(file_id=file_id, detector=copyright_detector)
                 for file_id in new_file_ids]
             file_copyright_scan_list = FileCopyrightScan.objects.bulk_create(
-                objs, ignore_conflicts=True)
+                objs)
             new_file_copyright_scan_dict = {
                 item.file_id: item.id for item in file_copyright_scan_list}
             self.file_copyright_scan_dict.update(new_file_copyright_scan_dict)
