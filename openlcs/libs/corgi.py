@@ -597,7 +597,11 @@ class CorgiConnector:
                 try:
                     component = next(components)
                 except StopIteration:
-                    yield result
+                    # StopIteration may appear when `should_yield_data` is
+                    # False, i.e., the last iteration(before exhausting) may
+                    # accumulates components less than `num_components`.
+                    if len(result) > 1:
+                        yield result
                     break
                 else:
                     subscription_sources, subscription_missings = [], []

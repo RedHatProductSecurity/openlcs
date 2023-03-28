@@ -1495,7 +1495,7 @@ def populate_source_components(context, engine):
         source_components = next(generator)
     except StopIteration:
         # Stop the flow since all chunks are consumed.
-        engine.break_current_loop()
+        engine.stop()
     else:
         context["source_components"] = source_components
 
