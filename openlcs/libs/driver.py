@@ -106,10 +106,10 @@ class OpenlcsClient(object):
             return url
         return sep.join(s.strip(sep) for s in [self.api_url_prefix, url]) + sep
 
-    def get(self, url, params=None):
+    def get(self, url, params=None, timeout=300):
         abs_url = self.get_abs_url(url)
         return self.session.get(abs_url, headers=self.headers,
-                                params=params, timeout=10)
+                                params=params, timeout=timeout)
 
     def get_paginated_data(self, url, query_params=None):
         """
@@ -140,7 +140,7 @@ class OpenlcsClient(object):
                 # FIXME: fail silently is not ideal
                 break
 
-    def post(self, url, data, timeout=10):
+    def post(self, url, data, timeout=300):
         abs_url = self.get_abs_url(url)
         # http://stackoverflow.com/a/25895504
         # To resolve the issue that datetime.datetime object is not
@@ -152,7 +152,7 @@ class OpenlcsClient(object):
             abs_url, headers=self.headers, data=json.dumps(
                 data, default=date_handler), timeout=timeout)
 
-    def patch(self, url, data):
+    def patch(self, url, data, timeout=300):
         abs_url = self.get_abs_url(url)
         # http://stackoverflow.com/a/25895504
         # To resolve the issue that datetime.datetime object is not
@@ -162,4 +162,4 @@ class OpenlcsClient(object):
             return obj.isoformat() if hasattr(obj, 'isoformat') else obj
         return self.session.patch(
             abs_url, headers=self.headers, data=json.dumps(
-                data, default=date_handler), timeout=10)
+                data, default=date_handler), timeout=timeout)
