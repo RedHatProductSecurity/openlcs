@@ -11,6 +11,7 @@ from collections import defaultdict
 from itertools import groupby
 from operator import itemgetter
 from packageurl import PackageURL
+from .driver import load_config_to_dict
 
 
 def get_mime_type(filepath):
@@ -324,3 +325,36 @@ class ExhaustibleIterator:
 
     def is_active(self):
         return not self.exhausted
+
+
+def guess_env_from_principal(principal_name):
+    # The worker node follows pattern below and is managed in ansible
+    pattern = r"openlcs-(\w+)-worker\d+"
+    match = re.search(pattern, principal_name)
+    if match:
+        return match.group(1).upper()
+    # Hub's principal pattern starts with "openlcs-xxx" following a "."
+    # see also inventory/group_vars/openlcs_xxx.yml in ansible roles.
+    pattern = r"openlcs-(\w+)\.\w+"
+    match = re.search(pattern, principal_name)
+    if match:
+        # Note: stage would be "stg"
+        return match.group(1).upper()
+
+    return None
+
+
+def is_prod():
+    """Guess instance based on "service_principal_hostname" settings
+    from the lib configuration.
+
+    Returns:
+        Boolean: True if `service_principal_hostname` contains "prod",
+                 False otherwise
+    """
+    conf = load_config_to_dict(section="general")
+    principal_name = conf.get("service_principal_hostname")
+    if principal_name is None:
+        return False
+    env = guess_env_from_principal(principal_name)
+    return env == "PROD" if env is not None else False

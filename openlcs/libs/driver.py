@@ -1,4 +1,3 @@
-import os
 import json
 import requests
 from requests.exceptions import RequestException, HTTPError
@@ -24,13 +23,39 @@ def get_config_file(config_file=Path(CONF_FILEPATH)):
 
 
 def load_config():
+    """Load configuration into a dict.
+
+    Returns the config object.
+    """
     config_file = get_config_file()
     if not config_file:
         raise RuntimeError("Improperly configured, missing config file!")
-    config = configparser.ConfigParser(os.environ, allow_no_value=True)
+    config = configparser.ConfigParser(allow_no_value=True)
     with config_file.open(encoding='utf8') as configfile:
         config.read_file(configfile)
     return config
+
+
+def load_config_to_dict(section=None):
+    """Load configuration into a dict.
+
+    Returns a dictionary of config items in the specified section or
+    an empty dict in case the section does not exist. IF no section is
+    specified, a dict will be returned with keys as the section names
+    and values as dict of config items in that section.
+    """
+    config_file = get_config_file()
+    if not config_file:
+        raise RuntimeError("Improperly configured, missing config file!")
+    config = configparser.ConfigParser(allow_no_value=True)
+    with config_file.open(encoding='utf8') as configfile:
+        config.read_file(configfile)
+    if section is None:
+        return {s: dict(config.items(s)) for s in config.sections()}
+    try:
+        return dict(config.items(section))
+    except configparser.NoSectionError:
+        return {}
 
 
 class OpenlcsClient(object):
