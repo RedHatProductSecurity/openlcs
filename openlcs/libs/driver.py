@@ -7,12 +7,30 @@ import subprocess
 import ast
 from openlcs.libs.encrypt_decrypt import decrypt_with_secret_key
 from krbcontext import krbcontext
+from pathlib import Path
 
-if os.path.isfile('/etc/openlcs/openlcslib.conf'):
-    config_file = '/etc/openlcs/openlcslib.conf'
-else:
-    dirname = os.path.abspath(os.path.dirname(__file__))
-    config_file = os.path.join(dirname, 'conf.cfg')
+CONF_FILEPATH = "/etc/openlcs/openlcslib.conf"
+
+
+def get_config_file(config_file=Path(CONF_FILEPATH)):
+    if config_file.is_file():
+        return config_file
+    # Attempt to find conf elsewhere
+    dirname = Path(__file__).parent.absolute()
+    config_file = dirname / 'conf.cfg'
+    if config_file.is_file():
+        return config_file
+    return None
+
+
+def load_config():
+    config_file = get_config_file()
+    if not config_file:
+        raise RuntimeError("Improperly configured, missing config file!")
+    config = configparser.ConfigParser(os.environ, allow_no_value=True)
+    with config_file.open(encoding='utf8') as configfile:
+        config.read_file(configfile)
+    return config
 
 
 class OpenlcsClient(object):
@@ -23,13 +41,7 @@ class OpenlcsClient(object):
 
     def __init__(self, task_id=None, token=None, token_sk=None):
         self.session = requests.Session()
-        config = configparser.ConfigParser(os.environ, allow_no_value=True)
-        try:
-            with open(config_file, encoding='utf8') as configfile:
-                config.read_file(configfile)
-        except FileNotFoundError as err:
-            err_msg = f'Failed to read configure file. Reason: {err}'
-            raise RuntimeError(err_msg) from None
+        config = load_config()
         hub_server = config.get('general', 'hub_server')
         keytab_file = config.get('general', 'keytab_file')
         svc_principal_hostname = config.get('general',
