@@ -67,7 +67,7 @@ class SourceImportMixin:
         """
         Create product and release.
         """
-        connector = CorgiConnector(settings.CORGI_API_PROD)
+        connector = CorgiConnector()
         product_data = connector.get_product_version(name)
         if product_data:
             product_name = product_data.get('products')[0].get('name')

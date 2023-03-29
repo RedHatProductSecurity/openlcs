@@ -1012,7 +1012,7 @@ def sync_result_to_corgi(context, engine):
         "license_concluded": " AND ".join(license_detections),
         "copyright_text": ", ".join(copyright_detections),
     }
-    connector = CorgiConnector(base_url=os.getenv("CORGI_API_STAGE"))
+    connector = CorgiConnector()
     sync_fields = CorgiConnector.get_sync_fields(component)
     response = connector.sync_to_corgi(component_data, fields=sync_fields)
     engine.logger.info(f"Component({component_uuid}) synced to corgi.")
@@ -1024,7 +1024,7 @@ def sync_result_to_corgi(context, engine):
 
 def get_source_components(context, engine):
     component = context.get("component")
-    connector = CorgiConnector(base_url=os.getenv("CORGI_API_STAGE"))
+    connector = CorgiConnector()
     gen = connector.get_source_component(component)
     components, missings = CorgiConnector.source_component_to_list(gen)
     if missings:
@@ -1057,9 +1057,7 @@ def get_components_product_from_corgi(context, engine):
     @feeds: `components`, list of dictionary,
              components information of the container.
     """
-    config = context.get("config")
-    cc = CorgiConnector(
-        config.get("CORGI_API_PROD"))
+    cc = CorgiConnector()
     nvr = context.get('build').get('nvr')
     return cc.get_components_data(nvr, "OCI")
 
@@ -1181,10 +1179,8 @@ def get_module_components_from_corgi(context, engine):
     """
     Get module components from corgi
     """
-    config = context.get("config")
     engine.logger.info("Start to get module components data...")
-    mc = CorgiConnector(
-        config.get('CORGI_API_PROD'))
+    mc = CorgiConnector()
     nvr = context.get("package_nvr")
     context['components'] = mc.get_components_data(nvr, 'RPMMOD')
     engine.logger.info("Finished getting module components data.")
@@ -1513,9 +1509,7 @@ def collect_components(subscriptions):
     }
     """
     # subscriptions = context.get("subscriptions", [])
-    # FIXME: switch to corgi-prod after CORGI-482 is fixed.
-    api_endpoint = os.getenv("CORGI_API_STAGE")
-    connector = CorgiConnector(base_url=api_endpoint)
+    connector = CorgiConnector()
 
     yield from connector.collect_components_from_subscriptions(subscriptions)
 

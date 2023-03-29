@@ -22,6 +22,7 @@ from libs.common import get_nvr_from_purl  # noqa: E402
 from libs.common import group_components  # noqa: E402
 from libs.common import find_srpm_source  # noqa: E402
 from libs.common import remove_duplicates_from_list_by_key  # noqa: E402
+from libs.common import is_prod  # noqa: E402
 from libs.exceptions import MissingBinaryBuildException  # noqa: E402
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
@@ -71,9 +72,14 @@ class CorgiConnector:
     def __init__(self, base_url=None):
         if base_url is None:
             # corgi api endpoint available in environment variable
-            base_url = os.getenv("CORGI_API_STAGE")
+            base_url = self.get_api_endpoint()
         self.base_url = base_url
         self.session = requests.Session()
+
+    def get_api_endpoint(self):
+        if is_prod():
+            return os.getenv("CORGI_API_PROD")
+        return os.getenv("CORGI_API_STAGE")
 
     @staticmethod
     def get_include_fields(component_type=""):
