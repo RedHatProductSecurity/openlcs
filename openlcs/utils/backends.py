@@ -22,6 +22,9 @@ class ModAuthKerbBackend(RemoteUserBackend):
             if node == user.username:
                 # Activate worker nodes automatically.
                 user.is_active = True
+                # Staff permission is needed for worker nodes to update
+                # component subscriptions
+                user.is_staff = True
                 # FIXME: Comment it out first, because we don't have
                 #  permission management now
                 # from django.contrib.auth.models import Group
