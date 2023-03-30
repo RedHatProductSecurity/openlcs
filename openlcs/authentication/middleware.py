@@ -76,6 +76,10 @@ class RemoteUserMiddleware(middleware.RemoteUserMiddleware):
             try:
                 manager, _ = User.objects.get_or_create(
                     username=muid, email=muid + "@redhat.com")
+                if muid in settings.OPENLCS_ADMIN_LIST:
+                    manager.is_staff = True
+                    manager.is_superuser = True
+                    manager.save()
             except Exception as e:
                 print(f"Cannot get or create manager: {uid}, error: f{e}")
                 return
