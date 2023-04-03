@@ -11,7 +11,6 @@ from collections import defaultdict
 from itertools import groupby
 from operator import itemgetter
 from packageurl import PackageURL
-from .driver import load_config_to_dict
 
 
 def get_mime_type(filepath):
@@ -334,7 +333,8 @@ def guess_env_from_principal(principal_name):
     if match:
         return match.group(1).upper()
     # Hub's principal pattern starts with "openlcs-xxx" following a "."
-    # see also inventory/group_vars/openlcs_xxx.yml in ansible roles.
+    # see also `openlcs_route_name` in inventory/group_vars/openlcs.yml
+    # in ansible roles.
     pattern = r"openlcs-(\w+)\.\w+"
     match = re.search(pattern, principal_name)
     if match:
@@ -352,6 +352,7 @@ def is_prod():
         Boolean: True if `service_principal_hostname` contains "prod",
                  False otherwise
     """
+    from .driver import load_config_to_dict
     conf = load_config_to_dict(section="general")
     principal_name = conf.get("service_principal_hostname")
     if principal_name is None:
