@@ -2,6 +2,7 @@ import json
 import requests
 from requests.exceptions import RequestException, HTTPError
 import configparser
+import fcntl
 import subprocess
 import ast
 from openlcs.libs.encrypt_decrypt import decrypt_with_secret_key
@@ -22,17 +23,28 @@ def get_config_file(config_file=Path(CONF_FILEPATH)):
     return None
 
 
-def load_config():
-    """Load configuration into a dict.
+def load_config() -> configparser.ConfigParser:
+    """Load configuration into a `ConfigParser` instance.
 
-    Returns the config object.
+    Returns the config object or RuntimeError in case config file
+    is not found or is not properly configured.
     """
     config_file = get_config_file()
     if not config_file:
         raise RuntimeError("Improperly configured, missing config file!")
-    config = configparser.ConfigParser(allow_no_value=True)
-    with config_file.open(encoding='utf8') as configfile:
-        config.read_file(configfile)
+    try:
+        with open(config_file, "r", encoding="utf-8") as configfile:
+            # An attempt to avoid race condition of multiple processes reading
+            # the same configuration file concurrently. Not entirely sure if
+            # it really helps but I don't have a better idea.
+            # See also: https://stackoverflow.com/a/34935188
+            fcntl.flock(configfile, fcntl.LOCK_EX)
+            config = configparser.ConfigParser(allow_no_value=True)
+            config.read_file(configfile)
+            fcntl.flock(configfile, fcntl.LOCK_UN)
+    # ValueError means config file is not properly configured.
+    except ValueError as e:
+        raise RuntimeError(f"Error loading config: {e}") from None
     return config
 
 
@@ -44,12 +56,7 @@ def load_config_to_dict(section=None):
     specified, a dict will be returned with keys as the section names
     and values as dict of config items in that section.
     """
-    config_file = get_config_file()
-    if not config_file:
-        raise RuntimeError("Improperly configured, missing config file!")
-    config = configparser.ConfigParser(allow_no_value=True)
-    with config_file.open(encoding='utf8') as configfile:
-        config.read_file(configfile)
+    config = load_config()
     if section is None:
         return {s: dict(config.items(s)) for s in config.sections()}
     try:
