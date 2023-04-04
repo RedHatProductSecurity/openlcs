@@ -591,6 +591,8 @@ class CorgiConnector:
             # subscription purls obtained from previous sync
             subscribed_purls = subscription.get("component_purls", [])
 
+            # Only collect components without openlcs_scan_url
+            query_params.update({'missing_scan_url': True})
             components = self.get_paginated_data(query_params)
             result = {"subscription_id": subscription["id"]}
             while True:
