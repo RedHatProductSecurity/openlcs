@@ -11,6 +11,7 @@ from kobo.shortcuts import run
 from django.conf import settings
 
 from libs.corgi import CorgiConnector
+from libs.common import guess_env_from_principal
 from libs.kojiconnector import KojiConnector
 from libs.metadata import CargoMeta
 from libs.metadata import GemMeta
@@ -724,3 +725,14 @@ class TestCorgiConnector(TestCase):
         message = (f"Failed to find binary build for {component['nevra']} "
                    f"in component registry",)
         self.assertEqual(raised_exception.args, message)
+
+
+class TestGuessEnvFromPrincipal(TestCase):
+    def test_guess_env_from_principal(self):
+        # Worker principal pattern excerptions
+        assert guess_env_from_principal("openlcs-prod-worker01") == "PROD"
+        assert guess_env_from_principal("openlcs-stage-worker1") == "STAGE"
+        assert guess_env_from_principal("openlcs-qe-worker1") == "QE"
+        # Hub principal pattern excerptions
+        assert guess_env_from_principal("openlcs-prod.apps.random") == "PROD"
+        assert guess_env_from_principal("openlcs-stg.randomstring") == "STG"
