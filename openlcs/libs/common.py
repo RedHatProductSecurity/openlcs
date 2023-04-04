@@ -10,6 +10,7 @@ import uuid
 from collections import defaultdict
 from itertools import groupby
 from operator import itemgetter
+from packageurl import PackageURL
 
 
 def get_mime_type(filepath):
@@ -285,6 +286,16 @@ def get_extension(file_name, sp_extensions):
         if file_name.endswith(extension):
             return file_name[:-len(extension)], file_name[-len(extension):]
     return os.path.splitext(file_name)
+
+
+def get_nvr_from_purl(purl):
+    """
+    Get nvr from parse the purl of the provide
+    """
+    purl_dict = PackageURL.from_string(purl).to_dict()
+    nvr = '-'.join((purl_dict.get('name'),
+                   purl_dict.get('version')))
+    return nvr
 
 
 class ExhaustibleIterator:

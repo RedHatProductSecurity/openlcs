@@ -18,6 +18,7 @@ from urllib import parse
 openlcs_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if openlcs_dir not in sys.path:
     sys.path.append(openlcs_dir)
+from libs.common import get_nvr_from_purl  # noqa: E402
 from libs.common import group_components  # noqa: E402
 from libs.common import find_srpm_source  # noqa: E402
 from libs.common import remove_duplicates_from_list_by_key  # noqa: E402
@@ -345,6 +346,21 @@ class CorgiConnector:
                 retval[field] = product_data[field]
         return retval
 
+    def deduplicate_provides(self, oci_noarch_provides):
+        # Deduplicate provides for components with different arch.
+        nvrs = []
+        provides = []
+        for oci_noarch_provide in oci_noarch_provides:
+            purl = oci_noarch_provide.get('purl')
+            if purl.startswith('pkg:rpm'):
+                nvr = get_nvr_from_purl(purl)
+                if nvr not in nvrs:
+                    nvrs.append(nvr)
+                    provides.append(oci_noarch_provide)
+            else:
+                provides.append(oci_noarch_provide)
+        return provides
+
     def get_paginated_data(self, query_params=None, api_path="components"):
         """
         Retrieves paginated data from `api_path`.
@@ -464,8 +480,19 @@ class CorgiConnector:
             link = sources[0].get("link")
             component = self.get(link, includes=self.oci_includes)
             logger.debug("Binary build %s retrieved.", component['nevra'])
-
-        oci_provides = component.get("provides", [])
+        if component.get('arch') == 'noarch':
+            oci_noarch_provides = component.get("provides", [])
+        else:
+            # If the binary container arch is not noarch, get the provides
+            # of the provides of the noarch container.
+            if component.get('sources'):
+                link = component.get('sources')[0].get("link")
+                noarch_oci = self.get(link, includes=self.oci_includes)
+                oci_noarch_provides = noarch_oci.get("provides", [])
+        # For the noarch binary container, the different arch provides match
+        # only one src component. Deduplication of these kind of provides
+        # helps the performance.
+        oci_provides = self.deduplicate_provides(oci_noarch_provides)
         # Store deduplicated provides
         provides = []
         for provide in oci_provides:
