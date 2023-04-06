@@ -297,7 +297,8 @@ def download_package_archive(context, engine):
     engine.logger.info('Start to download package source...')
     try:
         if build_id:
-            koji_connector.download_build_source(build_id, dest_dir=tmp_dir)
+            koji_connector.download_build_source(int(build_id),
+                                                 dest_dir=tmp_dir)
         else:
             # For remote source, we should use 'download_url' to download
             # pacakge archive
