@@ -1149,7 +1149,7 @@ admin users only.
 -H 'Authorization: Token your_token' \
 %(HOST_NAME)s/%(API_PATH)s/subscriptions/ \
 -d '{"name": "mysubscription", "query_params": \
-"{'ofuri': 'corgi-stream-ofuri'}"}'
+{"ofuri": "corgi-stream-ofuri"}}'
 
         ####__Required field in data__####
 
@@ -1164,7 +1164,9 @@ query params of the corgi `component` api endpoint.
             {
                 "id": 6,
                 "name": "mysubscription",
-                "query_params": "{ofuri: corgi-stream-ofuri}",
+                "query_params": {
+                    "ofuri": "corgi-stream-ofuri"
+                },
                 "component_purls": [],
                 "active": true,
                 "created_at": "2023-01-19T02:55:12.582557Z",
@@ -1209,7 +1211,7 @@ admin users only.
 -H 'Authorization: Token your_token' \
 %(HOST_NAME)s/%(API_PATH)s/subscriptions/6/ \
 -d '{"name": "mysubscription", "query_params": \
-"{'ofuri': 'corgi-stream-ofuri'}", 'active': 'false'}'
+{"ofuri": "corgi-stream-ofuri"}, "active": "false"}'
 
         ####__Fields that can be updated__####
 
