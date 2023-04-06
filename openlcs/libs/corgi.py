@@ -87,7 +87,7 @@ class CorgiConnector:
         base_fields = [
             "uuid", "name", "version", "release", "arch", "type",
             "purl", "link", "nvr", "nevra", "download_url", "related_url",
-            "license_declared", "software_build"
+            "license_declared", "software_build", "openlcs_scan_url"
         ]
         fields.extend(base_fields)
 
@@ -98,6 +98,8 @@ class CorgiConnector:
         elif component_type.upper() in ["OCI", "RPMMOD"]:
             fields.append("provides")
             fields.remove("download_url")
+            # No openlcs_scan_url will be provided for oci or rhelmod
+            fields.remove("openlcs_scan_url")
         else:
             # FIXME: any specific fields needed for other types?
             # software_build makes no sense for non-rpm/non-ocis components.
