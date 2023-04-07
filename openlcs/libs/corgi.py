@@ -425,6 +425,11 @@ class CorgiConnector:
                     component)
                 return self.get_srpm_component(component)
             # FIXME: examine what to return for non-rpm components.
+
+            # Filter go-package component for GOLANG type
+            if component.get("type") == "GOLANG":
+                return self.filter_go_package_component(component)
+
             return component
         else:
             return link
@@ -504,6 +509,23 @@ class CorgiConnector:
                     yield result
                     del tasks[task]
 
+    def filter_go_package_component(self, component):
+        """
+        Pass a GOLANG type component
+        Filter go-package component, if component is a
+        go-package component, return None
+        """
+        url = f"{self.base_url}components"
+        result = self.get(
+            url,
+            query_params={
+                "nevra": component['nevra'],
+                "gomod_components": True
+            }
+        )
+
+        return None if result["count"] == 0 else component
+
     def get_source_component(self, component, subscribed_purls=None):
         component_type = component.get("type")
         if component_type == "RPM":
@@ -513,6 +535,9 @@ class CorgiConnector:
         elif component_type in ["OCI", "RPMMOD"]:
             yield from self.get_container_source_components(
                 component, subscribed_purls)
+        # for GOLANG type component, filter go-package type
+        elif component_type == "GOLANG":
+            yield self.filter_go_package_component(component)
         else:
             yield component
 
@@ -527,6 +552,9 @@ class CorgiConnector:
         for data in gen:
             if isinstance(data, dict):
                 components.append(data)
+            # None means no need to process
+            elif data is None:
+                continue
             else:
                 missings.append(data)
         components = remove_duplicates_from_list_by_key(components, "uuid")
