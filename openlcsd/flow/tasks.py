@@ -1590,10 +1590,12 @@ def trigger_corgi_components_imports(context, engine):
             parent_uuid = None
         # Only fork for components without a openlcs_scan_url
         components = corgi_source.get('components')
+        scan_components = []
         for comp in components:
             if comp.get('openlcs_scan_url'):
-                components.remove(comp)
-        fork_components_imports(context, engine, parent_uuid, components)
+                continue
+            scan_components.append(comp)
+        fork_components_imports(context, engine, parent_uuid, scan_components)
 
 
 # sub-flow of `flow_get_corgi_components`
