@@ -11,7 +11,6 @@ from checksumdir import dirhash
 from commoncode.fileutils import delete
 from workflow.patterns.controlflow import IF
 from workflow.patterns.controlflow import IF_ELSE
-from workflow.patterns.controlflow import WHILE
 from packagedcode.rpm import RpmArchiveHandler
 from packagedcode.pypi import PypiSdistArchiveHandler
 from packagedcode.maven import parse as MavenPomXmlHandler
@@ -1483,17 +1482,16 @@ def get_active_subscriptions(context, engine):
     context["subscriptions"] = subscriptions
 
 
-def populate_source_components(context, engine):
+def populate_source_components(context, engine, components_generator):
     """Populate "source_components" by consuming from generator on demand,
     flow will be stopped in case generator is exhausted.
 
     @requires: components_generator
     @feeds: source_components
     """
-    generator = context["components_generator"]
     # Data returned is consumed one at a time here.
     try:
-        source_components = next(generator)
+        source_components = next(components_generator)
     except StopIteration:
         # Stop the flow since all chunks are consumed.
         engine.stop()
@@ -1501,7 +1499,7 @@ def populate_source_components(context, engine):
         context["source_components"] = source_components
 
 
-def collect_components(subscriptions):
+def collect_components(subscription):
     """
     Accept a list of subscriptions, and yield collected components.
 
@@ -1517,13 +1515,24 @@ def collect_components(subscriptions):
     api_endpoint = os.getenv("CORGI_API_STAGE")
     connector = CorgiConnector(base_url=api_endpoint)
 
-    yield from connector.collect_components_from_subscriptions(subscriptions)
+    yield from connector.collect_components_from_subscription(subscription)
 
 
-def populate_components_generator(context, engine):
+def fork_process_collected_components(context, engine):
     subscriptions = context.get("subscriptions", [])
-    components = collect_components(subscriptions)
-    context["components_generator"] = ExhaustibleIterator(components)
+    for subscription in subscriptions:
+        components = collect_components(subscription)
+        components_generator = ExhaustibleIterator(components)
+        if components_generator.is_active():
+            engine.logger.info(f"Start collecting components for "
+                               f"{subscription['name']}")
+            populate_source_components(context, engine,
+                                       components_generator)
+            populate_subscription_purls(context, engine)
+            translate_components(context, engine)
+            engine.logger.info(f"Finish collecting components for "
+                               f"{subscription['name']}")
+            trigger_corgi_components_imports(context, engine)
 
 
 def populate_subscription_purls(context, engine):
@@ -1598,23 +1607,14 @@ def trigger_corgi_components_imports(context, engine):
         fork_components_imports(context, engine, parent_uuid, scan_components)
 
 
-# sub-flow of `flow_get_corgi_components`
-process_collected_components = [
-    populate_source_components,
-    populate_subscription_purls,
-    translate_components,
-    trigger_corgi_components_imports
-]
-
-
 flow_get_corgi_components = [
     get_config,
     get_active_subscriptions,
-    populate_components_generator,
-    WHILE(
-        lambda o, e: o.get("components_generator").is_active,
-        process_collected_components
+    IF(
+        lambda o, e: o.get('subscriptions'),
+        [fork_process_collected_components],
     )
+
 ]
 
 
