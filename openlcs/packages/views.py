@@ -543,6 +543,11 @@ class PackageImportTransactionView(APIView, SourceImportMixin):
             # Retry 10 times to bypass possible concurrency issue.
             max_retries = settings.SAVE_DATA_MAX_RETRIES
             for i in range(max_retries):
+                # avoid create Source object failed because checksum
+                # already exists caused by concurrency
+                if qs.exists():
+                    break
+
                 try:
                     file_objs = []
                     # Query files that need to be created.
@@ -566,10 +571,6 @@ class PackageImportTransactionView(APIView, SourceImportMixin):
                             if product_release:
                                 ProductTreeNode.build_release_node(
                                     component, product_release)
-
-                        # link task to Source object
-                        task_obj.content_object = source_obj
-                        task_obj.save()
 
                     break
                 except IntegrityError as err:
