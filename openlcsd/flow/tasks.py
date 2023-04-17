@@ -849,7 +849,7 @@ def save_package_data(context, engine):
             'task_id': context.get('task_id')
         }
         json.dump(file_content, destination, cls=DateEncoder)
-    resp = cli.post(url, data={"file_path": tmp_file_path})
+    resp = cli.post(url, data={"file_path": tmp_file_path}, timeout=420)
     context['client'] = cli
     try:
         # Raise it in case we made a bad request:

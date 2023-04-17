@@ -11,7 +11,7 @@ from packages.models import (
     Path,
     Source
 )
-from packages.serializers import BulkFileSerializer, BulkPathSerializer
+from packages.serializers import BulkFileSerializer
 from products.models import (
     Product
 )
@@ -49,11 +49,7 @@ class SourceImportMixin:
             path_objs = [Path(source=source,
                               file=File.objects.get(swhid=p.get('file')),
                               path=p.get('path')) for p in paths]
-            paths = Path.objects.bulk_create(path_objs)
-            serializer = BulkPathSerializer({'paths': paths})
-            return serializer.data
-        else:
-            return {'message': 'No paths created.'}
+            Path.objects.bulk_create(path_objs)
 
     @staticmethod
     def create_product(product_name, description=""):
