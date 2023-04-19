@@ -1198,8 +1198,11 @@ query params of the corgi `component` api endpoint.
         if "update_mode" in request_data:
             request_data.pop("update_mode")
 
-        return super().partial_update(
-            request, data=request_data, *args, **kwargs)
+        serializer = self.get_serializer(
+                subscription, data=request_data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(serializer.data)
 
     def patch(self, request, *args, **kwargs):
         """
