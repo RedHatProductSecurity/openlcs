@@ -1536,6 +1536,11 @@ def populate_subscription_purls(context, engine):
     """
     source_components = context["source_components"]
     subscription_id = source_components["subscription_id"]
+    missings = source_components["missings"]
+    if missings:
+        msg = f'Failed to sync these component(s) data from Corgi: ' \
+              f'{missings}'
+        engine.logger.warning(msg)
     sources = source_components["sources"]
     subscription_purl_set = set()
     for component in sources:
@@ -1581,6 +1586,7 @@ def trigger_corgi_components_imports(context, engine):
     Trigger fork tasks directly using Corgi source.
     """
     # set corgi source forked task medium priority
+    engine.logger.info("Start to trigger Corgi componnet import.")
     context['priority'] = "medium"
     corgi_sources = context.get('corgi_sources')
     for corgi_source in corgi_sources:
@@ -1595,7 +1601,14 @@ def trigger_corgi_components_imports(context, engine):
             if comp.get('openlcs_scan_url'):
                 continue
             scan_components.append(comp)
-        fork_components_imports(context, engine, parent_uuid, scan_components)
+        if scan_components:
+            fork_components_imports(
+                    context, engine, parent_uuid, scan_components)
+            scan_purls = [c['purl'] for c in scan_components]
+            engine.logger.info(f"Forked imports for: {', '.join(scan_purls)}")
+        else:
+            engine.logger.info("The collected components have been scanned.")
+    engine.logger.info("Done.")
 
 
 # sub-flow of `flow_get_corgi_components`
