@@ -1,3 +1,5 @@
+from openlcs.libs.exceptions import UnsupportedPriority
+
 
 priority_str_kwargs_map = {
     "high": {},
@@ -6,10 +8,6 @@ priority_str_kwargs_map = {
 }
 
 ALLOW_PRIORITY = list(priority_str_kwargs_map.keys())
-
-
-class UnsupportedPriority(Exception):
-    pass
 
 
 def generate_priority_kwargs(priority: str) -> dict:
