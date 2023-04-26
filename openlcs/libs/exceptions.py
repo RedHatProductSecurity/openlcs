@@ -10,3 +10,7 @@ class MissingBinaryBuildException(OpenLCSException):
     See also OLCS-459
     """
     pass  # pylint: disable=unnecessary-pass
+
+
+class UnsupportedPriority(OpenLCSException):
+    pass  # pylint: disable=unnecessary-pass
