@@ -6,10 +6,9 @@ import fcntl
 import subprocess
 import ast
 from openlcs.libs.encrypt_decrypt import decrypt_with_secret_key
+from openlcs.libs.constants import CONF_FILEPATH
 from krbcontext import krbcontext
 from pathlib import Path
-
-CONF_FILEPATH = "/etc/openlcs/openlcslib.conf"
 
 
 def get_config_file(config_file=Path(CONF_FILEPATH)):
