@@ -1,13 +1,8 @@
-from openlcs.libs.exceptions import UnsupportedPriority
-
-
-priority_str_kwargs_map = {
-    "high": {},
-    "medium": {"priority": 1, "queue": "celery:1"},
-    "low": {"priority": 2, "queue": "celery:2"}
-}
-
-ALLOW_PRIORITY = list(priority_str_kwargs_map.keys())
+from .exceptions import UnsupportedPriority
+from .constants import (
+    PRIORITY_STR_KWARGS_MAP,
+    ALLOW_PRIORITY
+)
 
 
 def generate_priority_kwargs(priority: str) -> dict:
@@ -18,4 +13,4 @@ def generate_priority_kwargs(priority: str) -> dict:
     if priority not in ALLOW_PRIORITY:
         raise UnsupportedPriority
 
-    return priority_str_kwargs_map[priority]
+    return PRIORITY_STR_KWARGS_MAP[priority]
