@@ -611,11 +611,11 @@ class CorgiConnector:
         err_msg = f"Failed to find {nvr} component instance from Corgi."
         raise ValueError(err_msg)
 
-    def collect_components_from_subscriptions(self,
-                                              subscriptions,
-                                              num_components=100):
+    def collect_components_from_subscription(self,
+                                             subscription,
+                                             num_components=100):
         """
-        Collect source components based on subscriptions.
+        Collect source components based on subscription.
 
         Due to the fact the each subscription may have extreamly long number
         of components which end up with high memory consumption if we return
@@ -647,13 +647,10 @@ class CorgiConnector:
                 or len(result["sources"]) >= num_components
             )
 
-        for subscription in subscriptions:
-            query_params = subscription.get("query_params")
-            if not query_params:
-                continue
-            # subscription purls obtained from previous sync
-            subscribed_purls = subscription.get("component_purls", [])
-
+        query_params = subscription.get("query_params")
+        # subscription purls obtained from previous sync
+        subscribed_purls = subscription.get("component_purls", [])
+        if query_params:
             components = self.get_paginated_data(query_params)
             result = {"subscription_id": subscription["id"]}
             while True:

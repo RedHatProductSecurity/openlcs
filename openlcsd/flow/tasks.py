@@ -1473,10 +1473,13 @@ def get_active_subscriptions(context, engine):
     query_params = {"active": "true"}
     for subscription in client.get_paginated_data(
             "subscriptions", query_params):
+        context["subscription"] = subscription
+        engine.logger.info(f"Collect components for {subscription['name']}")
+        app.send_task("flow.tasks.flow_collect_components_for_subscription",
+                      [{"subscription": subscription,
+                        'provenance': 'sync_corgi'}])
         subscriptions.append(subscription)
-        engine.logger.debug(f"{subscription['name']} retrieved!")
     engine.logger.info(f"Collected {len(subscriptions)} subscriptions!")
-    context["subscriptions"] = subscriptions
 
 
 def populate_source_components(context, engine):
@@ -1486,10 +1489,10 @@ def populate_source_components(context, engine):
     @requires: components_generator
     @feeds: source_components
     """
-    generator = context["components_generator"]
     # Data returned is consumed one at a time here.
+    components_generator = context.get("components_generator")
     try:
-        source_components = next(generator)
+        source_components = next(components_generator)
     except StopIteration:
         # Stop the flow since all chunks are consumed.
         engine.stop()
@@ -1497,9 +1500,9 @@ def populate_source_components(context, engine):
         context["source_components"] = source_components
 
 
-def collect_components(subscriptions):
+def collect_components(subscription):
     """
-    Accept a list of subscriptions, and yield collected components.
+    Accept an active subscription, and yield collected components.
 
     Yield data follows below form:
     {
@@ -1508,15 +1511,14 @@ def collect_components(subscriptions):
         "missings": List(str)       # component link or purl
     }
     """
-    # subscriptions = context.get("subscriptions", [])
     connector = CorgiConnector()
 
-    yield from connector.collect_components_from_subscriptions(subscriptions)
+    yield from connector.collect_components_from_subscription(subscription)
 
 
 def populate_components_generator(context, engine):
-    subscriptions = context.get("subscriptions", [])
-    components = collect_components(subscriptions)
+    subscription = context.get("subscription", [])
+    components = collect_components(subscription)
     context["components_generator"] = ExhaustibleIterator(components)
 
 
@@ -1544,7 +1546,6 @@ def populate_subscription_purls(context, engine):
             subscription_purl_set.update([p["purl"] for p in provides])
         else:
             subscription_purl_set.add(component["purl"])
-
     client = context["client"]
     client.patch(
         f"subscriptions/{subscription_id}",
@@ -1614,14 +1615,19 @@ process_collected_components = [
 ]
 
 
-flow_get_corgi_components = [
+flow_collect_components_for_subscription = [
     get_config,
-    get_active_subscriptions,
     populate_components_generator,
     WHILE(
         lambda o, e: o.get("components_generator").is_active,
         process_collected_components
     )
+]
+
+
+flow_get_active_subscriptions = [
+    get_config,
+    get_active_subscriptions
 ]
 
 
@@ -1643,5 +1649,7 @@ def register_task_flow(name, flow, **kwargs):
 
 register_task_flow('flow.tasks.flow_default', flow_default)
 register_task_flow('flow.tasks.flow_retry', flow_retry)
-register_task_flow('flow.tasks.flow_get_corgi_components',
-                   flow_get_corgi_components)
+register_task_flow('flow.tasks.flow_get_active_subscriptions',
+                   flow_get_active_subscriptions)
+register_task_flow('flow.tasks.flow_collect_components_for_subscription',
+                   flow_collect_components_for_subscription)

@@ -14,6 +14,6 @@ def print_task_id(self, *args, **kwargs):
 
 @app.task(bind=True)
 def run_corgi_sync(self, **kwargs):
-    flow = "flow.tasks.flow_get_corgi_components"
+    flow = "flow.tasks.flow_get_active_subscriptions"
     # The keyword arguments are not used right now.
     app.send_task(flow, [kwargs], **generate_priority_kwargs("high"))
