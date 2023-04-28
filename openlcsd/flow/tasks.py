@@ -1314,6 +1314,11 @@ def fork_components_imports(context, engine, parent, components):
         'provenance': context.get('provenance'),
         'priority': context['priority']
     }
+
+    source_components = context.get("source_components")
+    if source_components is not None:
+        data["subscription_id"] = source_components["subscription_id"]
+
     if parent:
         data['parent'] = parent
     msg = 'Start to fork imports for {} components...'.format(len(components))
@@ -1530,7 +1535,7 @@ def populate_subscription_purls(context, engine):
     """
     source_components = context["source_components"]
     subscription_id = source_components["subscription_id"]
-    missings = source_components["missings"]
+    missings = list(set(source_components["missings"]))
     if missings:
         msg = f'Failed to sync these component(s) data from Corgi: ' \
               f'{missings}'
@@ -1548,7 +1553,11 @@ def populate_subscription_purls(context, engine):
     client = context["client"]
     client.patch(
         f"subscriptions/{subscription_id}",
-        data={"component_purls": list(subscription_purl_set)})
+        data={
+            "component_purls": list(subscription_purl_set),
+            "missing_components": missings
+        }
+    )
     engine.logger.debug(
         f"Populated purls for subscription {subscription_id}")
 

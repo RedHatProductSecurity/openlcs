@@ -60,6 +60,11 @@ class ComponentSubscriptionAdmin(admin.ModelAdmin):
 
     def get_form(self, request, obj=None, **kwargs):
         kwargs['widgets'] = {
-            'component_purls': forms.Textarea(attrs={'rols': 100, 'cols': 100})
+            'component_purls': forms.Textarea(
+                attrs={'rols': 100, 'cols': 100}
+            ),
+            'missing_components': forms.Textarea(
+                attrs={'rols': 100, 'cols': 50}
+            )
         }
         return super().get_form(request, obj, **kwargs)
