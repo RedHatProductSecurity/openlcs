@@ -1,19 +1,23 @@
 import asyncio
+import concurrent.futures
 import functools
 import httpx
 import logging
 import os
-from packageurl import PackageURL
 import re
 import requests
-from requests.exceptions import RequestException, HTTPError
 import sys
 import time
 import uuid
 import uvloop
-import concurrent.futures
+
 from concurrent.futures import ThreadPoolExecutor
+from packageurl import PackageURL
+from requests.exceptions import RequestException, HTTPError
+from requests.status_codes import codes as http_codes
 from urllib import parse
+from urllib.parse import urljoin
+
 
 openlcs_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if openlcs_dir not in sys.path:
@@ -80,6 +84,29 @@ class CorgiConnector:
         if is_prod():
             return os.getenv("CORGI_API_PROD")
         return os.getenv("CORGI_API_STAGE")
+
+    @staticmethod
+    def get_corgi_access_token():
+        """
+        Get the access token for the Corgi user(openlcs).
+        """
+        return f"Token {os.getenv('CORGI_ACCESS_TOKEN')}"
+
+    def corgi_request(self, path, access_token, method, **kwargs):
+        """
+        Use this function to start a corgi reqeust.
+        """
+        url = urljoin(self.base_url, path)
+        response = self.session.request(
+            method=method,
+            url=url,
+            headers={"Authorization": access_token},
+            **kwargs,
+        )
+        if response.status_code == http_codes.FORBIDDEN:
+            err_msg = f"Failed to authenticate with Corgi: {response.text}"
+            raise RuntimeError(err_msg)
+        return response
 
     @staticmethod
     def get_include_fields(component_type=""):
@@ -187,8 +214,13 @@ class CorgiConnector:
         # FIXME: use constraint SPDX identifiers for declared licenses
         # see also CORGI-440
         data = {k: v for k, v in component_data.items() if k in fields and v}
-        url = f"{self.base_url}components/{component_uuid}/olcs_test"
-        response = self.session.put(url, data=data)
+        # Corgi changed the sync API:
+        # https://github.com/RedHatProductSecurity/component-registry/pull/424
+        path = f"components/{component_uuid}/update_license"
+        # TODO: Currently we use Corgi token as a template solution, we will
+        #  change back to OIDC SSO token in the feature.
+        access_token = self.get_corgi_access_token()
+        response = self.corgi_request(path, access_token, "PUT", data=data)
         response.raise_for_status()
         return response.json()
 
