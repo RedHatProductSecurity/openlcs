@@ -1,19 +1,25 @@
 import asyncio
+import concurrent.futures
 import functools
 import httpx
 import logging
 import os
-from packageurl import PackageURL
 import re
 import requests
-from requests.exceptions import RequestException, HTTPError
 import sys
 import time
 import uuid
 import uvloop
-import concurrent.futures
+
 from concurrent.futures import ThreadPoolExecutor
+from packageurl import PackageURL
+from requests.exceptions import RequestException, HTTPError
+from requests.status_codes import codes as http_codes
 from urllib import parse
+from urllib.parse import urljoin
+
+from django.conf import settings
+from django.core.cache import cache
 
 openlcs_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if openlcs_dir not in sys.path:
@@ -39,6 +45,12 @@ CORGI_SYNC_FIELDS = [
     "license_concluded",
     "copyright_text",
 ]
+
+OIDC_CLIENT_SECRET = os.getenv("OPENLCS_OIDC_CLIENT_SECRET", "")
+OIDC_CLIENT_NAME = "openlcs"
+# B105: hardcoded_password_string -> not a hardcoded password but a name
+# of the key under which the access token is stored in the cache.
+OIDC_ACCESS_TOKEN_CACHE_KEY = "oidc_access_token"  # nosec: B105
 
 
 def corgi_include_exclude_fields_wrapper(func):
@@ -80,6 +92,38 @@ class CorgiConnector:
         if is_prod():
             return os.getenv("CORGI_API_PROD")
         return os.getenv("CORGI_API_STAGE")
+
+    def corgi_request(self, path, method='GET', **kwargs):
+        access_token = cache.get(OIDC_ACCESS_TOKEN_CACHE_KEY)
+        if not access_token:
+            response = self.session.post(
+                settings.OIDC_AUTH_URL,
+                auth=(OIDC_CLIENT_NAME, OIDC_CLIENT_SECRET),
+                data={"grant_type": "client_credentials"},
+            )
+            response.raise_for_status()
+            response_data = response.json()
+
+            # E.g. "Bearer 1234abcd"
+            access_token = f"{response_data['token_type']} {response_data['access_token']}"  # noqa
+            cache.add(
+                key=OIDC_ACCESS_TOKEN_CACHE_KEY,
+                value=access_token,
+                # Expire token earlier to account for network latency
+                timeout=response_data["expires_in"] - 5,  # seconds,
+            )
+
+        url = urljoin(self.base_url, path)
+        response = self.session.request(
+            method=method,
+            url=url,
+            headers={"Authorization": access_token},
+            **kwargs,
+        )
+        if response.status_code == http_codes.FORBIDDEN:
+            err_msg = f"Failed to authenticate with Corgi: {response.text}"
+            raise RuntimeError(err_msg)
+        return response
 
     @staticmethod
     def get_include_fields(component_type=""):
@@ -187,8 +231,8 @@ class CorgiConnector:
         # FIXME: use constraint SPDX identifiers for declared licenses
         # see also CORGI-440
         data = {k: v for k, v in component_data.items() if k in fields and v}
-        url = f"{self.base_url}components/{component_uuid}/olcs_test"
-        response = self.session.put(url, data=data)
+        path = f"components/{component_uuid}/olcs_test"
+        response = self.corgi_request(path, method="PUT", data=data)
         response.raise_for_status()
         return response.json()
 

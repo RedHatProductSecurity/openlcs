@@ -12,6 +12,7 @@ from itertools import groupby
 from operator import itemgetter
 from packageurl import PackageURL
 
+from django.conf import settings
 
 def get_mime_type(filepath):
     mime_type = mimetypes.MimeTypes().guess_type(filepath)[0]

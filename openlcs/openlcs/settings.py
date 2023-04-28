@@ -315,6 +315,9 @@ CACHES = {
     },
 }
 
+# OIDC settings
+OIDC_AUTH_URL = "https://auth.stage.redhat.com/auth/realms/EmployeeIDP/protocol/openid-connect/token"  # noqa
+
 try:
     # pylint:disable=wildcard-import,unused-wildcard-import
     parent_dir = os.path.abspath(os.path.dirname(__file__))

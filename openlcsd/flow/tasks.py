@@ -1016,6 +1016,7 @@ def sync_result_to_corgi(context, engine):
     sync_fields = CorgiConnector.get_sync_fields(component)
     response = connector.sync_to_corgi(component_data, fields=sync_fields)
     engine.logger.info(f"Component({component_uuid}) synced to corgi.")
+    engine.logger.info(f"{response}")
     client.patch(
         f"components/{olcs_component['id']}",
         data={"sync_status": "synced"})
