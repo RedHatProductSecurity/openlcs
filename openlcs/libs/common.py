@@ -344,18 +344,25 @@ def guess_env_from_principal(principal_name):
     return None
 
 
-def is_prod():
-    """Guess instance based on "service_principal_hostname" settings
+def get_env():
+    """
+    Guess instance based on "service_principal_hostname" settings
     from the lib configuration.
-
-    Returns:
-        Boolean: True if `service_principal_hostname` contains "prod",
-                 False otherwise
+    :returns: currently environment string or None
+    :rtype: str | None
     """
     from .driver import load_config_to_dict
     conf = load_config_to_dict(section="general")
     principal_name = conf.get("service_principal_hostname")
-    if principal_name is None:
-        return False
-    env = guess_env_from_principal(principal_name)
+    return guess_env_from_principal(principal_name) if principal_name else None
+
+
+def is_prod():
+    """
+    Check the current environment is product or not.
+    :returns: Boolean,True if `service_principal_hostname` contains "prod",
+              False otherwise
+    :rtype: bool
+    """
+    env = get_env()
     return env == "PROD" if env is not None else False
