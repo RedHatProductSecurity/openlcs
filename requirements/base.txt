@@ -1,6 +1,7 @@
 Django==3.2.18
 psycopg2==2.9.2 # Python-PostgreSQL Database Adapter
 celery==5.2.7 # The latest version for Python3.8
+celery-singleton==0.3.1
 requests==2.28.2 # An HTTP library for Python
 django-celery-beat==2.4.0
 redis==4.4.4  # Celery broker, make sure it matches celery

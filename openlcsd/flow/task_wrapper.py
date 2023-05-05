@@ -1,9 +1,10 @@
 import celery
+from celery_singleton import Singleton
 import os
 from commoncode.fileutils import delete
 
 
-class WorkflowWrapperTask(celery.Task):
+class WorkflowWrapperTask(Singleton):
 
     abstract = True
 
@@ -33,6 +34,7 @@ class WorkflowWrapperTask(celery.Task):
 
     def on_failure(self, exc, task_id, args, kwargs, einfo):
         """This is run by the worker when the task fails."""
+        # singleton attempts to release the lock it generated on failure
         super().on_failure(exc, task_id, args, kwargs, einfo)
 
     def on_retry(self, exc, task_id, args, kwargs, einfo):
@@ -41,4 +43,5 @@ class WorkflowWrapperTask(celery.Task):
 
     def on_success(self, retval, task_id, args, kwargs):
         """Run by the worker if the task executes successfully."""
+        # singleton attempts to release the lock it generated on failure
         super().on_success(retval, task_id, args, kwargs)
