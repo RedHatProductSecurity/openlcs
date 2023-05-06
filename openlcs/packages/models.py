@@ -313,6 +313,14 @@ class ComponentSubscription(models.Model):
         blank=True,
         null=True,
     )
+    # store missing components info in this Subscription
+    missing_components = ArrayField(
+        models.CharField(max_length=1024),
+        default=list,
+        blank=True,
+        null=True,
+    )
+
     # a subscription may be no loner valid over time. set it to False to
     # prevent it from being taken by the sync task.
     active = models.BooleanField(default=True)
