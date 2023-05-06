@@ -12,6 +12,8 @@ from itertools import groupby
 from operator import itemgetter
 from packageurl import PackageURL
 
+from django.conf import settings
+
 
 def get_mime_type(filepath):
     mime_type = mimetypes.MimeTypes().guess_type(filepath)[0]
@@ -196,13 +198,13 @@ def selection_sort_components(components):
 
 def get_component_flat(data, comp_type):
     component = {
-            'uuid': str(uuid.uuid4()),
-            'type': comp_type,
-            'name': data.get('name'),
-            'version': data.get('version'),
-            'release': data.get('release'),
-            'summary_license': '',
-        }
+        'uuid': str(uuid.uuid4()),
+        'type': comp_type,
+        'name': data.get('name'),
+        'version': data.get('version'),
+        'release': data.get('release'),
+        'summary_license': '',
+    }
     if comp_type == 'RPMMOD':
         component.update({'arch': ''})
     else:
@@ -293,8 +295,7 @@ def get_nvr_from_purl(purl):
     Get nvr from parse the purl of the provide
     """
     purl_dict = PackageURL.from_string(purl).to_dict()
-    nvr = '-'.join((purl_dict.get('name'),
-                   purl_dict.get('version')))
+    nvr = '-'.join((purl_dict.get('name'), purl_dict.get('version')))
     return nvr
 
 
@@ -366,3 +367,21 @@ def is_prod():
     """
     env = get_env()
     return env == "PROD" if env is not None else False
+
+
+def get_oidc_auth_url():
+    """
+    Get OIDC SSO authentication URL.
+    :returns: URL string, None otherwise
+    :rtype: str | None
+    """
+    env = get_env()
+    if env is not None:
+        if env == "PROD":
+            return settings.OIDC_PROD_AUTH_URL
+        if env == "STAGE":
+            return settings.OIDC_STAGE_AUTH_URL
+        else:
+            return settings.OIDC_DEV_AUTH_URL
+    else:
+        return None

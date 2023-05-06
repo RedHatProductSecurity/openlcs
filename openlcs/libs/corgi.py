@@ -18,11 +18,13 @@ from requests.status_codes import codes as http_codes
 from urllib import parse
 from urllib.parse import urljoin
 
+from django.core.cache import cache
 
 openlcs_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if openlcs_dir not in sys.path:
     sys.path.append(openlcs_dir)
 from libs.common import get_nvr_from_purl  # noqa: E402
+from libs.common import get_oidc_auth_url  # noqa: E402
 from libs.common import group_components  # noqa: E402
 from libs.common import find_srpm_source  # noqa: E402
 from libs.common import remove_duplicates_from_list_by_key  # noqa: E402
@@ -43,6 +45,12 @@ CORGI_SYNC_FIELDS = [
     "license_concluded",
     "copyright_text",
 ]
+
+OIDC_CLIENT_SECRET = os.getenv("OPENLCS_OIDC_CLIENT_SECRET", "")
+OIDC_CLIENT_NAME = "openlcs"
+# B105: hardcoded_password_string -> not a hardcoded password but a name
+# of the key under which the access token is stored in the cache.
+OIDC_ACCESS_TOKEN_CACHE_KEY = "oidc_access_token"  # nosec: B105
 
 
 def corgi_include_exclude_fields_wrapper(func):
@@ -84,6 +92,30 @@ class CorgiConnector:
         if is_prod():
             return os.getenv("CORGI_API_PROD")
         return os.getenv("CORGI_API_STAGE")
+
+    def get_oidc_access_token(self):
+        """
+        Get the OIDC access token, it can be used for authentication.
+        """
+        access_token = cache.get(OIDC_ACCESS_TOKEN_CACHE_KEY)
+        if not access_token:
+            response = self.session.post(
+                get_oidc_auth_url(),
+                auth=(OIDC_CLIENT_NAME, OIDC_CLIENT_SECRET),
+                data={"grant_type": "client_credentials"},
+            )
+            response.raise_for_status()
+            response_data = response.json()
+
+            # E.g. "Bearer 1234abcd"
+            access_token = f"{response_data['token_type']} {response_data['access_token']}"  # noqa
+            cache.add(
+                key=OIDC_ACCESS_TOKEN_CACHE_KEY,
+                value=access_token,
+                # Expire token earlier to account for network latency
+                timeout=response_data["expires_in"] - 5,  # seconds
+            )
+        return access_token
 
     @staticmethod
     def get_corgi_access_token():
@@ -212,14 +244,14 @@ class CorgiConnector:
         """
         component_uuid = component_data.get("uuid")
         # FIXME: use constraint SPDX identifiers for declared licenses
-        # see also CORGI-440
+        #  see also CORGI-440
         data = {k: v for k, v in component_data.items() if k in fields and v}
         # Corgi changed the sync API:
         # https://github.com/RedHatProductSecurity/component-registry/pull/424
         path = f"components/{component_uuid}/update_license"
         # TODO: Currently we use Corgi token as a template solution, we will
         #  change back to OIDC SSO token in the feature.
-        access_token = self.get_corgi_access_token()
+        access_token = self.get_oidc_access_token()
         response = self.corgi_request(path, access_token, "PUT", data=data)
         response.raise_for_status()
         return response.json()

@@ -315,6 +315,11 @@ CACHES = {
     },
 }
 
+# OIDC settings
+OIDC_DEV_AUTH_URL = "https://sso.dev.redhat.com/auth/realms/redhat-external/protocol/openid-connect/token"  # noqa
+OIDC_STAGE_AUTH_URL = "https://sso.stage.redhat.com/auth/realms/redhat-external/protocol/openid-connect/token"  # noqa
+OIDC_PROD_AUTH_URL = "https://sso.redhat.com/auth/realms/redhat-external/protocol/openid-connect/token"  # noqa
+
 try:
     # pylint:disable=wildcard-import,unused-wildcard-import
     parent_dir = os.path.abspath(os.path.dirname(__file__))
