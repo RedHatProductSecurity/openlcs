@@ -68,6 +68,7 @@ def get_config(context, engine):
             config = resp.json()
     except RuntimeError as err:
         err_msg = f'Failed to get config data. Reason: {err}'
+        engine.logger.error(err_msg)
         raise RuntimeError(err_msg) from None
     # One-time file based logger configuration for each task.
     logger_dir = config.get("LOGGER_DIR")
@@ -972,7 +973,9 @@ def save_scan_result(context, engine):
 def sync_result_to_corgi(context, engine):
     component = context.get("component")
     if not component:
-        raise RuntimeError("Missing component in request!")
+        err_msg = "Missing component in request!"
+        engine.logger.error(err_msg)
+        raise RuntimeError(err_msg)
     client = context['client']
     olcs_component_api_url = client.get_abs_url("components")
     component_uuid = component["uuid"]
@@ -984,8 +987,10 @@ def sync_result_to_corgi(context, engine):
     # exceptions, the non-existent component makes it impossible to mark
     # the sync as failed.
     if not results:
-        raise RuntimeError(f"Failed to sync data to corgi, component "
-                           f"{component_uuid} not found in OpenLCS.")
+        err_msg = (f"Failed to sync data to corgi, component "
+                   f"{component_uuid} not found in OpenLCS.")
+        engine.logger.error(err_msg)
+        raise RuntimeError(err_msg)
     olcs_component = results[0]
     # Each component has one identical source.
     source = olcs_component["source"]
@@ -1552,13 +1557,17 @@ def populate_subscription_purls(context, engine):
         else:
             subscription_purl_set.add(component["purl"])
     client = context["client"]
-    client.patch(
+    resp = client.patch(
         f"subscriptions/{subscription_id}",
         data={
             "component_purls": list(subscription_purl_set),
             "missing_components": missings
         }
     )
+    if resp.status_code != HTTPStatus.OK:
+        err_msg = f'Failed to populate subscription purls: {resp.json()}'
+        engine.logger.error(err_msg)
+        raise RuntimeError(err_msg) from None
     engine.logger.debug(
         f"Populated purls for subscription {subscription_id}")
 
@@ -1590,7 +1599,7 @@ def trigger_corgi_components_imports(context, engine):
     Trigger fork tasks directly using Corgi source.
     """
     # set corgi source forked task medium priority
-    engine.logger.info("Start to trigger Corgi componnet import.")
+    engine.logger.info("Start to trigger Corgi component import.")
     context['priority'] = "medium"
     corgi_sources = context.get('corgi_sources')
     for corgi_source in corgi_sources:
@@ -1598,7 +1607,7 @@ def trigger_corgi_components_imports(context, engine):
             parent_uuid = parent.get('uuid')
         else:
             parent_uuid = None
-        # Only fork for components without a openlcs_scan_url
+        # Only fork for components without an openlcs_scan_url
         components = corgi_source.get('components')
         scan_components = []
         for comp in components:

@@ -273,8 +273,11 @@ LDAP_USERS_DN = "ou=users,dc=redhat,dc=com"
 EMAIL_REALM = 'REDHAT.COM'
 
 # Give superuser permission to these users.
-OPENLCS_ADMIN_LIST = ['jzhao', 'yuwang', 'huiwang', 'qduanmu', 'yulwang',
-                      'chhan', 'wbu', 'axuan']
+OPENLCS_ADMIN_LIST = [
+    'jzhao', 'yuwang', 'huiwang', 'qduanmu', 'yulwang', 'chhan', 'axuan',
+    'openlcs-dev-worker01', 'openlcs-qe-worker01', 'openlcs-ci-worker01',
+    'openlcs-stage-worker01', 'openlcs-prod-worker01'
+]
 
 # CSRF setting
 # https://docs.djangoproject.com/zh-hans/3.2/ref/settings/#csrf-cookie-domain
