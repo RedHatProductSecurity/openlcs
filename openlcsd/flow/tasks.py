@@ -1549,19 +1549,25 @@ def populate_subscription_purls(context, engine):
         engine.logger.warning(msg)
     sources = source_components["sources"]
     subscription_purl_set = set()
+    source_purl_set = set()
     for component in sources:
         if component["type"] in ["OCI", "RPMMOD"]:
             provides = component.get("provides", [])
-            # Store provides purls.
+            # Store component provides purls.
             subscription_purl_set.update([p["purl"] for p in provides])
+            # Store source component purls.
+            olcs_sources = component.get("olcs_sources", [])
+            source_purl_set.update([p["purl"] for p in olcs_sources])
         else:
             subscription_purl_set.add(component["purl"])
+            source_purl_set.add(component["purl"])
     client = context["client"]
     resp = client.patch(
         f"subscriptions/{subscription_id}",
         data={
             "component_purls": list(subscription_purl_set),
-            "missing_components": missings
+            "missing_components": missings,
+            "source_purls": list(source_purl_set)
         }
     )
     if resp.status_code != HTTPStatus.OK:
