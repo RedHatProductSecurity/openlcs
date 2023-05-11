@@ -490,10 +490,10 @@ class CorgiConnector:
         else:
             return link
 
-    def get_container_source_components(self, component, subscribed_purls=None,
-                                        max_workers=4, max_queue_length=6):
+    def get_provides_source_components(self, component, subscribed_purls=None,
+                                       max_workers=4, max_queue_length=6):
         """
-        Extract source components from a corgi container component
+        Collect source components for corgi OCI or RPMMOD provides
 
         If the name of the component ends with "-source", it will be handled
         separately. Otherwise, the function looks for binary components
@@ -503,7 +503,7 @@ class CorgiConnector:
         still fails, failed ones are returned as a list of strings.
 
         Args:
-        component (dict): The OCI component info
+        component (dict): The OCI or RPMMOD component info
 
         Returns:
         Generator: the execution result from `future.result()`, consisting
@@ -545,6 +545,7 @@ class CorgiConnector:
             # exclude those that are already retrieved earlier
             if subscribed_purls and purl in subscribed_purls:
                 continue
+
             purl_dict = PackageURL.from_string(purl).to_dict()
             component_type = purl_dict.get("type", "")
             # OCI component of a different arch may present in "provides".
@@ -600,7 +601,7 @@ class CorgiConnector:
                 component)
             yield self.get_srpm_component(component)
         elif component_type in ["OCI", "RPMMOD"]:
-            yield from self.get_container_source_components(
+            yield from self.get_provides_source_components(
                 component, subscribed_purls)
         # for GOLANG type component, filter go-package type
         elif component_type == "GOLANG":
@@ -657,8 +658,7 @@ class CorgiConnector:
         def process_component(component, subscribed_purls=None):
             sources = []
             missings = []
-            gen = self.get_source_component(
-                component, subscribed_purls)
+            gen = self.get_source_component(component, subscribed_purls)
             components, missings = CorgiConnector.source_component_to_list(gen)
             if component.get("type") in ["OCI", "RPMMOD"]:
                 # Nest source components in `olcs_sources`

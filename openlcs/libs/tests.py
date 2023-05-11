@@ -705,7 +705,7 @@ class TestCorgiConnector(TestCase):
         data = list(self.connector.get_paginated_data())
         self.assertEqual(data, expected_single_instance)
 
-    def test_get_container_source_components_with_no_sources(self):
+    def test_get_provides_source_components_with_no_sources(self):
         component = {
             "name": "mock-container-source",
             "version": "1.0.0",
@@ -717,7 +717,7 @@ class TestCorgiConnector(TestCase):
         }
 
         with self.assertRaises(MissingBinaryBuildException) as exc:
-            for _ in self.connector.get_container_source_components(
+            for _ in self.connector.get_provides_source_components(
                     component):
                 pass
 

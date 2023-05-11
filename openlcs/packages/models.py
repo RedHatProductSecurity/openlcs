@@ -320,6 +320,12 @@ class ComponentSubscription(models.Model):
         blank=True,
         null=True,
     )
+    source_purls = ArrayField(
+        models.CharField(max_length=1024),
+        default=list,
+        blank=True,
+        null=True,
+    )
 
     # a subscription may be no loner valid over time. set it to False to
     # prevent it from being taken by the sync task.
@@ -373,6 +379,17 @@ class ComponentSubscription(models.Model):
             self.component_purls = purls
         else:
             self.component_purls = list(purls_set)
+        self.save()
+
+    def update_source_purls(self, source_purls, update_mode="append"):
+        purls_set = set(source_purls)
+        merged_purls_set = purls_set.union(set(self.source_purls))
+        purls = list(merged_purls_set)
+
+        if update_mode == "append":
+            self.source_purls = purls
+        else:
+            self.source_purls = list(purls_set)
         self.save()
 
     def __str__(self):

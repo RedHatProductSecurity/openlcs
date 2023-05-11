@@ -1186,15 +1186,19 @@ query params of the corgi `component` api endpoint.
         """
         subscription = self.get_object()
         component_purls = request.data.get("component_purls")
+        source_purls = request.data.get("source_purls")
         update_mode = request.data.get("update_mode", "append")
 
         if component_purls is not None:
             subscription.update_component_purls(component_purls,
                                                 update_mode)
+        if source_purls is not None:
+            subscription.update_source_purls(source_purls, update_mode)
 
         # do some clean up and delegate rest of updates to super()
         request_data = request.data.copy()
         request_data.pop("component_purls", None)
+        request_data.pop("source_purls", None)
         if "update_mode" in request_data:
             request_data.pop("update_mode")
 

@@ -63,6 +63,9 @@ class ComponentSubscriptionAdmin(admin.ModelAdmin):
             'component_purls': forms.Textarea(
                 attrs={'rols': 100, 'cols': 100}
             ),
+            'source_purls': forms.Textarea(
+                attrs={'rols': 100, 'cols': 100}
+            ),
             'missing_components': forms.Textarea(
                 attrs={'rols': 100, 'cols': 50}
             )
