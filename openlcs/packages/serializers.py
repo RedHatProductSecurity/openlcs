@@ -170,14 +170,14 @@ class ImportSerializer(AbstractSerializerMixin):
         """
         return {}
 
-    def fork_import_tasks(self, user_id, parent_task_id, token, token_sk):
+    def fork_import_tasks(self, user_id, parent_task_id, token):
         result = {}
         task_flow = self.get_task_flow()
         for key, task_params in self.get_tasks_params():
             params = copy.deepcopy(task_params)
             params['owner_id'] = user_id
             params['token'] = token
-            params['token_sk'] = token_sk
+            params['parent_task_id'] = parent_task_id
             celery_task = app.send_task(
                 task_flow,
                 [params],

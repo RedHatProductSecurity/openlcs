@@ -1,14 +1,15 @@
-import json
-import requests
-from requests.exceptions import RequestException, HTTPError
+import ast
 import configparser
 import fcntl
+import json
+import os
+import requests
 import subprocess
-import ast
-from openlcs.libs.encrypt_decrypt import decrypt_with_secret_key
-from openlcs.libs.constants import CONF_FILEPATH
-from krbcontext import krbcontext
 from pathlib import Path
+from requests.exceptions import RequestException, HTTPError
+
+from openlcs.libs.constants import CONF_FILEPATH
+from openlcs.libs.encrypt_decrypt import decrypt_with_secret_key
 
 
 def get_config_file(config_file=Path(CONF_FILEPATH)):
@@ -35,7 +36,7 @@ def load_config() -> configparser.ConfigParser:
         with open(config_file, "r", encoding="utf-8") as configfile:
             # An attempt to avoid race condition of multiple processes reading
             # the same configuration file concurrently. Not entirely sure if
-            # it really helps but I don't have a better idea.
+            # it really helps, but I don't have a better idea.
             # See also: https://stackoverflow.com/a/34935188
             fcntl.flock(configfile, fcntl.LOCK_EX)
             config = configparser.ConfigParser(allow_no_value=True)
@@ -64,84 +65,87 @@ def load_config_to_dict(section=None):
         return {}
 
 
-class OpenlcsClient(object):
+class OpenlcsClient:
     """
     Wrapper for communication with Hub, add authorization headers to
     all requests.
     """
 
-    def __init__(self, task_id=None, token=None, token_sk=None):
+    def __init__(self, task_id=None, parent_task_id=None, token=None):
+        self.task_id = task_id
+        self.parent_task_id = parent_task_id
+        self.token = token
+        self.token_sk = os.getenv("TOKEN_SECRET_KEY")
+        self.config = load_config()
+        self.api_url_prefix = self.get_api_url_prefix()
         self.session = requests.Session()
-        config = load_config()
-        hub_server = config.get('general', 'hub_server')
-        keytab_file = config.get('general', 'keytab_file')
-        svc_principal_hostname = config.get('general',
-                                            'service_principal_hostname')
-        principal = f"{svc_principal_hostname}@IPA.REDHAT.COM"
+        self.headers = self.get_headers()
 
-        # use exist token, reduce get token frequency
-        if token is not None and token_sk is not None:
-            if hub_server == 'local':
-                self.api_url_prefix = "http://{}:{}{}".format(
-                    config.get(hub_server, 'hostname'),
-                    config.get(hub_server, 'port'),
-                    config.get('general', 'api_path'),
-                )
-            else:
-                self.api_url_prefix = "https://{}{}".format(
-                    config.get(hub_server, 'hostname'),
-                    config.get('general', 'api_path'),
-                )
-
-            self.headers = {
-                'content-type': 'application/json',
-                'Authorization': 'Token {}'.format(
-                    decrypt_with_secret_key(token, token_sk)
-                )
-            }
-            self.task_id = task_id
-            return
-
-        # Construct api_url_prefix and cmd
+    def get_api_url_prefix(self):
+        hub_server = self.config.get('general', 'hub_server')
         if hub_server == 'local':
-            self.api_url_prefix = "http://{}:{}{}".format(
-                config.get(hub_server, 'hostname'),
-                config.get(hub_server, 'port'),
-                config.get('general', 'api_path'),
-                )
+            api_url_prefix = "http://{}:{}{}".format(
+                self.config.get(hub_server, 'hostname'),
+                self.config.get(hub_server, 'port'),
+                self.config.get('general', 'api_path'),
+            )
+        else:
+            api_url_prefix = "https://{}{}".format(
+                self.config.get(hub_server, 'hostname'),
+                self.config.get('general', 'api_path'),
+            )
+        return api_url_prefix
+
+    def get_token_key(self):
+        # For child tasks, use exist autobot user's token in the child tasks,
+        # reduce get token frequency
+        if all([self.token, self.token_sk, self.parent_task_id]):
+            token_key = decrypt_with_secret_key(self.token, self.token_sk)
+            return token_key
+
+        # For parent task, get a local user token or autobot user token.
+        # Get local user's token for the local environment.
+        if self.config.get('general', 'hub_server') == 'xxx':
             token_obtain_url = 'obtain_token_local/'
             cmd = 'curl -sS -X POST -d "username={}&password={}" {}'.format(
-                config.get('local', 'username'),
-                config.get('local', 'password'),
-                self.api_url_prefix+token_obtain_url
-                )
-            output = subprocess.check_output(cmd, shell=True).decode('utf-8')
-        else:
-            # self.config['hostname'] = conf.get(hub_server, 'hostname')
-            self.api_url_prefix = "https://{}{}".format(
-                config.get(hub_server, 'hostname'),
-                config.get('general', 'api_path'),
+                self.config.get('local', 'username'),
+                self.config.get('local', 'password'),
+                self.api_url_prefix + token_obtain_url
             )
-            token_obtain_url = 'auth/obtain_token/'
-            with krbcontext(using_keytab=True,
-                            principal=principal,
-                            ccache_file='/tmp/openlcs_ccache',
-                            keytab_file=keytab_file):
-                cmd = [
-                    'curl', '-sS', '--negotiate', '-u', ':',
-                    self.api_url_prefix + token_obtain_url,
-                ]
-                output = subprocess.check_output(cmd).decode('utf-8')
+        # Get autobot user's token from LDAP user's token for the OCP
+        # environment.
+        elif all([self.token, self.token_sk]):
+            token = decrypt_with_secret_key(self.token, self.token_sk)
+            cmd = 'curl -sS --negotiate -u : -H "{}" {}'.format(
+                f'Authorization: Token {token}',
+                self.api_url_prefix + 'get_autobot_token/'
+            )
+        else:
+            err_msg = 'Failed to get token key.'
+            raise RuntimeError(err_msg) from None
+
         try:
+            output = subprocess.check_output(cmd, shell=True).decode('utf-8')
             token_key = ast.literal_eval(output).get('token')
-        except AttributeError as err:
+        except (subprocess.CalledProcessError, AttributeError) as err:
             err_msg = f'Failed to get token key. Reason: {err}'
             raise RuntimeError(err_msg) from None
-        self.headers = {
+        return token_key
+
+    def get_headers(self):
+        token_key = self.get_token_key()
+        return {
             'content-type': 'application/json',
             'Authorization': 'Token {}'.format(token_key)
         }
-        self.task_id = task_id
+
+    def get_autobot_token(self, headers, params=None, timeout=300):
+        url = "get_autobot_token"
+        abs_url = self.get_abs_url(url)
+        response = self.session.get(abs_url, headers=headers,
+                                    params=params, timeout=timeout)
+        token = response.json()
+        return token
 
     def get_abs_url(self, url, sep="/"):
         # avoid recursive concatenations
@@ -153,6 +157,30 @@ class OpenlcsClient(object):
         abs_url = self.get_abs_url(url)
         return self.session.get(abs_url, headers=self.headers,
                                 params=params, timeout=timeout)
+
+    def post(self, url, data, timeout=300):
+        abs_url = self.get_abs_url(url)
+        # http://stackoverflow.com/a/25895504
+        # To resolve the issue that datetime.datetime object is not
+        # JSON serializerable.
+
+        def date_handler(obj):
+            return obj.isoformat() if hasattr(obj, 'isoformat') else obj
+        return self.session.post(
+            abs_url, headers=self.headers, data=json.dumps(
+                data, default=date_handler), timeout=timeout)
+
+    def patch(self, url, data, timeout=300):
+        abs_url = self.get_abs_url(url)
+        # http://stackoverflow.com/a/25895504
+        # To resolve the issue that datetime.datetime object is not
+        # JSON serializerable.
+
+        def date_handler(obj):
+            return obj.isoformat() if hasattr(obj, 'isoformat') else obj
+        return self.session.patch(
+            abs_url, headers=self.headers, data=json.dumps(
+                data, default=date_handler), timeout=timeout)
 
     def get_paginated_data(self, url, query_params=None):
         """
@@ -182,27 +210,3 @@ class OpenlcsClient(object):
             except (HTTPError, RequestException):
                 # FIXME: fail silently is not ideal
                 break
-
-    def post(self, url, data, timeout=300):
-        abs_url = self.get_abs_url(url)
-        # http://stackoverflow.com/a/25895504
-        # To resolve the issue that datetime.datetime object is not
-        # JSON serializerable.
-
-        def date_handler(obj):
-            return obj.isoformat() if hasattr(obj, 'isoformat') else obj
-        return self.session.post(
-            abs_url, headers=self.headers, data=json.dumps(
-                data, default=date_handler), timeout=timeout)
-
-    def patch(self, url, data, timeout=300):
-        abs_url = self.get_abs_url(url)
-        # http://stackoverflow.com/a/25895504
-        # To resolve the issue that datetime.datetime object is not
-        # JSON serializerable.
-
-        def date_handler(obj):
-            return obj.isoformat() if hasattr(obj, 'isoformat') else obj
-        return self.session.patch(
-            abs_url, headers=self.headers, data=json.dumps(
-                data, default=date_handler), timeout=timeout)

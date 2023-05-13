@@ -14,15 +14,29 @@ ARG KOJI_WEBURL
 ARG KOJI_DOWNLOAD
 ARG LDAP_URI
 ARG LOOKASIDE_CACHE_URL
+ARG OIDC_AUTH_URI
+ARG OPENLCS_OIDC_RP_CLIENT_ID
+ARG OPENLCS_OIDC_RP_CLIENT_SECRET
+ARG USER_OIDC_CLIENT_ID
+ARG USER_OIDC_CLIENT_SECRET
+ARG OPENLCS_OIDC_AUTH_ENABLED
+ARG TOKEN_SECRET_KEY
 
-ENV CORGI_API_STAGE=${CORGI_API_STAGE} \
+ENV REQUESTS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt \
+    CORGI_API_STAGE=${CORGI_API_STAGE} \
     CORGI_API_PROD=${CORGI_API_PROD} \
     KOJI_WEBSERVICE=${KOJI_WEBSERVICE} \
     KOJI_WEBURL=${KOJI_WEBURL} \
     KOJI_DOWNLOAD=${KOJI_DOWNLOAD} \
     LDAP_URI=${LDAP_URI} \
     LOOKASIDE_CACHE_URL=${LOOKASIDE_CACHE_URL} \
-    REQUESTS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt
+    OIDC_AUTH_URI=${OIDC_AUTH_URI} \
+    OPENLCS_OIDC_RP_CLIENT_ID=${OPENLCS_OIDC_RP_CLIENT_ID} \
+    OPENLCS_OIDC_RP_CLIENT_SECRET=${OPENLCS_OIDC_RP_CLIENT_SECRET} \
+    USER_OIDC_CLIENT_ID=${USER_OIDC_CLIENT_ID} \
+    USER_OIDC_CLIENT_SECRET=${USER_OIDC_CLIENT_SECRET} \
+    OPENLCS_OIDC_AUTH_ENABLED=${OPENLCS_OIDC_AUTH_ENABLED} \
+    TOKEN_SECRET_KEY=${TOKEN_SECRET_KEY}
 
 LABEL name="openlcs-ci" \
       maintainer="${PRODSEC_DEV_OPENLCS_MAIL}" \
@@ -45,7 +59,7 @@ RUN cd /etc/pki/ca-trust/source/anchors/ && \
     dnf config-manager --add-repo "${TITO_REPO_URL}" \
         --add-repo "${RHEL8_REPO_URL}" \
         --add-repo "${RHEL8_APPSTREAM_REPO_URL}" && \
-    dnf install --nogpgcheck --nodoc -y cpio-2.12 atool-0.39.0 krb5-workstation && \
+    dnf install --nogpgcheck --nodoc -y cpio-2.12 atool-0.39.0 && \
     # Remove it caused by vulnerabilities CVE-2021-33503 and CVE-2020-26137
     dnf remove python2-urllib3 && \
     dnf clean all && \
@@ -59,11 +73,7 @@ RUN cd /etc/pki/ca-trust/source/anchors/ && \
     # '/usr/local/lib/python3.8/site-packages', '/usr/lib64/python3.8/site-packages',
     # '/usr/lib/python3.8/site-packages'] as site packages path
     mkdir -p /usr/local/lib64/python3.8/ && \
-    ln -s /opt/app-root/lib64/python3.8/site-packages /usr/local/lib64/python3.8/ && \
-    git clone https://gitlab.cee.redhat.com/pelc/openlcs-playbooks.git && \
-    cp openlcs-playbooks/roles/openlcs/files/krb5.conf /etc/ && \
-    sed -i 's/kdc_timesync = 0/kdc_timesync = 1/g' /etc/krb5.conf
-
+    ln -s /opt/app-root/lib64/python3.8/site-packages /usr/local/lib64/python3.8/
 
 # Apply patches for extractcode, packagedcode
 COPY ./containers/patches/* /opt/app-root/lib64/python3.8/site-packages/

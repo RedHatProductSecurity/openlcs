@@ -327,17 +327,17 @@ class ExhaustibleIterator:
         return not self.exhausted
 
 
-def guess_env_from_principal(principal_name):
+def guess_env_from_principal(user_name):
     # The worker node follows pattern below and is managed in ansible
-    pattern = r"openlcs-(\w+)-worker\d+"
-    match = re.search(pattern, principal_name)
+    pattern = r"openlcs-(\w+)"
+    match = re.search(pattern, user_name)
     if match:
         return match.group(1).upper()
     # Hub's principal pattern starts with "openlcs-xxx" following a "."
     # see also `openlcs_route_name` in inventory/group_vars/openlcs.yml
     # in ansible roles.
     pattern = r"openlcs-(\w+)\.\w+"
-    match = re.search(pattern, principal_name)
+    match = re.search(pattern, user_name)
     if match:
         # Note: stage would be "stg"
         return match.group(1).upper()
@@ -347,15 +347,16 @@ def guess_env_from_principal(principal_name):
 
 def get_env():
     """
-    Guess instance based on "service_principal_hostname" settings
+    Guess instance based on environment 'USER_OIDC_CLIENT_ID' settings
     from the lib configuration.
     :returns: currently environment string or None
     :rtype: str | None
     """
-    from .driver import load_config_to_dict
-    conf = load_config_to_dict(section="general")
-    principal_name = conf.get("service_principal_hostname")
-    return guess_env_from_principal(principal_name) if principal_name else None
+    user_oidc_client_id = os.getenv("USER_OIDC_CLIENT_ID", "")
+    if user_oidc_client_id:
+        return guess_env_from_principal(user_oidc_client_id)
+    else:
+        return None
 
 
 def is_prod():

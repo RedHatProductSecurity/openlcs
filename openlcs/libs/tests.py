@@ -38,7 +38,7 @@ class TestUnpack(TestCase):
         super().setUpClass()
         cls.config = {
             # Update below path to your virtualenv path in local
-            'EXTRACTCODE_CLI': os.getenv("OLCS_EXTRACTCODE_CLI",
+            'EXTRACTCODE_CLI': os.getenv("EXTRACTCODE_CLI",
                                          "/opt/app-root/bin/extractcode"),
         }
         cls.koji_download = os.getenv(
@@ -218,7 +218,7 @@ class TestLicenseScan(TestCase):
         super().setUpClass()
         cls.config = {
             # Update below path to your virtualenv path in local
-            'SCANCODE_CLI': os.getenv("OLCS_SCANCODE_CLI",
+            'SCANCODE_CLI': os.getenv("SCANCODE_CLI",
                                       "/opt/app-root/bin/scancode"),
         }
 
@@ -254,7 +254,7 @@ class TestCopyrightScan(TestCase):
         super().setUpClass()
         cls.config = {
             # Update below path to your virtualenv path in local
-            'SCANCODE_CLI': os.getenv("OLCS_SCANCODE_CLI",
+            'SCANCODE_CLI': os.getenv("SCANCODE_CLI",
                                       "/opt/app-root/bin/scancode"),
         }
 

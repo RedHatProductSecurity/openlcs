@@ -32,3 +32,5 @@ drf-extensions==0.7.1
 django-redis==5.2.0
 python-redis-lock==4.0.0
 python-rpm-spec==0.14.1
+mozilla-django-oidc==3.0.0
+PyJWT==2.7.0

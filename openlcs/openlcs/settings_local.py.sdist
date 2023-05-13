@@ -117,9 +117,17 @@ WORKER_NODES = [
 # Use backend for database password-based auth
 # Production uses 'utils.backends.ModAuthKerbBackend'
 AUTHENTICATION_BACKENDS = [
+    # Add 'mozilla_django_oidc' authentication backend
+    'authentication.backend.OpenLCSOIDCBackend',
     'django.contrib.auth.backends.ModelBackend',
 ]
 
 # Reset CSRF_COOKIE_DOMAIN to None as default for local deployment,
 # so that not exist CSRF issue.
 CSRF_COOKIE_DOMAIN = None
+
+# Setting OIDC login and logout URLs.
+OIDC_AUTH_URI = os.getenv("OIDC_AUTH_URI", "")
+LOGIN_REDIRECT_URL = REST_API_PATH
+LOGIN_REDIRECT_URL_FAILURE = REST_API_PATH
+LOGOUT_REDIRECT_URL = OIDC_AUTH_URI + '/logout?redirect_uri=' + REST_API_PATH

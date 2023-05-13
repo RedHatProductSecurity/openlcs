@@ -1,13 +1,24 @@
+import logging
 import django_filters
+import jwt
+import time
+
+from mozilla_django_oidc.views import OIDCAuthenticationCallbackView
+
 from django.contrib.auth import get_user_model
+from django.http import JsonResponse
 from rest_framework.authtoken.models import Token
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
 from rest_framework.decorators import action
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.viewsets import ModelViewSet
+from rest_framework.views import APIView
 
 from authentication.serializers import UserSerializer
+from authentication.mixins import GetAutobotTokenMixin
+
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 
 class TokenViewSet(ModelViewSet):
@@ -145,6 +156,25 @@ class TokenViewSet(ModelViewSet):
             return Response(reason, status=401)
 
 
+class GetAutobotToken(APIView, GetAutobotTokenMixin):
+    def get(self, request):
+        try:
+            access_token = self.get_access_token()
+            user = self.get_or_create_user(access_token)
+            token, _ = Token.objects.get_or_create(user=user)
+        except jwt.ExpiredSignatureError as e:
+            # Handle expired token error
+            return JsonResponse({'error': f'Access token has expired: {e}'},
+                                status=401)
+        except jwt.DecodeError as e:
+            # Handle invalid token or other JWT-related errors
+            return JsonResponse({'error': f'Invalid access token: {e}'},
+                                status=401)
+        except RuntimeError as e:
+            return JsonResponse({'error': f"{e}"}, status=401)
+        return Response({'token': token.key})
+
+
 class UserFilter(django_filters.FilterSet):
     # https://django-filter.readthedocs.io/en/stable/guide/migration.html?highlight=MethodFilter#methodfilter-and-filter-action-replaced-by-filter-method-382  # noqa
     manager = django_filters.CharFilter(method='filter_manager')
@@ -198,3 +228,12 @@ class UserViewSet(ModelViewSet):
             }
         """
         return super(UserViewSet, self).list(request, *args, **kwargs)
+
+
+class CustomOIDCAuthenticationCallbackView(OIDCAuthenticationCallbackView):
+    """
+    This class used to fix login simultaneous issue.
+    """
+    def get(self, request):
+        time.sleep(1)
+        return super().get(request)

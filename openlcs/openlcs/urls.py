@@ -16,11 +16,14 @@ Including another URLconf
 """
 import os
 
-from authentication import views as auth_views
 from django.conf import settings
 from django.conf.urls import include
 from django.contrib import admin
 from django.urls import path
+
+from mozilla_django_oidc.views import OIDCAuthenticationRequestView
+
+from authentication import views as auth_views
 from libs.router import HybridRouter
 from packages import views as package_views
 from products import views as product_views
@@ -48,21 +51,21 @@ router.register(r'periodictask', package_views.PeriodicTaskViewSet,
                 basename='periodictask')
 router.register(r'releases', product_views.ReleaseViewSet, basename='releases')
 router.register(r'sources', package_views.SourceViewSet, basename='sources')
-router.register(r'subscriptions',
-                package_views.ComponentSubscriptionViewSet,
+router.register(r'subscriptions', package_views.ComponentSubscriptionViewSet,
                 basename='subscriptions')
 router.register(r'tasks', task_views.TaskViewSet, basename='tasks')
 
 # Router where APIView resides
 additional_router = HybridRouter()
 additional_router.add_api_view(r'manifest parser', path(
-    'manifest_parser/',
-    product_views.ManifestFileParserView.as_view(),
+    'manifest_parser/', product_views.ManifestFileParserView.as_view(),
     name='manifest_parser_view'))
 
 main_router = HybridRouter()
 main_router.register_router(router)
 main_router.register_router(additional_router)
+
+app_name = 'openlcs'
 
 urlpatterns = [
     path(f'{DRF_ROOT}/obtain_token_local/',
@@ -94,7 +97,18 @@ urlpatterns = [
          name='get_synced_purls'),
     path(f'{DRF_ROOT}/obtain_config/',
          ObtainConfigView.as_view(), name='obtain_config'),
+    path(f'{DRF_ROOT}/get_autobot_token/',
+         auth_views.GetAutobotToken.as_view(),
+         name='get_autobot_token')
 ]
+
+if settings.OIDC_AUTH_ENABLED:
+    urlpatterns.extend([
+        path("oidc/", include("mozilla_django_oidc.urls")),
+        path('oidc/login/',
+             OIDCAuthenticationRequestView.as_view(),
+             name='oidc_login')
+    ])
 
 if settings.DEBUG:
     # To load static files in django , added this part

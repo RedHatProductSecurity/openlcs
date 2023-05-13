@@ -6,8 +6,8 @@ Test cases are using tox and pytest for running the tests.
 
 Depending on the local configuration, you may need to update some of below variables for the tests to succeed:
 
-- OLCS_SCANCODE_CLI: full path to the `scancode` executable
-- OLCS_EXTRACTCODE_CLI: full path to the `extractcode` executable
+- SCANCODE_CLI: full path to the `scancode` executable
+- EXTRACTCODE_CLI: full path to the `extractcode` executable
 - OLCS_TEST_DB_NAME: test database name
 - OLCS_TEST_DB_HOST: test database host
 - OLCS_TEST_DB_PORT: test database port

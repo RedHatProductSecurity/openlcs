@@ -38,8 +38,8 @@ def pytest_configure():
     del conf_vars['Path']
     del conf_vars['sys']
     del conf_vars['parent_dir']
-    del conf_vars['Fernet']
     del conf_vars['crontab']
+    del conf_vars['strtobool']
     settings.configure(**conf_vars)
 
 

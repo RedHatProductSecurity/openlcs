@@ -1,20 +1,23 @@
 from django.contrib import admin
-from django.contrib.auth import admin as auth_admin
 from django.contrib.auth import get_user_model
-from authentication.models import Profile
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from authentication.models import RedHatProfile
 User = get_user_model()
 
 
-class ProfileInline(admin.StackedInline):
-    model = Profile
+# Define an inline admin descriptor for Employee model
+# which acts a bit like a singleton
+class RedHatProfileInline(admin.StackedInline):
+    model = RedHatProfile
     can_delete = True
-    verbose_name_plural = 'Profiles'
+    verbose_name_plural = 'RedHatProfile'
     fk_name = 'user'
-    fields = ('realname', 'manager')
+    fields = ('sub', 'roles', 'full_name')
 
 
-class UserAdmin(auth_admin.UserAdmin):
-    inlines = (ProfileInline,)
+# Define a new User admin
+class UserAdmin(BaseUserAdmin):
+    inlines = (RedHatProfileInline,)
 
 
 # Re-register UserAdmin

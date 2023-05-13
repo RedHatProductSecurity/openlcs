@@ -8,19 +8,6 @@ api_path = /rest/v1/
 # Valid options are names of the sections below
 hub_server = local
 
-# Update with appropriate keytab file location if you need service
-# principal for authentication with REST api.
-keytab_file = /dev/null
-
-# Service principal domain name. Used to obtain service principal.
-# This should be consistent with the `hostname` with which the service
-# principal was created. e.g., if your service principal is as below:
-# <service-name>/<hostname>@<realm>
-# `hostname` should be used below.
-# Alternatively you can try `klist -k -t /path/to/keytab` on target server
-# to check the consistency.
-service_principal_hostname = openlcs-dev-worker01
-
 [local]
 hostname = localhost
 port = 8000

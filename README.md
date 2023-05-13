@@ -137,3 +137,24 @@ For lib in Django, add test cases in tests.py.
 For workflow in openlcsd/flow/tasks.py, write test files in tests,
 and add test file in suite defined in __init__.py
 ```
+
+### OIDC setting
+#### Set the following environment variables
+```shell
+# OIDC settings
+export OIDC_AUTH_URI='xxx'
+export OPENLCS_OIDC_RP_CLIENT_ID="xxx"
+export OPENLCS_OIDC_RP_CLIENT_SECRET="xxx"
+export USER_OIDC_CLIENT_ID="xxx"
+export USER_OIDC_CLIENT_SECRET="xxx"
+export OPENLCS_OIDC_AUTH_ENABLED="xxx"
+export TOKEN_SECRET_KEY="xxx"
+```
+
+#### How to authentication
+Project GUI use a "KERBEROS ID" and "PIN" + "OTP" to login, and user can get 
+a project token from the url: /rest/v1/auth
+
+Project commands will add this kerberos token in the header to authenticate, 
+and according to this kerberos user's token to get the autobot user's token. In 
+the internal fork tasks, will use the autobot user's token.
