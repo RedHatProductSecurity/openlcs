@@ -1444,8 +1444,11 @@ flow_default = [
                                                 copyright_scan,
                                             ),
                                             save_scan_result,
-                                            sync_result_to_corgi,
                                         ],
+                                    ),
+                                    IF(
+                                        lambda o, e: o.get('provenance') == 'sync_corgi', # noqa
+                                        sync_result_to_corgi,
                                     )
                                 ]
                             )
