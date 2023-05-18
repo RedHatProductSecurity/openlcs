@@ -41,6 +41,7 @@ from openlcs.libs.swh_tools import get_swhids_with_paths
 from openlcs.libs.unpack import UnpackArchive
 from openlcs.utils.common import DateEncoder
 from openlcs.libs.encrypt_decrypt import encrypt_with_secret_key
+from openlcs.libs.redis import generate_task_lock
 
 
 def get_config(context, engine):
@@ -1791,6 +1792,24 @@ flow_clean_unused_shared_remote_source = [
 def register_task_flow(name, flow, **kwargs):
     @app.task(name=name, bind=True, base=WorkflowWrapperTask, **kwargs)
     def task(self, *args):
+        # Generate the lock key based on the task name and arguments
+        lock_key = generate_task_lock(name, args)
+        # FIXME: move import statements to top
+        from redis import Redis
+        from redis_lock import Lock
+        from openlcsd.celeryconfig import broker_url
+        redis_client = Redis.from_url(broker_url)
+        # Acquire the lock before submitting the task
+        lock = Lock(redis_client, lock_key)
+        acquired = lock.acquire(blocking=False)
+        if not acquired:
+            # The lock is already acquired by another task submission
+            print("="*100)
+            print(f"Task {name} with args {args} already submitted!")
+            print("="*100)
+            return
+        # FIXME: release the lock in `after_return`
+        # FIXME: release the lock if worker restarted
         # Note that the imports that this function requires must be done
         # inside since our code will not be running in the global context.
         from openlcsd.flow.core import OpenlcsWorkflowEngine
