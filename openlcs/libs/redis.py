@@ -39,10 +39,13 @@ class RedisClient(object):
         # FIXME: raise exception if `broker_url` is improperly configured
         self.client = Redis.from_url(broker_url)
 
-    def create_lock(self, lock_key: str):
+    def get_lock(self, lock_key: str, lock_id=None):
+        if lock_id is not None:
+            return Lock(self.client, lock_key, id=lock_id)
         return Lock(self.client, lock_key)
 
-    @property
-    def lock_acquired_with_key(self, lock_key: str):
-        lock = self.create_lock(lock_key)
-        return lock.acquire(blocking=False)
+    def release_lock_for_key(self, lock_key: str, lock_id=None) -> None:
+        lock = self.get_lock(lock_key)
+        # TODO: figure out why lock.release() won't work
+        # lock.release()
+        lock.reset()
