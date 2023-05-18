@@ -42,6 +42,10 @@ from openlcs.libs.unpack import UnpackArchive
 from openlcs.utils.common import DateEncoder
 from openlcs.libs.encrypt_decrypt import encrypt_with_secret_key
 from openlcs.libs.redis import generate_task_lock
+from openlcs.libs.redis import RedisClient
+
+
+redis_client = RedisClient()
 
 
 def get_config(context, engine):
@@ -1794,21 +1798,17 @@ def register_task_flow(name, flow, **kwargs):
     def task(self, *args):
         # Generate the lock key based on the task name and arguments
         lock_key = generate_task_lock(name, args)
-        # FIXME: move import statements to top
-        from redis import Redis
-        from redis_lock import Lock
-        from openlcsd.celeryconfig import broker_url
-        redis_client = Redis.from_url(broker_url)
         # Acquire the lock before submitting the task
-        lock = Lock(redis_client, lock_key)
+        lock = redis_client.get_lock(lock_key)
+        # associate each task with a lock key and lock id.
+        self.lock_key = lock_key
+        self.lock_id = lock.id
         acquired = lock.acquire(blocking=False)
         if not acquired:
-            # The lock is already acquired by another task submission
-            print("="*100)
+            # The lock is already acquired due to task submission earlier
             print(f"Task {name} with args {args} already submitted!")
-            print("="*100)
+            # FIXME: raise custom TaskAlreadySubmitted exception
             return
-        # FIXME: release the lock in `after_return`
         # FIXME: release the lock if worker restarted
         # Note that the imports that this function requires must be done
         # inside since our code will not be running in the global context.

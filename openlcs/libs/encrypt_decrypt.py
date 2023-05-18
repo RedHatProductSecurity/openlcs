@@ -1,6 +1,3 @@
-import hashlib
-import json
-
 from cryptography.fernet import Fernet
 
 

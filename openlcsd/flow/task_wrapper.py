@@ -2,22 +2,22 @@ import celery
 import os
 from commoncode.fileutils import delete
 
-from openlcs.libs.redis import generate_task_lock
+from openlcs.libs.redis import RedisClient
 
 
 class WorkflowWrapperTask(celery.Task):
 
     abstract = True
 
-    def _get_task_lock(self, task_args, task_kwargs):
-        return generate_task_lock(self.name, task_args, task_kwargs)
+    def release_task_lock(self, lock_key, lock_id=None):
+        redis_client = RedisClient()
+        redis_client.release_lock_for_key(lock_key, lock_id)
 
     def after_return(self, status, retval, task_id, args, kwargs, einfo):
         """Handler called after the task returns."""
-        from celery.contrib import rdb
-        rdb.set_trace()
-        task_lock = self._get_task_lock(args, kwargs)
-        print(f"Task: {self.name}, args: {args}, lock: {task_lock}")
+        # lock_key is passed along for each separate task
+        self.release_task_lock(self.lock_key, self.lock_id)
+        print(f"Task: {self.name} with lock: {self.lock_key} released!")
         if isinstance(args[0], dict):
             # Update the status of task when `duplicate_import` flag exists
             duplicate_import = args[0].get('duplicate_import')
