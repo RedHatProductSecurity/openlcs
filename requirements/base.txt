@@ -1,4 +1,4 @@
-Django==3.2.18
+Django==3.2.19
 psycopg2==2.9.2 # Python-PostgreSQL Database Adapter
 celery==5.2.7 # The latest version for Python3.8
 requests==2.28.2 # An HTTP library for Python
