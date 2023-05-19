@@ -17,7 +17,6 @@ class WorkflowWrapperTask(celery.Task):
         """Handler called after the task returns."""
         # lock_key is passed along for each separate task
         self.release_task_lock(self.lock_key, self.lock_id)
-        print(f"Task: {self.name} with lock: {self.lock_key} released!")
         if isinstance(args[0], dict):
             # Update the status of task when `duplicate_import` flag exists
             duplicate_import = args[0].get('duplicate_import')
