@@ -2,6 +2,7 @@ from django.core.management.base import BaseCommand
 from django.conf import settings
 
 from redis import Redis
+from libs.constants import TASK_IDENTITY_PREFIX  # noqa: E402
 
 
 class Command(BaseCommand):
@@ -10,9 +11,7 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument(
             '--prefix',
-            # This should be consistent with the default prefix used in
-            # `generate_lock_key`
-            default='TASK_IDENTICAL_LOCK_',
+            default=TASK_IDENTITY_PREFIX,
             help='Prefix of the locks to flush')
 
     def handle(self, *args, **options):
