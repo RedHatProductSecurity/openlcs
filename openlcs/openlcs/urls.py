@@ -85,6 +85,9 @@ urlpatterns = [
     path(f'{DRF_ROOT}/savecomponents/',
          package_views.SaveComponentsView.as_view(),
          name='save_group_components'),
+    path(f'{DRF_ROOT}/get_synced_purls/',
+         package_views.GetSyncedPurls.as_view(),
+         name='get_synced_purls'),
     path(f'{DRF_ROOT}/obtain_config/',
          ObtainConfigView.as_view(), name='obtain_config')
 ]

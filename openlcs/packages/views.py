@@ -1246,3 +1246,21 @@ query params of the corgi `component` api endpoint.
 
         """
         return self.partial_update(request, *args, **kwargs)
+
+
+class GetSyncedPurls(APIView):
+    """
+    Get the scanned and synced component purls of a subscription.
+    """
+    def get(self, request, *args, **kwargs):
+        purls = []
+        if subscription_id := request.query_params.get('subscription_id'):
+            qs = ComponentSubscription.objects.filter(pk=subscription_id)
+            if qs.exists():
+                subscription = qs[0]
+                components = subscription.get_synced_components()
+                purls = [component.purl for component in components]
+        else:
+            components = Component.objects.filter(sync_status='synced')
+            purls = [component.purl for component in components]
+        return Response(data={"purls": purls})
