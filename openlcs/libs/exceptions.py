@@ -14,3 +14,13 @@ class MissingBinaryBuildException(OpenLCSException):
 
 class UnsupportedPriority(OpenLCSException):
     pass  # pylint: disable=unnecessary-pass
+
+
+class TaskResubmissionException(OpenLCSException):
+    """Raised when tasks with identical name/args are submited simultaneously.
+
+    This is enforced by acquiring a dedicated lock for each submitted task,
+    lock won't be released unless tasks are finished, meaning no more tasks
+    with identical name/args are allowed to be submited again.
+    """
+    pass  # pylint: disable=unnecessary-pass

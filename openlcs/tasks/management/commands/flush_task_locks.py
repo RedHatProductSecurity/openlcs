@@ -11,7 +11,7 @@ class Command(BaseCommand):
         parser.add_argument(
             '--prefix',
             # This should be consistent with the default prefix used in
-            # `generate_task_lock`
+            # `generate_lock_key`
             default='TASK_IDENTICAL_LOCK_',
             help='Prefix of the locks to flush')
 
