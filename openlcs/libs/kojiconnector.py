@@ -369,6 +369,50 @@ class KojiConnector:
             else:
                 raise ValueError("No images found.") from None
 
+    def get_oci_remote_source_archive_filenames(self, component):
+        """
+        Get container remote source tar file name list from Brew/Koji.
+        """
+        all_archives = self._service.listArchives(int(component["build_id"]))
+        if not all_archives:
+            raise ValueError("No build archives found.") from None
+
+        # find remote source tar file name
+        filename_list = []
+        for archive in all_archives:
+            if archive.get('btype') == 'remote-sources' and \
+                    archive.get('type_name') == 'tar':
+                filename_list.append(archive.get("filename"))
+
+        if not filename_list:
+            raise ValueError("Remote source tar file not found.") from None
+
+        return filename_list
+
+    def download_oci_remote_source_archives(self, component,
+                                            dest_dir, filename_list):
+        """
+        Download container remote source tar file from Brew/Koji.
+        """
+        for filename in filename_list:
+            # https://download_url/brewroot/packages/{name}/{version}/{release}/files/remote-sources/xx.tar.gz
+            download_url = os.path.join(
+                self.download_url,
+                "packages",
+                component.get("name"),
+                component.get("version"),
+                component.get("release"),
+                "files/remote-sources",
+                filename
+            )
+
+            cmd = ['wget', download_url, '-q', '--show-progress']
+            try:
+                subprocess.check_call(cmd, cwd=dest_dir)
+            except Exception as e:
+                raise ValueError(f"Failed to download remote source tar file:"
+                                 f" {e}, url:{download_url}") from None
+
     @staticmethod
     def get_remote_source_component_flat(data):
         component_type = data.get("type")

@@ -23,6 +23,7 @@ from openlcs.libs.common import get_nvr_list_from_components
 from openlcs.libs.common import remove_duplicates_from_list_by_key
 from openlcs.libs.common import run_and_capture
 from openlcs.libs.common import ExhaustibleIterator
+from openlcs.libs.common import is_shared_remote_source_need_delete
 from openlcs.libs.corgi import CorgiConnector
 from openlcs.libs.driver import OpenlcsClient
 from openlcs.libs.kojiconnector import KojiConnector
@@ -80,6 +81,13 @@ def get_config(context, engine):
     if not os.path.exists(tmp_root_dir):
         os.mkdir(tmp_root_dir)
     context['tmp_root_dir'] = tmp_root_dir
+
+    # store remote-source source code used for download url failed situation
+    shared_remote_source_root_dir = os.path.join(
+        tmp_root_dir, "shared_remote_source_root"
+    )
+    if not os.path.exists(shared_remote_source_root_dir):
+        os.mkdir(shared_remote_source_root_dir)
 
     post_dir = config.get('POST_DIR')
     if not os.path.exists(post_dir):
@@ -273,6 +281,40 @@ def download_source_image(context, engine):
     context['tmp_src_filepath'] = tmp_src_filepath
 
 
+def download_shared_remote_source(context, engine):
+    """
+    download component parent container remote source file
+    for shared use when corgi download_url invalid
+    """
+    parent_component = context.get('parent_component')
+    if not parent_component:
+        raise RuntimeError("no parent_component info when "
+                           "try to download shared remote source")
+
+    config = context.get('config')
+    koji_connector = KojiConnector(config)
+    sc = SourceContainerHandler(config=config)
+
+    # mark this component use shared remote source
+    context['shared_remote_source'] = True
+
+    rs_root_dir = sc.get_shared_remote_source_root_dir(
+        context.get('tmp_root_dir'), parent_component)
+
+    filename_list = koji_connector.get_oci_remote_source_archive_filenames(
+        parent_component)
+
+    # download parent component remote source file
+    if not os.path.exists(rs_root_dir) or \
+            len(os.listdir(rs_root_dir)) < len(filename_list):
+        os.makedirs(rs_root_dir, exist_ok=True)
+        koji_connector.download_oci_remote_source_archives(
+            parent_component,
+            rs_root_dir,
+            filename_list
+        )
+
+
 def download_package_archive(context, engine):
     """
     Download source of given build/archive.
@@ -320,22 +362,61 @@ def download_package_archive(context, engine):
                 if cmd:
                     ret_code, err_msg = run_and_capture(cmd, tmp_dir)
                     if ret_code:
-                        raise RuntimeError(err_msg)
+                        engine.logger.info("corgi download_url invalid")
+                        download_shared_remote_source(context, engine)
                 else:
-                    err_msg = f"Currently, we don't support this URL: " \
-                              f"{download_url}."
-                    raise RuntimeError(err_msg)
+                    engine.logger.info(f"Currently, we don't support this URL:"
+                                       f" {download_url}.")
+                    download_shared_remote_source(context, engine)
             else:
-                err_msg = "Download URL not exist."
-                raise RuntimeError(err_msg)
+                engine.logger.info("corgi download_url not exist.")
+                download_shared_remote_source(context, engine)
     except RuntimeError as err:
         nvr = build.get('nvr') if build else component.get('nvr')
         err_msg = f'Failed to download source for {nvr}: {err}'
         engine.logger.error(err_msg)
         raise RuntimeError(err_msg) from None
 
-    tmp_src_filepath = os.path.join(tmp_dir, os.listdir(tmp_dir)[0])
-    context['tmp_src_filepath'] = tmp_src_filepath
+    if context.get('shared_remote_source'):
+        # shallow decompress remote source tar file to get
+        # component source file path
+        parent_component = context.get('parent_component')
+
+        sc = SourceContainerHandler(config=config)
+        rs_root_dir = sc.get_shared_remote_source_root_dir(
+            context.get('tmp_root_dir'), parent_component)
+
+        filenames = os.listdir(rs_root_dir)
+
+        for filename in filenames:
+            if not os.path.isdir(os.path.join(rs_root_dir, filename)):
+                engine.logger.info(
+                    'Start to shallow unpack remote source archive...')
+                ua = UnpackArchive(config=config)
+                unpack_errors = ua.unpack_archives_using_extractcode(
+                    src_dir=rs_root_dir,
+                    shallow=True
+                )
+                if unpack_errors:
+                    engine.logger.warning(f"unpack error:{unpack_errors}")
+                engine.logger.info('Shallow unpack remote source archive done')
+
+        # find component corresponding remote source
+        source_path, _ = sc.get_remote_source_path(
+            context.get('component'), rs_root_dir
+        )
+        engine.logger.info(f"search component source result: {source_path}")
+
+        # source not found
+        if not source_path:
+            msg = f"component:{context.get('component')} not found in " \
+                  f"parent component: {parent_component} remote source file"
+            raise RuntimeError(msg) from None
+
+        context['tmp_src_filepath'] = source_path
+    else:
+        tmp_src_filepath = os.path.join(tmp_dir, os.listdir(tmp_dir)[0])
+        context['tmp_src_filepath'] = tmp_src_filepath
 
     if (build_type := context.get('build_type')) and 'maven' in build_type:
         try:
@@ -411,7 +492,11 @@ def get_source_metadata(context, engine):
     engine.logger.info("Start to get source package metadata...")
     src_filepath = context.get('tmp_src_filepath')
     nvr = context.get('package_nvr')
-    if is_metadata_component_source(src_filepath):
+    if context.get('shared_remote_source') and os.path.isdir(src_filepath):
+        component = context.get('component')
+        source_name = get_component_name_version_combination(component)
+        source_checksum = dirhash(src_filepath, "sha256")
+    elif is_metadata_component_source(src_filepath):
         source_name = f"{nvr}-metadata"
         source_checksum = dirhash(src_filepath, "sha256")
     else:
@@ -690,17 +775,35 @@ def unpack_source(context, engine):
     @feeds: 'None', archives will be recursively unpacked upon success.
     """
     prepare_dest_dir(context, engine)
-    extract_source(context, engine)
-
     config = context.get('config')
-    src_dest_dir = context.get('src_dest_dir')
-    engine.logger.info('Start to unpack source archives...')
-    ua = UnpackArchive(config=config, dest_dir=src_dest_dir)
-    unpack_errors = ua.unpack_archives()
-    if unpack_errors:
-        err_msg = "---- %s" % "\n".join(unpack_errors)
-        engine.logger.warning(err_msg)
-    engine.logger.info("Finished unpacking source.")
+
+    if not context.get('shared_remote_source'):
+        extract_source(context, engine)
+
+        src_dest_dir = context.get('src_dest_dir')
+        engine.logger.info('Start to unpack source archives...')
+        ua = UnpackArchive(config=config, dest_dir=src_dest_dir)
+        unpack_errors = ua.unpack_archives()
+        if unpack_errors:
+            err_msg = "---- %s" % "\n".join(unpack_errors)
+            engine.logger.warning(err_msg)
+        engine.logger.info("Finished unpacking source.")
+    else:
+        source_file_path = context['tmp_src_filepath']
+
+        engine.logger.info('Start to unpack remote source archives...')
+        # unpack component corresponding source file
+        ua = UnpackArchive(config=config)
+        unpack_errors = ua.unpack_archives_using_extractcode(
+            src_dir=source_file_path,
+            rm=False
+        )
+        if unpack_errors:
+            engine.logger.warning(unpack_errors)
+
+        engine.logger.info("Finished unpacking remote source archives.")
+
+        context['src_dest_dir'] = source_file_path
 
 
 def unpack_container_source_archive(context, engine):
@@ -1325,7 +1428,13 @@ def fork_components_imports(context, engine, parent, components):
         data["subscription_id"] = source_components["subscription_id"]
 
     if parent:
-        data['parent'] = parent
+        data['parent'] = parent.get('uuid')
+        data['parent_component'] = {
+            "name": parent.get("name"),
+            "version": parent.get("version"),
+            "release": parent.get("release"),
+            "build_id": parent['software_build']['build_id']
+        }
     msg = 'Start to fork imports for {} components...'.format(len(components))
     engine.logger.info(msg)
     components_string = "\n\t" + "\n\t".join([component.get('nvr')
@@ -1352,7 +1461,7 @@ def fork_imports(context, engine):
     """
     components = context.get('components')
     if context.get('provenance') == 'sync_corgi':
-        parent = context.get('component').get('uuid')
+        parent = context.get('component')
         fork_components_imports(context, engine, parent, components)
     else:
         srpm_nvr_list = get_nvr_list_from_components(components, 'RPM')
@@ -1617,25 +1726,36 @@ def trigger_corgi_components_imports(context, engine):
     context['priority'] = "medium"
     corgi_sources = context.get('corgi_sources')
     for corgi_source in corgi_sources:
-        if parent := corgi_source.get('parent'):
-            parent_uuid = parent.get('uuid')
-        else:
-            parent_uuid = None
-        # Only fork for components without an openlcs_scan_url
+        parent = corgi_source.get('parent')
         components = corgi_source.get('components')
         scan_components = []
+
+        # Only fork for components without a openlcs_scan_url
         for comp in components:
             if comp.get('openlcs_scan_url'):
                 continue
             scan_components.append(comp)
         if scan_components:
             fork_components_imports(
-                    context, engine, parent_uuid, scan_components)
+                    context, engine, parent, scan_components)
             scan_purls = [c['purl'] for c in scan_components]
             engine.logger.info(f"Forked imports for: {', '.join(scan_purls)}")
         else:
             engine.logger.info("The collected components have been scanned.")
     engine.logger.info("Done.")
+
+
+def clear_unused_resource_source(context, engine):
+    """
+    Clear unused shared remote source file
+    """
+    root_dir = os.path.join(
+        context.get('tmp_root_dir'), "shared_remote_source_root")
+    release_dir_list = glob.glob(os.path.join(root_dir, "*/*/*"))
+    for release_dir in release_dir_list:
+        if is_shared_remote_source_need_delete(release_dir):
+            delete(release_dir)
+            engine.logger.info(f"{release_dir} deleted")
 
 
 # sub-flow of `flow_get_corgi_components`
@@ -1662,6 +1782,11 @@ flow_get_active_subscriptions = [
     get_active_subscriptions
 ]
 
+flow_clean_unused_shared_remote_source = [
+    get_config,
+    clear_unused_resource_source
+]
+
 
 def register_task_flow(name, flow, **kwargs):
     @app.task(name=name, bind=True, base=WorkflowWrapperTask, **kwargs)
@@ -1685,3 +1810,5 @@ register_task_flow('flow.tasks.flow_get_active_subscriptions',
                    flow_get_active_subscriptions)
 register_task_flow('flow.tasks.flow_collect_components_for_subscription',
                    flow_collect_components_for_subscription)
+register_task_flow('flow.tasks.flow_clean_unused_shared_remote_source',
+                   flow_clean_unused_shared_remote_source)

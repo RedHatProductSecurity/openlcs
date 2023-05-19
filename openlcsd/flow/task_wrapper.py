@@ -17,12 +17,16 @@ class WorkflowWrapperTask(celery.Task):
 
             comp_type = args[0].get('component_type')
             # Only keep uncompressed sources for container
-            if comp_type != 'OCI' or args[0].get('parent'):
+            if args[0].get('shared_remote_source'):
+                pass
+            elif comp_type != 'OCI' or args[0].get('parent'):
                 src_dest_dir = args[0].get('src_dest_dir')
                 if src_dest_dir and os.path.exists(src_dest_dir):
                     delete(src_dest_dir)
             # Only keep the source tarball for failed container components
             if status == 'FAILURE' and 'src_dir' in args[0]:
+                pass
+            elif args[0].get('shared_remote_source'):
                 pass
             else:
                 tmp_src_filepath = args[0].get('tmp_src_filepath')

@@ -122,22 +122,32 @@ class GolangMeta(MetaBase):
         Returns a packagedcode "PackageData" instance when succeed,
         or a string(error message) string in case of failures.
         """
-        result, message = self._validate_tarball()
-        if result == self.FAILURE:
-            return message
-        try:
-            meta_dir = self.extract_metafile_from_zip()
-            if meta_dir is not None:
-                meta_filepath = self.get_metafile_path(meta_dir)
+        if not os.path.isdir(self.tarball):
+            result, message = self._validate_tarball()
+            if result == self.FAILURE:
+                return message
+
+            try:
+                meta_dir = self.extract_metafile_from_zip()
+                if meta_dir is not None:
+                    meta_filepath = self.get_metafile_path(meta_dir)
+                    packages = GoModHandler.parse(meta_filepath)
+                    return next(packages)
+                else:
+                    return None
+            except StopIteration:
+                return None
+            finally:
+                if meta_dir is not None:
+                    shutil.rmtree(meta_dir)
+        else:
+            # deal with golang source found as dir in remote source tar file
+            try:
+                meta_filepath = self.get_metafile_path(self.tarball)
                 packages = GoModHandler.parse(meta_filepath)
                 return next(packages)
-            else:
+            except StopIteration:
                 return None
-        except StopIteration:
-            return None
-        finally:
-            if meta_dir is not None:
-                shutil.rmtree(meta_dir)
 
 
 class CargoMeta(MetaBase):
