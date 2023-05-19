@@ -1525,12 +1525,17 @@ def collect_components(subscription):
     }
     """
     connector = CorgiConnector()
-
     yield from connector.collect_components_from_subscription(subscription)
 
 
 def populate_components_generator(context, engine):
     subscription = context.get("subscription", [])
+    cli = context.get('client')
+    # Collect synced components of the subscription
+    params = {"subscription_id": subscription['id']}
+    response = cli.get("get_synced_purls", params)
+    response.raise_for_status()
+    subscription['synced_purls'] = response.json().get('purls')
     components = collect_components(subscription)
     context["components_generator"] = ExhaustibleIterator(components)
 

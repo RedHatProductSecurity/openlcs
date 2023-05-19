@@ -444,28 +444,25 @@ class CorgiConnector:
                 logger.error("Request failed: %s", e)
                 break
 
-    def get_srpm_component(self, component):
+    def get_srpm_component(self, component, synced_purls=None):
         """
-        Returns the source rpm component for an RPM component
+        Returns the source rpm component for a RPM component
         """
         if component["type"] != "RPM":
             raise ValueError(f"Unsupported component type {component['type']}")
         if component["arch"] == "src":
             return component
         sources = component.get("sources")
-        if not sources:
-            # This is not likely to happen since corgi promises
-            # to always have corresponding srpm.
-            return component.get("purl")
-        link = sources[0].get("link")
-        if link:
-            logger.info("Querying component: %s", link)
-            component = self.get(link, includes=self.rpm_includes)
-            if component:
-                return component
-            return link
-        else:
-            return component.get("purl")
+        if sources:
+            purl, link = sources[0].get("purl"), sources[0].get("link")
+            # Skip corgi query if the srpm component has been synced
+            if synced_purls and purl in synced_purls:
+                return None
+            if link:
+                logger.info("Querying component: %s", link)
+                component = self.get(link, includes=self.rpm_includes)
+                if component:
+                    return component
 
     def _fetch_component(self, link, component_type):
         """
@@ -479,16 +476,15 @@ class CorgiConnector:
             if component.get("type") == "RPM":
                 component = CorgiConnector.truncate_rpm_component_sources(
                     component)
-                return self.get_srpm_component(component)
-            # FIXME: examine what to return for non-rpm components.
-
+                srpm_component = self.get_srpm_component(component)
+                return srpm_component if srpm_component else component.get(
+                        "purl")
             # Filter go-package component for GOLANG type
             if component.get("type") == "GOLANG":
                 return self.filter_go_package_component(component)
-
             return component
         else:
-            return link
+            return component.get("purl")
 
     def get_provides_source_components(self, component, subscribed_purls=None,
                                        max_workers=4, max_queue_length=6):
@@ -594,12 +590,15 @@ class CorgiConnector:
 
         return None if result["count"] == 0 else component
 
-    def get_source_component(self, component, subscribed_purls=None):
+    def get_source_component(self,
+                             component,
+                             subscribed_purls=None,
+                             synced_purls=None):
         component_type = component.get("type")
         if component_type == "RPM":
             component = CorgiConnector.truncate_rpm_component_sources(
                 component)
-            yield self.get_srpm_component(component)
+            yield self.get_srpm_component(component, synced_purls)
         elif component_type in ["OCI", "RPMMOD"]:
             yield from self.get_provides_source_components(
                 component, subscribed_purls)
@@ -655,10 +654,13 @@ class CorgiConnector:
         data at once, this function provides a mechanism to dynamically yield
         components, based on the `should_yield_data` inner function.
         """
-        def process_component(component, subscribed_purls=None):
+        def process_component(component,
+                              subscribed_purls=None,
+                              synced_purls=None):
             sources = []
             missings = []
-            gen = self.get_source_component(component, subscribed_purls)
+            gen = self.get_source_component(
+                    component, subscribed_purls, synced_purls)
             components, missings = CorgiConnector.source_component_to_list(gen)
             if component.get("type") in ["OCI", "RPMMOD"]:
                 # Nest source components in `olcs_sources`
@@ -682,6 +684,7 @@ class CorgiConnector:
         query_params = subscription.get("query_params")
         # subscription purls obtained from previous sync
         subscribed_purls = subscription.get("component_purls", [])
+        synced_purls = subscription.get("synced_purls", [])
         if query_params:
             components = self.get_paginated_data(query_params)
             result = {"subscription_id": subscription["id"]}
@@ -702,7 +705,7 @@ class CorgiConnector:
                         continue
                     try:
                         sources, missings = process_component(
-                            component, subscribed_purls)
+                            component, subscribed_purls, synced_purls)
                     except MissingBinaryBuildException as e:
                         logger.error(str(e))
                         # FIMXE: subsequent calls for missing binary build

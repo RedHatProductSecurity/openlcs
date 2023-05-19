@@ -392,5 +392,9 @@ class ComponentSubscription(models.Model):
             self.source_purls = list(purls_set)
         self.save()
 
+    def get_synced_components(self):
+        return Component.objects.filter(
+                purl__in=self.source_purls, sync_status='synced')
+
     def __str__(self):
         return f"{self.name}"
