@@ -4,6 +4,7 @@ from redis import Redis
 from redis_lock import Lock
 
 from openlcsd.celeryconfig import broker_url
+from libs.constants import TASK_IDENTITY_PREFIX  # noqa: E402
 
 
 # Based upon singleton's lock generation mechanism with some simplification.
@@ -11,7 +12,7 @@ def generate_lock_key(
         task_name: str,
         task_args: list = None,
         task_kwargs: dict = None,
-        task_identity_prefix: str = "TASK_IDENTICAL_LOCK_"
+        task_identity_prefix: str = TASK_IDENTITY_PREFIX
 ) -> str:
     """
     Generate a hash value for a task based on its name, args and kwargs.
