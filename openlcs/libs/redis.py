@@ -7,12 +7,12 @@ from openlcsd.celeryconfig import broker_url
 
 
 # Based upon singleton's lock generation mechanism with some simplification.
-def generate_task_lock(
+def generate_lock_key(
         task_name: str,
-        task_args: list = [],
-        task_kwargs: dict = {},
+        task_args: list = None,
+        task_kwargs: dict = None,
         task_identity_prefix: str = "TASK_IDENTICAL_LOCK_"
-    ) -> str:
+) -> str:
     """
     Generate a hash value for a task based on its name, args and kwargs.
 
@@ -26,6 +26,10 @@ def generate_task_lock(
         str: sha256 hash value with specified prefix, unique for each task
         with given signature.
     """
+    if task_args is None:
+        task_args = list()
+    if task_kwargs is None:
+        task_kwargs = dict()
     str_args = json.dumps(task_args, sort_keys=True)
     str_kwargs = json.dumps(task_kwargs, sort_keys=True)
     task_repr = (task_name + str_args + str_kwargs).encode('utf-8')

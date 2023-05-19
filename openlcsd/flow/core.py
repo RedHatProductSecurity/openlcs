@@ -74,6 +74,12 @@ class OpenlcsTransitionActions(TransitionActions):
         raise Break
 
     @staticmethod
+    def TaskResubmissionException(obj, eng, callbacks, exc_info):
+        """Action to take when TaskResubmissionException is raised."""
+        eng.log.error(str(exc_info[1]))
+        raise Break
+
+    @staticmethod
     def Exception(obj, eng, callbacks, exc_info):
         """Action to take when an unhandled exception is raised.
 

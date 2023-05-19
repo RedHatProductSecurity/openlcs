@@ -26,6 +26,7 @@ from openlcs.libs.common import ExhaustibleIterator
 from openlcs.libs.common import is_shared_remote_source_need_delete
 from openlcs.libs.corgi import CorgiConnector
 from openlcs.libs.driver import OpenlcsClient
+from openlcs.libs.exceptions import TaskResubmissionException
 from openlcs.libs.kojiconnector import KojiConnector
 from openlcs.libs.logger import get_task_logger
 from openlcs.libs.metadata import CargoMeta
@@ -41,7 +42,7 @@ from openlcs.libs.swh_tools import get_swhids_with_paths
 from openlcs.libs.unpack import UnpackArchive
 from openlcs.utils.common import DateEncoder
 from openlcs.libs.encrypt_decrypt import encrypt_with_secret_key
-from openlcs.libs.redis import generate_task_lock
+from openlcs.libs.redis import generate_lock_key
 from openlcs.libs.redis import RedisClient
 
 
@@ -1797,7 +1798,7 @@ def register_task_flow(name, flow, **kwargs):
     @app.task(name=name, bind=True, base=WorkflowWrapperTask, **kwargs)
     def task(self, *args):
         # Generate the lock key based on the task name and arguments
-        lock_key = generate_task_lock(name, args)
+        lock_key = generate_lock_key(name, args)
         # Acquire the lock before submitting the task
         lock = redis_client.get_lock(lock_key)
         # associate each task with a lock key and lock id.
@@ -1806,9 +1807,8 @@ def register_task_flow(name, flow, **kwargs):
         acquired = lock.acquire(blocking=False)
         if not acquired:
             # The lock is already acquired due to task submission earlier
-            print(f"Task {name} with args {args} already submitted!")
-            # FIXME: raise custom TaskAlreadySubmitted exception
-            return
+            raise TaskResubmissionException(
+                f"Task {name} with args {args} already submitted!")
         # FIXME: release the lock if worker restarted
         # Note that the imports that this function requires must be done
         # inside since our code will not be running in the global context.
