@@ -1809,7 +1809,6 @@ def register_task_flow(name, flow, **kwargs):
             # The lock is already acquired due to task submission earlier
             raise TaskResubmissionException(
                 f"Task {name} with args {args} already submitted!")
-        # FIXME: release the lock if worker restarted
         # Note that the imports that this function requires must be done
         # inside since our code will not be running in the global context.
         from openlcsd.flow.core import OpenlcsWorkflowEngine
