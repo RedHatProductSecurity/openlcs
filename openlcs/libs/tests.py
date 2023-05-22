@@ -9,6 +9,8 @@ from unittest import mock
 from unittest import TestCase
 from kobo.shortcuts import run
 from django.conf import settings
+import hashlib
+from redis import Redis
 
 from libs.corgi import CorgiConnector
 from libs.common import guess_env_from_principal
@@ -24,6 +26,9 @@ from libs.scanner import LicenseScanner
 from libs.scanner import CopyrightScanner
 from libs.unpack import UnpackArchive
 from libs.exceptions import MissingBinaryBuildException
+from libs.constants import TASK_IDENTITY_PREFIX
+from libs.redis import RedisClient
+from libs.redis import generate_lock_key
 
 
 class TestUnpack(TestCase):
@@ -736,3 +741,46 @@ class TestGuessEnvFromPrincipal(TestCase):
         # Hub principal pattern excerptions
         assert guess_env_from_principal("openlcs-prod.apps.random") == "PROD"
         assert guess_env_from_principal("openlcs-stg.randomstring") == "STG"
+
+
+class TestGenerateLockKey(TestCase):
+
+    def test_generate_lock_key(self):
+        task_name = "my_task"
+        task_args = ["foo", "bar"]
+        task_kwargs = {"key1": "value1", "key2": "value2"}
+
+        # Calculate the expected task representation, hash, and lock key
+        expected_task_repr = (
+            task_name +
+            json.dumps(task_args, sort_keys=True) +
+            json.dumps(task_kwargs, sort_keys=True)
+        ).encode('utf-8')
+        expected_task_hash = hashlib.sha256(expected_task_repr).hexdigest()
+        expected_lock_key = TASK_IDENTITY_PREFIX + expected_task_hash
+        lock_key = generate_lock_key(task_name, task_args, task_kwargs)
+
+        self.assertEqual(lock_key, expected_lock_key)
+
+
+class TestRedisClient(TestCase):
+
+    def test_release_lock_for_key(self):
+
+        # initialize a mock redis client
+        redis_client_mock = mock.MagicMock(spec=Redis)
+
+        # Create a mock lock
+        lock_mock = mock.MagicMock()
+
+        # Mock the behavior of get_lock() to return the mock lock
+        redis_client = RedisClient()
+        redis_client.client = redis_client_mock
+        redis_client.get_lock = mock.MagicMock(return_value=lock_mock)
+
+        lock_key = "some_random_lock_key"
+        redis_client.release_lock_for_key(lock_key)
+
+        # Assert get_lock()/release() was called.
+        redis_client.get_lock.assert_called_once_with(lock_key, None)
+        lock_mock.release.assert_called_once()
