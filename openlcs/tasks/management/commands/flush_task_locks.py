@@ -13,9 +13,15 @@ class Command(BaseCommand):
             '--prefix',
             default=TASK_IDENTITY_PREFIX,
             help='Prefix of the locks to flush')
+        parser.add_argument(
+            '--dry-run',
+            action='store_true',
+            help='Show actions to perform without changing anything.')
+
 
     def handle(self, *args, **options):
         prefix = options['prefix']
+        dry_run = options['dry_run']
         redis_client = Redis.from_url(settings.CELERY_BROKER_URL)
 
         # Retrieve all keys with the given prefix
@@ -23,9 +29,14 @@ class Command(BaseCommand):
         keys = redis_client.keys(f'lock:{prefix}*')
 
         if keys:
-            redis_client.delete(*keys)
-            self.stdout.write(
-                self.style.SUCCESS(f'Successfully flushed {len(keys)} locks.')
-            )
+            if dry_run:
+                self.stdout.write('Dry run mode, will delete following keys:')
+                self.stdout.write('\n'.join(keys))
+            else:
+                redis_client.delete(*keys)
+                self.stdout.write(
+                    self.style.SUCCESS(
+                        f'Successfully flushed {len(keys)} locks.')
+                )
         else:
             self.stdout.write('No locks found with the given prefix.')
