@@ -43,12 +43,13 @@ RUN cd /etc/pki/ca-trust/source/anchors/ && \
     dnf config-manager --add-repo "${TITO_REPO_URL}" \
         --add-repo "${RHEL8_REPO_URL}" \
         --add-repo "${RHEL8_APPSTREAM_REPO_URL}" && \
-    dnf install --nogpgcheck --nodoc -y cpio-2.12 atool-0.39.0 && \
+    dnf install --nogpgcheck --nodoc -y cpio-2.12 atool-0.39.0 krb5-workstation && \
     # Remove it caused by vulnerabilities CVE-2021-33503 and CVE-2020-26137
     dnf remove python2-urllib3 && \
     dnf clean all && \
     # To make docker cache pip package, install dependencies
     pip install --upgrade pip && pip install -r /tmp/devel.txt --use-pep517 && \
+    pip install ansible-tower-cli && \
     # This download url is from currently ocp cluster console
     curl -k "${OPENSHIFT_CLI_URL}" | tar xf - -C /usr/local/bin/ && \
     # Link the site-packages to correct location, so that tox can find it when use current-env plugin
@@ -58,12 +59,16 @@ RUN cd /etc/pki/ca-trust/source/anchors/ && \
     # '/usr/lib/python3.8/site-packages'] as site packages path
     mkdir -p /usr/local/lib64/python3.8/ && \
     ln -s /opt/app-root/lib64/python3.8/site-packages /usr/local/lib64/python3.8/
+    # Update the periodic_task schedule for integration testing
+    # minute=`date -d "+10 minutes" "+"%M""`
+    # hour=`date -d "+10 minutes" "+"%H""`
+    # var="minite=${minute}, hour=${hour}"
+    # sed -i "s/minute=0, hour=0/$var/g" ./openlcs/openlcs/settings.py
 
 # Apply patches for typecode, extractcode, packagedcode
 COPY ./containers/patches/* /opt/app-root/lib64/python3.8/site-packages/
 WORKDIR /opt/app-root/lib64/python3.8/site-packages/
-RUN patch -p0 < magic2.patch && \
-    patch -p0 < extract.patch && \
+RUN patch -p0 < extract.patch && \
     patch -p0 < rpm.patch
 
 WORKDIR /opt/app-root/src

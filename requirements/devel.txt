@@ -12,3 +12,6 @@ tox-current-env==0.0.11
 # pytest dependency
 pytest-django==4.5.2
 pytest-redis==2.4.0
+# integration
+curlify
+requests-kerberos

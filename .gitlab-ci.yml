@@ -35,6 +35,13 @@ variables:
   tags:
     - pelc-docker-runner
 
+.it-image: &it-image
+  image:
+    name: $CI_REGISTRY_IMAGE:latest
+  # The tags come from the labels of specified runners in project CI/CD settings
+  tags:
+    - pelc-docker-runner
+
 .ansible-tower-cli-image: &ansible-tower-cli-image
   image:
     # Copy from perrit/ansible-tower-cli-container
@@ -48,6 +55,14 @@ variables:
 
 # https://docs.gitlab.com/ee/ci/services/#starting-multiple-services-from-the-same-image
 .api-services: &api-services
+  services:
+    - name: $POSTGRESQL_IMAGE
+      alias: postgres
+    - name: $REDIS_IMAGE
+      alias: redis
+
+# https://docs.gitlab.com/ee/ci/services/#starting-multiple-services-from-the-same-image
+.integration-services: &integration-services
   services:
     - name: $POSTGRESQL_IMAGE
       alias: postgres
@@ -131,6 +146,24 @@ api-tests:
   stage: tests-it-promote
   script:
     - tox -e api --current-env
+
+integration-tests:
+  <<: *it-image
+  <<: *integration-services
+  stage: tests-it-promote
+  script:
+    - tower-cli config verify_ssl false
+    - >
+      tower-cli job launch -J "OpenLCS deploy ci" --monitor --no-input --insecure
+      -e "openlcs_image_tag: dev"
+      -h "$AAP_HOST" -t "$AAP_CI_CD_TOKEN"
+    - git clone https://gitlab.cee.redhat.com/pelc/openlcs-playbooks.git
+    - sudo cp openlcs-playbooks/roles/openlcs/files/krb5.conf /etc/
+    - echo $INTEGRATION_TEST_PASS | kinit openlcs@IPA.REDHAT.COM
+    #- echo $pelc_ci_ci_user_pass | kinit pelc-ci-cd-test-user@REDHAT.COM
+    - export OPENLCS_TEST_URL="https://openlcs-ci.apps.int.spoke.preprod.us-west-2.aws.paas.redhat.com/"
+    #- export OPENLCS_TEST_URL="https://$(oc -n $PELC_PROJECT get route ')"
+    - tox -e integration --current-env
 
 # ======== build-dev-image ========
 build-dev-image:
