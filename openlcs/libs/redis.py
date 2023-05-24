@@ -1,11 +1,16 @@
 import hashlib
 import json
+import logging
 from redis import Redis
 from redis_lock import Lock
+from redis_lock import NotAcquired
 
 from openlcsd.celeryconfig import broker_url
 from openlcsd.celeryconfig import task_time_limit
 from .constants import TASK_IDENTITY_PREFIX  # noqa: E402
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
 
 # Based upon singleton's lock generation mechanism with some simplification.
@@ -73,7 +78,12 @@ class RedisClient(object):
                 when you want to release the lock in a different place other
                 than where the lock is acquired. Defaults to None.
         """
-        lock = self.get_lock(lock_key)
-        # FIXME: Forcibly deletes the lock. Need to figure out why
-        # lock.release() won't work.
-        lock.reset()
+        lock = self.get_lock(lock_key, lock_id)
+        lock_repr = f"{lock._name}(id: {lock.id})"
+        logger.info("Start to release %s...", lock_repr)
+        try:
+            lock.release()
+        except NotAcquired:
+            logger.info("Lock %s not acquired.", lock_repr)
+        else:
+            logger.info("Lock %s released.", lock_repr)
