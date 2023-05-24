@@ -18,7 +18,6 @@ class Command(BaseCommand):
             action='store_true',
             help='Show actions to perform without changing anything.')
 
-
     def handle(self, *args, **options):
         prefix = options['prefix']
         dry_run = options['dry_run']
@@ -31,7 +30,8 @@ class Command(BaseCommand):
         if keys:
             if dry_run:
                 self.stdout.write('Dry run mode, will delete following keys:')
-                self.stdout.write('\n'.join(keys))
+                self.stdout.write(
+                    '\n'.join(map(lambda k: k.decode('utf-8'), keys)))
             else:
                 redis_client.delete(*keys)
                 self.stdout.write(

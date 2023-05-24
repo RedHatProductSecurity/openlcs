@@ -17,10 +17,11 @@ class UnsupportedPriority(OpenLCSException):
 
 
 class TaskResubmissionException(OpenLCSException):
-    """Raised when tasks with identical name/args are submited simultaneously.
+    """Raised when tasks with identical name/args are submitted
+    simultaneously.
 
     This is enforced by acquiring a dedicated lock for each submitted task,
     lock won't be released unless tasks are finished, meaning no more tasks
-    with identical name/args are allowed to be submited again.
+    with identical name/args are allowed to be submitted again.
     """
     pass  # pylint: disable=unnecessary-pass
