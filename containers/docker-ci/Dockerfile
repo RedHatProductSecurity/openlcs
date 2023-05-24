@@ -62,8 +62,7 @@ RUN cd /etc/pki/ca-trust/source/anchors/ && \
 # Apply patches for typecode, extractcode, packagedcode
 COPY ./containers/patches/* /opt/app-root/lib64/python3.8/site-packages/
 WORKDIR /opt/app-root/lib64/python3.8/site-packages/
-RUN patch -p0 < magic2.patch && \
-    patch -p0 < extract.patch && \
+RUN patch -p0 < extract.patch && \
     patch -p0 < rpm.patch
 
 WORKDIR /opt/app-root/src
