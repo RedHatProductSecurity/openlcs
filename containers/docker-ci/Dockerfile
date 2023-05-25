@@ -59,7 +59,7 @@ RUN cd /etc/pki/ca-trust/source/anchors/ && \
     mkdir -p /usr/local/lib64/python3.8/ && \
     ln -s /opt/app-root/lib64/python3.8/site-packages /usr/local/lib64/python3.8/
 
-# Apply patches for typecode, extractcode, packagedcode
+# Apply patches for extractcode, packagedcode
 COPY ./containers/patches/* /opt/app-root/lib64/python3.8/site-packages/
 WORKDIR /opt/app-root/lib64/python3.8/site-packages/
 RUN patch -p0 < extract.patch && \
