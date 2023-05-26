@@ -492,3 +492,13 @@ class SourceContainerHandler(object):
             missing_components = components
 
         return missing_components, missing_components_error
+
+    @staticmethod
+    def get_shared_remote_source_root_dir(tmp_root_dir, parent_component):
+        return os.path.join(
+            tmp_root_dir,
+            "shared_remote_source_root",
+            parent_component["name"],
+            parent_component["version"],
+            parent_component["release"]
+        )

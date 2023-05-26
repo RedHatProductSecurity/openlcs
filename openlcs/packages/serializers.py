@@ -202,6 +202,7 @@ class ImportScanOptionsMixin(ImportSerializer):
     copyright_scan = serializers.BooleanField(required=False)
     priority = serializers.CharField(required=False)
     subscription_id = serializers.IntegerField(required=False)
+    parent_component = serializers.JSONField(required=False)
 
     def validate_priority(self, value):
         if value not in ALLOW_PRIORITY:
@@ -235,6 +236,7 @@ class ReleaseImportMixin(ImportSerializer):
         component = data.get('component', None)
         provenance = data.get('provenance')
         subscription_id = data.get("subscription_id")
+        parent_component = data.get("parent_component")
 
         if src_dir is not None:
             params['src_dir'] = src_dir
@@ -250,6 +252,8 @@ class ReleaseImportMixin(ImportSerializer):
             params['provenance'] = provenance
         if subscription_id is not None:
             params['subscription_id'] = subscription_id
+        if parent_component:
+            params['parent_component'] = parent_component
 
         return params
 

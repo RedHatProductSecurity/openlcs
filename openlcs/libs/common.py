@@ -5,6 +5,7 @@ import os
 import re
 import shutil
 import subprocess
+import time
 import tarfile
 import uuid
 from collections import defaultdict
@@ -366,3 +367,19 @@ def is_prod():
     """
     env = get_env()
     return env == "PROD" if env is not None else False
+
+
+def is_shared_remote_source_need_delete(remote_source_path: str) -> bool:
+    """
+    Judge if a remote source dir need deleted by the
+    path last access time
+    Last access time more than one day will be deleted
+    """
+    for root, dirs, _ in os.walk(remote_source_path):
+        for dir_name in dirs:
+            dir_path = os.path.join(root, dir_name)
+            last_access_time = os.path.getatime(dir_path)
+            if time.time() - last_access_time < 60 * 60 * 24:
+                return False
+
+    return True

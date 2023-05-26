@@ -103,27 +103,37 @@ class UnpackArchive(object):
                 err_msg = 'Unable to decompress file %s.' % file_name
                 raise ValueError(err_msg) from None
 
-    def unpack_archives_using_extractcode(self, src_dir=None):
+    def unpack_archives_using_extractcode(self, src_dir=None,
+                                          shallow=False, rm=True):
         """
         Unpack the source archives in src_dir directory using extractcode.
         """
         error = ""
         extractcode_cli = self.config.get(
             'EXTRACTCODE_CLI', '/bin/extractcode')
-        raw_src_list = os.listdir(src_dir)
+
+        raw_src_list = os.listdir(src_dir) if rm else []
+
         try:
             # Running extractcode with '--replace-originals' may crash in some
             # cases, issue:
             # https://github.com/nexB/scancode-toolkit/issues/2723
             # The fix below is not online yet:
             # https://github.com/nexB/extractcode/commit/8c8653645648e04e94f1ae13e00bd477284dac8e  # noqa
-            subprocess.check_call([
-                extractcode_cli, "--replace-originals", "--quiet", src_dir])
+            if shallow:
+                subprocess.check_call(
+                    [extractcode_cli, "--replace-originals",
+                        "--quiet", "--shallow", src_dir])
+            else:
+                subprocess.check_call(
+                    [extractcode_cli, "--replace-originals",
+                        "--quiet", src_dir])
         except subprocess.CalledProcessError as e:
-            for fn in os.listdir(src_dir):
-                if fn not in raw_src_list:
-                    fpath = os.path.join(src_dir, fn)
-                    shutil.rmtree(fpath, ignore_errors=False)
+            if rm:
+                for fn in os.listdir(src_dir):
+                    if fn not in raw_src_list:
+                        fpath = os.path.join(src_dir, fn)
+                        shutil.rmtree(fpath, ignore_errors=False)
             error = "Failed to unpack source archives in {} using " \
                     "extractcode: {}".format(src_dir, str(e))
         return error

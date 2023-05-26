@@ -17,3 +17,9 @@ def run_corgi_sync(self, **kwargs):
     flow = "flow.tasks.flow_get_active_subscriptions"
     # The keyword arguments are not used right now.
     app.send_task(flow, [kwargs], **generate_priority_kwargs("high"))
+
+
+@app.task(bind=True)
+def clean_unused_shared_remote_source(self, **kwargs):
+    flow = "flow.tasks.flow_clean_unused_shared_remote_source"
+    app.send_task(flow, [kwargs], **generate_priority_kwargs("low"))

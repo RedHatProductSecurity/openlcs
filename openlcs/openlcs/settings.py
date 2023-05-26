@@ -177,6 +177,11 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'openlcsd.flow.periodic_tasks.run_corgi_sync',
         'schedule': crontab(minute=0, hour=0),  # Execute daily at midnight.
         'kwargs': {'provenance': 'sync_corgi'}
+    },
+    'clean_unused_shared_remote_source': {
+        'task': 'openlcsd.flow.periodic_tasks.'
+                'clean_unused_shared_remote_source',
+        'schedule': crontab(minute=0, hour=0),
     }
 }
 # https://docs.celeryq.dev/en/v5.2.7/userguide/routing.html#redis-message-priorities
