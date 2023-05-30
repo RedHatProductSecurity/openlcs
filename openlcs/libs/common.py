@@ -1,10 +1,12 @@
 import filetype
 import glob
+import logging
 import mimetypes
 import os
 import re
 import shutil
 import subprocess
+import sys
 import time
 import tarfile
 import uuid
@@ -383,3 +385,20 @@ def is_shared_remote_source_need_delete(remote_source_path: str) -> bool:
                 return False
 
     return True
+
+
+def timeit(func):
+    """
+    A helper function to verbose the execution time for `func`.
+    """
+    def wrapper(*args, **kwargs):
+        # perf_counter() is more precise than that of `time.time()`
+        start_time = time.perf_counter()
+        result = func(*args, **kwargs)
+        execution_time = time.perf_counter() - start_time
+        # Use StreamHandler by default
+        logger = logging.getLogger()
+        logger.info(
+            "Execution of %s took %s seconds", func.__name__, execution_time)
+        return result
+    return wrapper
