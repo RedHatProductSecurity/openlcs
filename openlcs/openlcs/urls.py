@@ -89,7 +89,8 @@ urlpatterns = [
          package_views.GetSyncedPurls.as_view(),
          name='get_synced_purls'),
     path(f'{DRF_ROOT}/obtain_config/',
-         ObtainConfigView.as_view(), name='obtain_config')
+         ObtainConfigView.as_view(), name='obtain_config'),
+    path('__debug__/', include('debug_toolbar.urls')),
 ]
 
 if settings.DEBUG:
