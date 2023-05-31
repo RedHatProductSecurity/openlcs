@@ -44,6 +44,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
 
+from memory_profiler import profile
+from libs.common import timeit
 
 # Create your views here.
 class FileViewSet(ModelViewSet, SourceImportMixin):
@@ -593,6 +595,7 @@ class SaveScanResultView(APIView, SaveScanResultMixin):
     """
     Save package scan result
     """
+    @profile
     def post(self, request, *args, **kwargs):
         try:
             file_path = request.data.get("file_path")
@@ -664,6 +667,7 @@ class CheckSourceStatus(APIView):
     """
     Check the source existance and scanning flag.
     """
+    @profile
     def post(self, request, *args, **kwargs):
         checksum = request.data.get('checksum')
         qs = Source.objects.filter(checksum=checksum)
@@ -978,6 +982,8 @@ class CheckDuplicateImport(APIView):
     Duplicate import means reimport a container/component/module
     that exists in the database.
     """
+    @timeit
+    @profile
     def post(self, request, *args, **kwargs):
         results = dict()
         data = request.data

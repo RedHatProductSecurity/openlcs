@@ -21,6 +21,7 @@ from reports.models import (
     FileLicenseScan,
     LicenseDetection
 )
+from memory_profiler import profile
 
 
 class SourceImportMixin:
@@ -173,6 +174,7 @@ class SaveScanResultMixin:
                 CopyrightDetection.objects.bulk_create(
                     objs, ignore_conflicts=True)
 
+    @profile
     def save_scan_result(self, **kwargs):
         path_with_swhids = kwargs.pop('path_with_swhids')
         path_with_swhids = list(zip(*path_with_swhids))
