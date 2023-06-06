@@ -125,9 +125,11 @@ class UnpackArchive(object):
                     [extractcode_cli, "--replace-originals",
                         "--quiet", "--shallow", src_dir])
             else:
+                # Ignore test archives under package testdata
+                ignore_pattern = "*/testdata/*"
                 subprocess.check_call(
                     [extractcode_cli, "--replace-originals",
-                        "--quiet", src_dir])
+                        "--ignore", ignore_pattern, "--quiet", src_dir])
         except subprocess.CalledProcessError as e:
             if rm:
                 for fn in os.listdir(src_dir):
