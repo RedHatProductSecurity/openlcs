@@ -14,6 +14,11 @@ stages:
   # build openlcs dev image
   - build-dev-image
 
+  # Run integration test case
+  # Run integration test that require the current branch to openlcs-ci
+  # The openlcs-ci use the same dockerfile of dev
+  - integration-test
+
   # deploy openlcs dev image to dev env
   - deploy-to-dev
 
@@ -134,7 +139,6 @@ api-tests:
 
 # ======== build-dev-image ========
 build-dev-image:
-  <<: *only-main
   tags:
     - pelc-shell-runner
   stage: build-dev-image
@@ -159,6 +163,21 @@ build-dev-image:
     - docker login -u="$PELC_CI_USER" -p=$PELC_CI_PASSWORD quay.io
     - docker push $OPENLCS_IMAGE:dev
 
+# ======== do the integration test agains ci env========
+integration-test:
+  <<: *ci-image
+  stage: integration-test
+  script:
+    - echo $INTEGRATION_TEST_PASS | kinit $INTEGRATION_TEST_USER
+    - export OPENLCS_TEST_URL="$OPENLCS_TEST_URL"
+    - tower-cli config verify_ssl false
+    - >
+      tower-cli job launch -J "OpenLCS deploy ci" --monitor --no-input --insecure
+      -e "openlcs_image_tag: dev"
+      -h "$AAP_HOST" -t "$AAP_CI_CD_TOKEN"
+    - tox -e integration --current-env
+
+# ======== deploy-to-dev ========
 deploy-to-dev:
   <<: *ansible-tower-cli-image
   <<: *only-main

@@ -281,7 +281,7 @@ EMAIL_REALM = 'REDHAT.COM'
 OPENLCS_ADMIN_LIST = [
     'jzhao', 'yuwang', 'huiwang', 'qduanmu', 'yulwang', 'chhan', 'axuan',
     'openlcs-dev-worker01', 'openlcs-qe-worker01', 'openlcs-ci-worker01',
-    'openlcs-stage-worker01', 'openlcs-prod-worker01'
+    'openlcs-stage-worker01', 'openlcs-prod-worker01', 'openlcs'
 ]
 
 # CSRF setting
