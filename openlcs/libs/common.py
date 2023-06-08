@@ -261,7 +261,7 @@ def remove_duplicates_from_list_by_key(data, key):
     return result
 
 
-def run_and_capture(cmd, dest_dir):
+def run_and_capture(cmd, dest_dir=None):
     """
     Run a command and capture exceptions. This is a blocking call
     :cmd: str, command string

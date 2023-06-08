@@ -1,9 +1,11 @@
 import os
 import shutil
-import subprocess
 import tempfile
+import traceback
 from kobo.shortcuts import run
 from libs.common import get_mime_type, get_extension
+from libs.common import run_and_capture
+from libs.common import search_content_by_patterns
 
 
 SUPPORTED_FILE_EXTENSIONS = [
@@ -109,33 +111,27 @@ class UnpackArchive(object):
         Unpack the source archives in src_dir directory using extractcode.
         """
         error = ""
-        extractcode_cli = self.config.get(
+        extract_cli = self.config.get(
             'EXTRACTCODE_CLI', '/bin/extractcode')
-
         raw_src_list = os.listdir(src_dir) if rm else []
-
+        # Running extractcode with '--replace-originals' may crash:
+        # https://github.com/nexB/scancode-toolkit/issues/2723
+        # The fix below is not online yet:
+        # https://github.com/nexB/extractcode/commit/8c8653645648e04e94f1ae13e00bd477284dac8e  # noqa
+        if shallow:
+            cmd = f'{extract_cli} --replace-originals --shallow {src_dir}'
+        else:
+            cmd = f'{extract_cli} --replace-originals {src_dir}'
         try:
-            # Running extractcode with '--replace-originals' may crash in some
-            # cases, issue:
-            # https://github.com/nexB/scancode-toolkit/issues/2723
-            # The fix below is not online yet:
-            # https://github.com/nexB/extractcode/commit/8c8653645648e04e94f1ae13e00bd477284dac8e  # noqa
-            if shallow:
-                subprocess.check_call(
-                    [extractcode_cli, "--replace-originals",
-                        "--quiet", "--shallow", src_dir])
-            else:
-                subprocess.check_call(
-                    [extractcode_cli, "--replace-originals",
-                        "--quiet", src_dir])
-        except subprocess.CalledProcessError as e:
+            _, error = run_and_capture(cmd)
+        except Exception:
             if rm:
                 for fn in os.listdir(src_dir):
                     if fn not in raw_src_list:
                         fpath = os.path.join(src_dir, fn)
                         shutil.rmtree(fpath, ignore_errors=False)
             error = "Failed to unpack source archives in {} using " \
-                    "extractcode: {}".format(src_dir, str(e))
+                    "extractcode: {}".format(src_dir, traceback.format_exc())
         return error
 
     def unpack_archives_using_atool(self, src_dir, top_dir=False):
@@ -189,9 +185,34 @@ class UnpackArchive(object):
         """
         errors = []
         src_dir = self.dest_dir if src_dir is None else src_dir
-        extractcode_error = self.unpack_archives_using_extractcode(src_dir)
-        if extractcode_error:
-            errors.append(extractcode_error)
+        raw_src_list = os.listdir(src_dir)
+        raw_error = self.unpack_archives_using_extractcode(src_dir)
+        if raw_error:
+            if isinstance(raw_error, bytes):
+                error = raw_error.decode('utf-8')
+                errors.append(error)
+                # Skip extracting errors for testing archives
+                extract_errors = [
+                    e for e in error.split('\n') if 'ERROR extracting:' in e]
+                test_errors = [
+                    e for e in extract_errors if '/testdata/' in e]
+                if extract_errors and len(extract_errors) == len(test_errors):
+                    patterns = [f"{src_dir}/**/*-extract"]
+                    paths = search_content_by_patterns(patterns)
+                    sorted_paths = sorted(
+                        paths, key=lambda p: (-p.count(os.path.sep), p))
+                    for path in sorted_paths:
+                        target = path.rstrip('-extract')
+                        if os.path.exists(target):
+                            os.remove(target)
+                        os.rename(path, target)
+                    return errors
+            else:
+                errors.append(raw_error)
+            for fn in os.listdir(src_dir):
+                if fn not in raw_src_list:
+                    fpath = os.path.join(src_dir, fn)
+                    shutil.rmtree(fpath, ignore_errors=False)
             errors.extend(
                 self.unpack_archives_using_atool(src_dir, top_dir=True))
         return errors
