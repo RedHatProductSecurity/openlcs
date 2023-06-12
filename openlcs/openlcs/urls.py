@@ -34,19 +34,23 @@ DRF_ROOT = os.path.join(settings.DRF_NAMESPACE, settings.DRF_API_VERSION)
 # Default router where ModelViewSet resides
 router = HybridRouter()
 router.register(r'auth', auth_views.TokenViewSet, basename='auth')
-router.register(r'files', package_views.FileViewSet, basename='files')
-router.register(r'sources', package_views.SourceViewSet, basename='sources')
-router.register(r'paths', package_views.PathViewSet, basename='paths')
 router.register(r'components', package_views.ComponentViewSet,
                 basename='components')
+router.register(r'copyrightdetections', report_views.CopyrightDetectionViewSet,
+                basename='copyrightdetections')
+router.register(r'crontabschedule', package_views.CrontabScheduleViewSet,
+                basename='crontabschedule')
+router.register(r'files', package_views.FileViewSet, basename='files')
+router.register(r'licensedetections', report_views.LicenseDetectionViewSet,
+                basename='licensedetections')
+router.register(r'paths', package_views.PathViewSet, basename='paths')
+router.register(r'periodictask', package_views.PeriodicTaskViewSet,
+                basename='periodictask')
+router.register(r'releases', product_views.ReleaseViewSet, basename='releases')
+router.register(r'sources', package_views.SourceViewSet, basename='sources')
 router.register(r'subscriptions',
                 package_views.ComponentSubscriptionViewSet,
                 basename='subscriptions')
-router.register(r'releases', product_views.ReleaseViewSet, basename='releases')
-router.register(r'licensedetections', report_views.LicenseDetectionViewSet,
-                basename='licensedetections')
-router.register(r'copyrightdetections', report_views.CopyrightDetectionViewSet,
-                basename='copyrightdetections')
 router.register(r'tasks', task_views.TaskViewSet, basename='tasks')
 
 # Router where APIView resides
@@ -89,7 +93,7 @@ urlpatterns = [
          package_views.GetSyncedPurls.as_view(),
          name='get_synced_purls'),
     path(f'{DRF_ROOT}/obtain_config/',
-         ObtainConfigView.as_view(), name='obtain_config')
+         ObtainConfigView.as_view(), name='obtain_config'),
 ]
 
 if settings.DEBUG:

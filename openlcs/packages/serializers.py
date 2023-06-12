@@ -13,6 +13,10 @@ from packages.models import (
 from products.models import Release
 from rest_framework import serializers
 from tasks.models import Task
+from django_celery_beat.models import (
+    PeriodicTask,
+    CrontabSchedule,
+)
 from django.conf import settings
 from django.utils.http import urlquote
 
@@ -326,3 +330,17 @@ class ComponentSubscriptionSerializer(serializers.ModelSerializer):
     class Meta:
         model = ComponentSubscription
         fields = "__all__"
+
+
+class PeriodicTaskSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PeriodicTask
+        fields = ['id', 'name', 'task', 'one_off', 'last_run_at',
+                  'date_changed', 'crontab', 'priority', 'enabled']
+
+
+class CrontabScheduleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CrontabSchedule
+        fields = ['id', 'minute', 'hour', 'day_of_week', 'day_of_month',
+                  'month_of_year']
