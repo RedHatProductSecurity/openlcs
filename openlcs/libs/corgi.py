@@ -152,6 +152,12 @@ class CorgiConnector:
         return self.get_include_fields(component_type="oci")
 
     @functools.cached_property
+    def oci_includes_minimal(self):
+        include = self.get_include_fields(component_type="oci")
+        include.remove("provides")
+        return include
+
+    @functools.cached_property
     def rpmmod_includes(self):
         return self.get_include_fields(component_type="rpmmod")
 
