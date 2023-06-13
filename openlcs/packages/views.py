@@ -1279,9 +1279,21 @@ class PeriodicTaskViewSet(ModelViewSet):
     queryset = PeriodicTask.objects.all()
     serializer_class = PeriodicTaskSerializer
 
+    def get_queryset(self):
+        name = self.request.query_params.get('name', None)
+        if name is not None:
+            queryset = self.queryset.filter(name=name)
+        else:
+            queryset = self.queryset
+
+        return queryset
+
     def list(self, request, *args, **kwargs):
         """
         Get a list of periodic tasks.
+        ####__Supported query params__####
+
+        ``name``: String.The periodic task name.
         ####__Response__####
 
             HTTP 200 OK

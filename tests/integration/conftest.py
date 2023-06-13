@@ -41,6 +41,9 @@ class OpenLCSTestClient(object):
                 )
             else:
                 kwargs['auth'] = HTTPKerberosAuth(mutual_authentication=False)
+        elif auth == "":
+            # No auth
+            pass
         else:
             assert False, "Unknown auth type"
         if not urlparse(endpoint).netloc:
@@ -101,7 +104,7 @@ class OpenLCSTestClient(object):
                 '/rest/v1/obtain_token_local/',
                 method='POST',
                 data=OPENLCS_LOGIN_DATA,
-                auth=None,
+                auth="",
             )
         else:
             response = self.request('/rest/v1/auth/obtain_token/')
