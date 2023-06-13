@@ -5,6 +5,10 @@ import django_filters
 from django.conf import settings
 from django.db import IntegrityError, transaction
 from django.db.models import Q
+from django_celery_beat.models import (
+    PeriodicTask,
+    CrontabSchedule
+)
 from libs.parsers import parse_manifest_file
 from packages.mixins import (
     SourceImportMixin,
@@ -26,7 +30,9 @@ from packages.serializers import (
     PathSerializer,
     RSImportSerializer,
     SourceSerializer,
-    ComponentImportSerializer
+    ComponentImportSerializer,
+    PeriodicTaskSerializer,
+    CrontabScheduleSerializer
 )
 from products.models import (
     Product,
@@ -1264,3 +1270,161 @@ class GetSyncedPurls(APIView):
             components = Component.objects.filter(sync_status='synced')
             purls = [component.purl for component in components]
         return Response(data={"purls": purls})
+
+
+class PeriodicTaskViewSet(ModelViewSet):
+    """
+    API endpoint that allows PeriodicTask to be viewed or edited
+    """
+    queryset = PeriodicTask.objects.all()
+    serializer_class = PeriodicTaskSerializer
+
+    def list(self, request, *args, **kwargs):
+        """
+        Get a list of periodic tasks.
+        ####__Response__####
+
+            HTTP 200 OK
+            Content-Type: application/json
+            [
+                {
+                    "count": 1,
+                    "next": null,
+                    "previous": null,
+                    "results": [
+                        {
+                            "id": 1,
+                            "name": "run_corgi_sync",
+                            "task": "openlcsd.flow.periodic_tasks.run_corgi_sync", # noqa
+                            "one_off": false,
+                            "last_run_at": null,
+                            "date_changed": "2023-06-12T07:32:25.487194Z",
+                            "crontab": 2,
+                            "priority": null,
+                            "enabled": true
+                        }
+                    ]
+                }
+            ]
+        """
+        return super().list(request, *args, **kwargs)
+
+    def patch(self, request, *args, **kwargs):
+        """
+        Update an existing periodic task.
+        ####__Request__####
+
+            curl -X PATCH -H "Content-Type: application/json" \
+-H 'Authorization: Token your_token' \
+%(HOST_NAME)s/%(API_PATH)s/periodictask/1/ \
+-d '{"one_off":true, "crontab":3}'
+
+        ####__Fields that can be updated__####
+
+        ``crontab``: The id of Crontab Schedule to run the task on.
+
+        ``one_off``: If True, the schedule will only run the task a single \
+                time.
+
+        ####__Response__####
+
+            Success: HTTP 200 OK
+            {
+                "id":1,
+                "name":"run_corgi_sync",
+                "task":"openlcsd.flow.periodic_tasks.run_corgi_sync",
+                "one_off":false,
+                "last_run_at":null,
+                "date_changed":"2023-06-12T08:26:39.554036Z",
+                "crontab":3,
+                "priority":null,
+                "enabled":true
+            }
+            Error: HTTP 400 BAD REQUEST or HTTP 403 Forbidden
+
+        """
+        periodictask = self.get_object()
+        request_data = request.data.copy()
+        serializer = self.get_serializer(
+                periodictask, data=request_data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(serializer.data)
+
+
+class CrontabScheduleViewSet(ModelViewSet):
+    """
+    API endpoint that allows CrontabSchedule to be viewed or edited
+    """
+    queryset = CrontabSchedule.objects.all()
+    serializer_class = CrontabScheduleSerializer
+
+    def list(self, request, *args, **kwargs):
+        """
+        List the existing crontab schedules.
+        ####__Response__####
+
+            HTTP 200 OK
+            Content-Type: application/json
+            [
+                {
+                    "count": 1,
+                    "next": null,
+                    "previous": null,
+                    "results": [
+                        {
+                            "id": 1,
+                            "minute": "0",
+                            "hour": "0",
+                            "day_of_week": "*",
+                            "day_of_month": "*",
+                            "month_of_year": "*"
+                        }
+                    ]
+                }
+            ]
+        """
+        return super().list(request, *args, **kwargs)
+
+    def create(self, request, *args, **kwargs):
+        """
+        Create new crontab schedules.
+
+        ####__Request__####
+
+            curl -X POST -H "Content-Type: application/json" \
+-H 'Authorization: Token your_token' \
+%(HOST_NAME)s/%(API_PATH)s/crontabschedule/ \
+-d '{"minute": "munite", "hour":"hour"}'
+
+        ####__Required field in data__####
+
+        ``minute``: String. Cron Minutes to Run. Use "*" for "all".
+
+        ``hour``: String. Cron Hours to Run. Use "*" for "all".
+
+        ``day_of_week``: String. Cron Days Of The Week to Run. Use "*" for \
+                "all". Sunday is 0 or 7, Monday is 1.
+
+        ``day_of_month``: String. Cron Days Of The Month to Run. Use "*" for \
+                "all".
+
+        ``month_of_year``: String. Cron Months (1-12) Of The Year to Run. Use \
+                "*" for "all"
+
+        ####__Response__####
+
+            Success: HTTP 201 Created
+            {
+                "id":3,
+                "minute":"1",
+                "hour":"1",
+                "day_of_week":"*",
+                "day_of_month":"*",
+                "month_of_year":"*"
+            }
+
+            Error: HTTP 400 BAD REQUEST or HTTP 403 Forbidden
+
+        """
+        return super().create(request, *args, **kwargs)
