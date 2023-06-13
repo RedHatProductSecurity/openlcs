@@ -1,11 +1,12 @@
-{% extends "rest_framework/base.html" %} {% block body %} {{ block.super }}
-<div>
-  <!-- Footer -->
-  <footer>
-    <p>
-      <!-- FIXME: use actual version string instead -->
-      <span class="version">{{ version }}</span>
-    </p>
-  </footer>
-</div>
+{% extends "rest_framework/base.html" %}
+{% block body %}
+  {{ block.super }}
+  <div>
+    <!-- Footer -->
+    <footer>
+      <p>
+        <span class="version">{{ app_version }}</span>
+      </p>
+    </footer>
+  </div>
 {% endblock %}
