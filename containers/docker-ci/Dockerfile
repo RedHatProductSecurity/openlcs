@@ -43,7 +43,7 @@ RUN cd /etc/pki/ca-trust/source/anchors/ && \
     dnf config-manager --add-repo "${TITO_REPO_URL}" \
         --add-repo "${RHEL8_REPO_URL}" \
         --add-repo "${RHEL8_APPSTREAM_REPO_URL}" && \
-    dnf install --nogpgcheck --nodoc -y cpio-2.12 atool-0.39.0 && \
+    dnf install --nogpgcheck --nodoc -y cpio-2.12 atool-0.39.0 krb5-workstation && \
     # Remove it caused by vulnerabilities CVE-2021-33503 and CVE-2020-26137
     dnf remove python2-urllib3 && \
     dnf clean all && \
@@ -57,7 +57,11 @@ RUN cd /etc/pki/ca-trust/source/anchors/ && \
     # '/usr/local/lib/python3.8/site-packages', '/usr/lib64/python3.8/site-packages',
     # '/usr/lib/python3.8/site-packages'] as site packages path
     mkdir -p /usr/local/lib64/python3.8/ && \
-    ln -s /opt/app-root/lib64/python3.8/site-packages /usr/local/lib64/python3.8/
+    ln -s /opt/app-root/lib64/python3.8/site-packages /usr/local/lib64/python3.8/ && \
+    git clone https://gitlab.cee.redhat.com/pelc/openlcs-playbooks.git && \
+    cp openlcs-playbooks/roles/openlcs/files/krb5.conf /etc/ && \
+    sed -i 's/kdc_timesync = 0/kdc_timesync = 5/g' /etc/krb5.conf
+
 
 # Apply patches for extractcode, packagedcode
 COPY ./containers/patches/* /opt/app-root/lib64/python3.8/site-packages/
@@ -67,7 +71,6 @@ RUN patch -p0 < extract.patch && \
 
 WORKDIR /opt/app-root/src
 USER 1001
-
 # To avoid docker cache invaild , put this in the last
 ARG quay_expiration
 LABEL quay.expires-after=$quay_expiration
