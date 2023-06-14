@@ -37,6 +37,7 @@ class ObtainConfigView(generics.RetrieveAPIView):
             'REDIS_CACHE_LOCATION',
             'RELEASE_LIST_CACHE_TIMEOUT',
             'RELEASE_RETRIEVE_CACHE_TIMEOUT',
+            'LOOKASIDE_CACHE_URL',
         ]
         for attr_name in allowable_attrs:
             attr = getattr(settings, attr_name, None)
