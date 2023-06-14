@@ -254,6 +254,7 @@ SAVE_DATA_MAX_RETRIES = 5
 # Directory where the source code will be hosted. Note that
 # appropriate permission(r+w) / secontext is needed.
 SRC_ROOT_DIR = '/srv/git/repos/openlcs'
+LOOKASIDE_CACHE_URL = os.getenv("LOOKASIDE_CACHE_URL")
 
 # The root directory for remote source package source tarball import
 RS_SRC_ROOT_DIR = os.path.join(SRC_ROOT_DIR, 'remote_source')

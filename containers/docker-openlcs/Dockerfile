@@ -15,6 +15,7 @@ ARG KOJI_WEBSERVICE
 ARG KOJI_WEBURL
 ARG KOJI_DOWNLOAD
 ARG LDAP_URI
+ARG LOOKASIDE_CACHE_URL
 
 LABEL name="openlcs" \
       maintainer="${PRODSEC_DEV_OPENLCS_MAIL}" \
@@ -38,7 +39,8 @@ ENV REQUESTS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt \
     KOJI_WEBSERVICE=${KOJI_WEBSERVICE} \
     KOJI_WEBURL=${KOJI_WEBURL} \
     KOJI_DOWNLOAD=${KOJI_DOWNLOAD} \
-    LDAP_URI=${LDAP_URI}
+    LDAP_URI=${LDAP_URI} \
+    LOOKASIDE_CACHE_URL=${LOOKASIDE_CACHE_URL}
 
 RUN cd /etc/pki/ca-trust/source/anchors/ && \
         curl -skO "${ROOT_CA_URL}" && \
@@ -54,7 +56,7 @@ RUN cd /etc/pki/ca-trust/source/anchors/ && \
     dnf clean all && \
     # To make docker cache pip package, install dependencies
     pip install --upgrade pip && pip install -r /tmp/devel.txt --use-pep517 && \
-    # Add permissions for openlcs 
+    # Add permissions for openlcs
     mkdir -p /var/openlcs/static /var/log/openlcs/ /var/cache/ && \
     chmod a+rwX -R /var/log/openlcs/ /var/cache/ /var/openlcs/static "${HOME}" /etc/passwd && \
     chmod a+x -R "${HOME}"/containers/docker-openlcs/bin/* && \

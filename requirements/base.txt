@@ -31,3 +31,4 @@ checksumdir==1.2.0
 drf-extensions==0.7.1
 django-redis==5.2.0
 python-redis-lock==4.0.0
+python-rpm-spec==0.14.1

@@ -6,6 +6,7 @@ import socket
 import tempfile
 from http import HTTPStatus
 from requests.exceptions import HTTPError
+from pyrpm.spec import Spec
 
 from checksumdir import dirhash
 from commoncode.fileutils import delete
@@ -44,6 +45,7 @@ from openlcs.utils.common import DateEncoder
 from openlcs.libs.encrypt_decrypt import encrypt_with_secret_key
 from openlcs.libs.redis import generate_lock_key
 from openlcs.libs.redis import RedisClient
+from openlcs.libs.distgit import get_distgit_sources
 
 
 redis_client = RedisClient()
@@ -376,15 +378,24 @@ def download_package_archive(context, engine):
         prefix='download_', dir=context.get('tmp_root_dir'))
     config = context.get('config')
     koji_connector = KojiConnector(config)
+    component_type = context.get('component_type')
     component = context.get('component')
     if build := context.get('build'):
         build_id = build.get('id')
+        source_url = build.get('source')
     else:
         software_build = component.get('software_build') if component else None
         build_id = software_build.get('build_id') if software_build else None
+        source_url = software_build.get('source') if software_build else None
+    context['source_url'] = source_url
     engine.logger.info('Start to download package source...')
     try:
-        if build_id:
+        if component_type == 'RPM' and source_url:
+            # Download source from the source link provided by Corgi
+            lookaside_url = config.get('LOOKASIDE_CACHE_URL')
+            get_distgit_sources(
+                    lookaside_url, source_url, build_id, tmp_dir)
+        elif build_id:
             koji_connector.download_build_source(int(build_id),
                                                  dest_dir=tmp_dir)
         else:
@@ -460,7 +471,10 @@ def download_package_archive(context, engine):
 
         context['tmp_src_filepath'] = source_path
     else:
-        tmp_src_filepath = os.path.join(tmp_dir, os.listdir(tmp_dir)[0])
+        if len(os.listdir(tmp_dir)) == 1:
+            tmp_src_filepath = os.path.join(tmp_dir, os.listdir(tmp_dir)[0])
+        else:
+            tmp_src_filepath = tmp_dir
         context['tmp_src_filepath'] = tmp_src_filepath
 
     if (build_type := context.get('build_type')) and 'maven' in build_type:
@@ -536,10 +550,18 @@ def get_source_metadata(context, engine):
 
     engine.logger.info("Start to get source package metadata...")
     src_filepath = context.get('tmp_src_filepath')
+    is_src_dir = os.path.isdir(src_filepath)
     nvr = context.get('package_nvr')
-    if context.get('shared_remote_source') and os.path.isdir(src_filepath):
+    if context.get('shared_remote_source') and is_src_dir:
         component = context.get('component')
         source_name = get_component_name_version_combination(component)
+        source_checksum = dirhash(src_filepath, "sha256")
+    elif context.get('source_url') and is_src_dir:
+        if nvr is not None:
+            source_name = f"{nvr}"
+        else:
+            component = context.get('component')
+            source_name = component.get("nvr")
         source_checksum = dirhash(src_filepath, "sha256")
     elif is_metadata_component_source(src_filepath):
         source_name = f"{nvr}-metadata"
@@ -549,11 +571,24 @@ def get_source_metadata(context, engine):
         source_checksum = sha256sum(src_filepath)
     build_type = context.get('build_type')
     package = None
+    extra = {}
     pom_filepath = context.get('tmp_pom_filepath', None)
     try:
         if 'rpm' in build_type or 'RPM' in build_type:
-            packages = RpmArchiveHandler.parse(src_filepath)
-            package = next(packages)
+            if is_src_dir:
+                # https://github.com/nexB/scancode-toolkit/blob/develop/src/packagedcode/rpm.py#L255
+                # RpmSpecfileHandler is in TODO status
+                # packages = RpmSpecfileHandler.parse(src_filepath)
+                spec_files = glob.glob(f'{src_filepath}/*.spec')
+                if spec_files:
+                    spec = Spec.from_file(spec_files[0])
+                    extra.update({
+                        'project_url': spec.url,
+                        'declared_license': spec.license,
+                    })
+            else:
+                packages = RpmArchiveHandler.parse(src_filepath)
+                package = next(packages)
         elif 'PYPI' in build_type:
             packages = PypiSdistArchiveHandler.parse(src_filepath)
             package = next(packages)
@@ -599,6 +634,8 @@ def get_source_metadata(context, engine):
                 context['project_url'] = getattr(package, url)
                 break
         context['declared_license'] = package.declared_license
+    elif extra is not None:
+        context.update(extra)
     else:
         context['project_url'] = ''
         context['declared_license'] = ''
@@ -609,7 +646,8 @@ def get_source_metadata(context, engine):
             "checksum": source_checksum,
             "name": source_name,
             "url": context.get("project_url"),
-            "archive_type": list(build_type.keys())[0]
+            # The archive type used for source is incorrect, OLCS-639
+            "archive_type": "dir" if is_src_dir else list(build_type.keys())[0]
         },
 
     }
@@ -628,7 +666,8 @@ def get_source_metadata(context, engine):
     elif component := context.get('component'):
         # Use a shallow copy so we won't polluate the original component.
         component_info = component.copy()
-        declared_license = component_info.pop("license_declared", "")
+        declared_license = component_info.pop(
+                "license_declared", context.get("declared_license"))
         component_info["summary_license"] = declared_license
         component_info["is_source"] = True
         component_info["from_corgi"] = True
@@ -640,9 +679,9 @@ def get_source_metadata(context, engine):
         engine.logger.error(msg)
         raise RuntimeError(msg)
     context['source_info'] = source_info
-    if source_name == f"{nvr}-metadata":
+    # Per previous discussions about metadata, below should be removed
+    if nvr and source_name == f"{nvr}-metadata":
         context['source_info']['source']['archive_type'] = 'tar'
-
     engine.logger.info("Done")
 
 
@@ -794,22 +833,18 @@ def extract_source(context, engine):
 
     @requires(optional): `src_dest_dir`, destination source directory.
     @requires: `tmp_src_filepath`: absolute path to the archive.
-    @feeds: `archive_mime_type`: mimetype of archive.
     """
     src_dest_dir = context.get('src_dest_dir', '/tmp')
     # FIXME: exception handling
     tmp_src_filepath = context.get('tmp_src_filepath', None)
     engine.logger.info('Start to extract source...')
 
-    if is_metadata_component_source(tmp_src_filepath):
-        mime_type = None
+    if os.path.isdir(tmp_src_filepath):
         shutil.copytree(tmp_src_filepath, src_dest_dir, dirs_exist_ok=True)
     else:
         ua = UnpackArchive(src_file=tmp_src_filepath, dest_dir=src_dest_dir)
-        mime_type = ua._get_archive_type()
         ua.extract()
     engine.logger.info('Finished extracting source.')
-    context['archive_mime_type'] = mime_type
 
 
 def unpack_source(context, engine):
@@ -824,7 +859,6 @@ def unpack_source(context, engine):
 
     if not context.get('shared_remote_source'):
         extract_source(context, engine)
-
         src_dest_dir = context.get('src_dest_dir')
         engine.logger.info('Start to unpack source archives...')
         ua = UnpackArchive(config=config, dest_dir=src_dest_dir)
@@ -835,7 +869,6 @@ def unpack_source(context, engine):
         engine.logger.info("Finished unpacking source.")
     else:
         source_file_path = context['tmp_src_filepath']
-
         engine.logger.info('Start to unpack remote source archives...')
         # unpack component corresponding source file
         ua = UnpackArchive(config=config)
