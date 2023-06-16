@@ -60,7 +60,7 @@ RUN cd /etc/pki/ca-trust/source/anchors/ && \
     ln -s /opt/app-root/lib64/python3.8/site-packages /usr/local/lib64/python3.8/ && \
     git clone https://gitlab.cee.redhat.com/pelc/openlcs-playbooks.git && \
     cp openlcs-playbooks/roles/openlcs/files/krb5.conf /etc/ && \
-    sed -i 's/kdc_timesync = 0/kdc_timesync = 5/g' /etc/krb5.conf
+    sed -i 's/kdc_timesync = 0/kdc_timesync = 1/g' /etc/krb5.conf
 
 
 # Apply patches for extractcode, packagedcode

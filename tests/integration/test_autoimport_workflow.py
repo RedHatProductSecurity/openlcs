@@ -1,9 +1,26 @@
+import json
+import os
 import time
 
 from datetime import datetime, timedelta
 from rest_framework import status
+from .get_test_data import (
+    get_no_scanned_rpm_testdata,
+    get_the_openlcs_scan_url
+    )
 
-def test_subscription(client):
+
+def test_autoimport_workflow(client):
+    """
+    This test module aims to test a rpm autoimport workflow.
+    The steps as the follows:
+    * Get one no scanned test data from corgi dynamically
+    * Create new active subscription
+    * Update the periodic task schedule to tirgger the autoimport
+    * Check the component_urls after auto sync from corgi
+    * Check the forked task
+    * Check if the scan result was synced to corgi
+    """
     # List the current all subscriptions
     response = client.api_call(
         '/subscriptions/',
@@ -29,10 +46,13 @@ def test_subscription(client):
         expected_code=status.HTTP_200_OK
     )
     assert response['count'] == 0
-
+    # Get one no scanned test data dynamically
+    test_data_nvr, test_data_src, test_data_purl = \
+        get_no_scanned_rpm_testdata()
     # Create new subscription
     subscription_name = "test_subscription"
-    query_params = '{"nevra": "virt-who-0.11-5.ael7b.src"}'
+    params = {"nvr": test_data_nvr}
+    query_params = json.dumps(params)
     response = client.api_call(
         "/subscriptions/",
         method="POST",
@@ -46,10 +66,9 @@ def test_subscription(client):
     subscription_id = response['id']
     assert response['name'] == subscription_name
     assert response['active'] is True
-
     # Create crontab schedule
     now = datetime.now()
-    future_time = now + timedelta(seconds=65)
+    future_time = now + timedelta(seconds=600)
     crontab_resp = client.api_call(
         "/crontabschedule/",
         method="POST",
@@ -60,7 +79,6 @@ def test_subscription(client):
         expected_code=status.HTTP_201_CREATED
     )
     crontab_id = crontab_resp['id']
-
     # Filter the periodic task run_corgi_sync
     url = "/periodictask/?name=run_corgi_sync"
     run_corgi_sync_resp = client.api_call(
@@ -69,7 +87,6 @@ def test_subscription(client):
         expected_code=status.HTTP_200_OK
     )
     periodic_id = run_corgi_sync_resp['results'][0]['id']
-
     # Update run_corgi_sync schedule
     url = "/periodictask/{}/".format(periodic_id)
     response = client.api_call(
@@ -84,13 +101,43 @@ def test_subscription(client):
     )
     assert response['name'] == "run_corgi_sync"
     assert response['crontab'] == crontab_id
-
     # Check the component_urls after auto sync from corgi
-    time.sleep(80)
+    sleep_time = os.getenv('SLEEP_TIME')
+    response['component_purls'] = []
+    i = 0
+    try:
+        while response['component_purls'] == [] and i < 10:
+            i = i + 1
+            time.sleep(int(sleep_time))  # waiting for query components
+            response = client.api_call(
+                '/subscriptions/{}/'.format(subscription_id),
+                method="GET",
+                expected_code=status.HTTP_200_OK
+            )
+    except Exception as error:
+        print("Couldn't get the component_purls in 20 mins.", error)
+    assert response['component_purls'] == \
+        [f"{test_data_purl}"]
+    # Check the forked task
     response = client.api_call(
-        '/subscriptions/{}/'.format(subscription_id),
+        '/tasks/?params={}'.format(test_data_nvr),
         method="GET",
         expected_code=status.HTTP_200_OK
     )
-    assert response['component_purls'] == \
-        ["pkg:rpm/redhat/virt-who@0.11-5.ael7b?arch=src"]
+    i = 0
+    try:
+        while response['status'] != "SUCCESS" and i < 10:
+            i = i + 1
+            time.sleep(int(sleep_time))  # waiting for scanning
+            response = client.api_call(
+                '/tasks/?params={}'.format(test_data_nvr),
+                method="GET",
+                expected_code=status.HTTP_200_OK
+            )
+    except Exception as error:
+        print(f"The forked task for {test_data_nvr} wasn't SUCCESS after 20"
+              f"mins.", error)
+
+    # Check if the scan result was synced to corgi
+    openlcs_scan_url = get_the_openlcs_scan_url(test_data_src)
+    assert os.getenv('OPENLCS_TEST_URL') in openlcs_scan_url
