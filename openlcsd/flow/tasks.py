@@ -589,7 +589,7 @@ def get_source_metadata(context, engine):
     elif component := context.get('component'):
         # Use a shallow copy so we won't polluate the original component.
         component_info = component.copy()
-        declared_license = component_info.pop("declared_license", "")
+        declared_license = component_info.pop("license_declared", "")
         component_info["summary_license"] = declared_license
         component_info["is_source"] = True
         component_info["from_corgi"] = True
