@@ -27,19 +27,6 @@ class SourceImportMixin:
     """
     Package import transaction mixin
     """
-
-    @staticmethod
-    def create_files(file_objs):
-        """
-        Create source files.
-        """
-        if file_objs:
-            files = File.objects.bulk_create(file_objs)
-            serializer = BulkFileSerializer({'files': files})
-            return serializer.data
-        else:
-            return {'message': 'No files created.'}
-
     @staticmethod
     def create_paths(source, paths):
         """
