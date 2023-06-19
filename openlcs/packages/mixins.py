@@ -28,17 +28,6 @@ class SourceImportMixin:
     Package import transaction mixin
     """
     @staticmethod
-    def create_paths(source, paths):
-        """
-        Create source file paths.
-        """
-        if paths:
-            path_objs = [Path(source=source,
-                              file=File.objects.get(swhid=p.get('file')),
-                              path=p.get('path')) for p in paths]
-            Path.objects.bulk_create(path_objs)
-
-    @staticmethod
     def create_product(product_name, description=""):
 
         p, _ = Product.objects.update_or_create(
