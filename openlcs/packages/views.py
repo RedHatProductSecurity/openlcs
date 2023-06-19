@@ -566,7 +566,11 @@ class PackageImportTransactionView(APIView, SourceImportMixin):
                     with transaction.atomic():
                         source_obj = Source.objects.create(**source)
                         if file_objs:
-                            self.create_files(file_objs)
+                            # limit the number of objects created in one
+                            #  query, which reduces memory consumption
+                            File.objects.bulk_create(
+                                file_objs,
+                                batch_size=1000)
                         if paths:
                             self.create_paths(source_obj, paths)
                         if component:
