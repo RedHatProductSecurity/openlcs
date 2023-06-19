@@ -572,7 +572,7 @@ class PackageImportTransactionView(APIView, SourceImportMixin):
                                 file_objs,
                                 batch_size=1000)
                         if paths:
-                            self.create_paths(source_obj, paths)
+                            Path.bulk_create_objects(source_obj, paths)
                         if component:
                             component_obj = Component.\
                                 update_or_create_component(component)

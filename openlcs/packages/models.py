@@ -123,6 +123,19 @@ class Path(models.Model):
             ),
         ]
 
+    @classmethod
+    def bulk_create_objects(cls, source, paths, batch_size=1000):
+        file_ids = [p.get('file') for p in paths]
+        files = File.objects.filter(swhid__in=file_ids).values('swhid', 'id')
+        file_mapping = {file['swhid']: file['id'] for file in files}
+        path_objs = [
+            Path(source=source,
+                 file_id=file_mapping[p.get('file')],
+                 path=p.get('path')) for p in paths
+        ]
+
+        Path.objects.bulk_create(path_objs, batch_size=batch_size)
+
     def __str__(self):
         return f'{self.source}, {self.path}'
 
