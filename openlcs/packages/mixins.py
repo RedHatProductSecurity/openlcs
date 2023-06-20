@@ -5,15 +5,9 @@ from django.db import transaction
 from django.db.models import Q
 from django.db.utils import IntegrityError
 
-from libs.corgi import CorgiConnector
 from packages.models import (
     File,
-    Path,
     Source
-)
-from packages.serializers import BulkFileSerializer
-from products.models import (
-    Product
 )
 from reports.models import (
     CopyrightDetection,
@@ -21,44 +15,6 @@ from reports.models import (
     FileLicenseScan,
     LicenseDetection
 )
-
-
-class SourceImportMixin:
-    """
-    Package import transaction mixin
-    """
-    @staticmethod
-    def create_product(product_name, description=""):
-
-        p, _ = Product.objects.update_or_create(
-            name=product_name,
-            display_name=product_name,
-            defaults={
-                "description": description,
-            },
-        )
-        return p
-
-    def create_product_release(self, name):
-        """
-        Create product and release.
-        """
-        connector = CorgiConnector()
-        product_data = connector.get_product_version(name)
-        if product_data:
-            product_name = product_data.get('products')[0].get('name')
-            product_name_release = product_data.get("name")
-            product_release = product_name_release[len(product_name)+1:]
-            description = product_data.get("description", "")
-
-            # Create product instance
-            product = self.create_product(product_name, description)
-            # Create release
-            product.add_release(
-                name=product_name_release,
-                version=product_release,
-                notes=description,
-            )
 
 
 class SaveScanResultMixin:
