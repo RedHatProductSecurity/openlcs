@@ -12,10 +12,7 @@ from django_celery_beat.models import (
 )
 from libs.encrypt_decrypt import encrypt_with_secret_key
 from libs.parsers import parse_manifest_file
-from packages.mixins import (
-    SourceImportMixin,
-    SaveScanResultMixin,
-)
+from packages.mixins import SaveScanResultMixin
 from packages.models import (
     Component,
     ComponentSubscription,
@@ -54,7 +51,7 @@ from rest_framework.viewsets import ModelViewSet
 
 
 # Create your views here.
-class FileViewSet(ModelViewSet, SourceImportMixin):
+class FileViewSet(ModelViewSet):
     """
     API endpoint that allows files to be viewed or edited.
     """
@@ -369,7 +366,7 @@ file first, it should contain the following parameters:
         return Response(data=resp)
 
 
-class PathViewSet(ModelViewSet, SourceImportMixin):
+class PathViewSet(ModelViewSet):
     """
     API endpoint that allows Paths to be viewed or edited.
     """
@@ -481,7 +478,7 @@ Token your_token'
         return super().retrieve(request, *args, **kwargs)
 
 
-class PackageImportTransactionView(APIView, SourceImportMixin):
+class PackageImportTransactionView(APIView):
     """
     Package import transaction
 
