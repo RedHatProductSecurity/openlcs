@@ -40,6 +40,10 @@ class WorkflowWrapperTask(celery.Task):
                 tmp_src_filepath = args[0].get('tmp_src_filepath')
                 if tmp_src_filepath and os.path.exists(tmp_src_filepath):
                     delete(tmp_src_filepath)
+
+            if args[0].get('shared_remote_source_dir') is not None:
+                delete(args[0]['shared_remote_source_dir'])
+
         super().after_return(
             status, retval, task_id, args, kwargs, einfo)
 

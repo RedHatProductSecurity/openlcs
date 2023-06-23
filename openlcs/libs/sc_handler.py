@@ -298,7 +298,20 @@ class SourceContainerHandler(object):
             component_name = component.get('name')
             if search_name != component_name:
                 search_patterns.append(vendor_pattern + "/" + component_name)
-        elif comp_type in ['NPM', 'YARN', 'PYPI', 'CARGO', 'GEM']:
+        elif comp_type in ['NPM', 'YARN']:
+            # YARN type in brew can be NPM type in corgi
+            search_patterns = []
+            for comp_type in [CORGI_OSBS_RS_TYPE_MAPPING['NPM'],
+                              CORGI_OSBS_RS_TYPE_MAPPING['YARN']]:
+                dep_dir_pattern = os.path.join(
+                    extra_src_dir, '**', 'deps', comp_type)
+                common_pattern = dep_dir_pattern + name_pattern \
+                    + version_pattern
+                search_patterns.extend(
+                    [common_pattern + extension
+                     for extension in RS_TARBALL_EXTENSIONS]
+                )
+        elif comp_type in ['PYPI', 'CARGO', 'GEM']:
             # mapping remote source between Corgi and OSBS
             comp_type = CORGI_OSBS_RS_TYPE_MAPPING.get(comp_type)
             dep_dir_pattern = os.path.join(

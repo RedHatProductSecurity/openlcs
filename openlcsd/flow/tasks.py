@@ -293,10 +293,6 @@ def download_shared_remote_source(context, engine):
     for shared use when corgi download_url invalid
     """
     parent_component = context.get('parent_component')
-    if not parent_component:
-        raise RuntimeError("no parent_component info when "
-                           "try to download shared remote source")
-
     config = context.get('config')
     koji_connector = KojiConnector(config)
     sc = SourceContainerHandler(config=config)
@@ -304,11 +300,54 @@ def download_shared_remote_source(context, engine):
     # mark this component use shared remote source
     context['shared_remote_source'] = True
 
-    rs_root_dir = sc.get_shared_remote_source_root_dir(
-        context.get('tmp_root_dir'), parent_component)
+    if not parent_component:
+        # no parent component info, get from corgi
+        component = context.get('component')
+        connector = CorgiConnector()
+        component = connector.get(component.get("link"))
+        sources = component["sources"]
+        oci_ts = 0
+        # find the newest build oci according to build completion time
+        for source in sources:
+            if not source['purl'].startswith("pkg:oci"):
+                continue
+            # get build complete time from brew, get the newest one
+            oci_component = connector.get(
+                source['link'],
+                includes=connector.oci_includes_minimal
+            )
+            build_info = koji_connector.get_build(
+                int(oci_component["software_build"]['build_id']))
+            creation_ts = build_info['creation_ts']
+            if creation_ts > oci_ts:
+                oci_ts = creation_ts
+                parent_component = oci_component
+
+        if not parent_component:
+            raise RuntimeError(f"no oci component can be found to get source,"
+                               f" {component['link']}")
+
+        parent_component = {
+            "name": parent_component.get("name"),
+            "version": parent_component.get("version"),
+            "release": parent_component.get("release"),
+            "build_id": parent_component['software_build']['build_id']
+        }
+        context['parent_component'] = parent_component
+
+        rs_root_dir = sc.get_shared_remote_source_root_dir(
+            context.get('tmp_root_dir'), parent_component)
+
+        # store container source dir. In this situation, delete source
+        # immediately when task done. Because this source only use for
+        # this component
+        context['shared_remote_source_dir'] = rs_root_dir
 
     filename_list = koji_connector.get_oci_remote_source_archive_filenames(
         parent_component)
+
+    rs_root_dir = sc.get_shared_remote_source_root_dir(
+        context.get('tmp_root_dir'), parent_component)
 
     # download parent component remote source file
     if not os.path.exists(rs_root_dir) or \
