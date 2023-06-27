@@ -49,6 +49,8 @@ from rest_framework.filters import SearchFilter
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
+from memory_profiler import profile
+from libs.common import timeit
 
 
 # Create your views here.
@@ -599,6 +601,8 @@ class SaveScanResultView(APIView, SaveScanResultMixin):
     """
     Save package scan result
     """
+    @timeit
+    @profile
     def post(self, request, *args, **kwargs):
         try:
             file_path = request.data.get("file_path")

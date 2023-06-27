@@ -21,6 +21,8 @@ from reports.models import (
     FileLicenseScan,
     LicenseDetection
 )
+from memory_profiler import profile
+from libs.common import timeit
 
 
 class SourceImportMixin:
@@ -90,6 +92,7 @@ class SaveScanResultMixin:
         self.file_license_scan_dict = None
         self.file_copyright_scan_dict = None
 
+    @profile
     def save_file_license_scan(self, new_file_ids, license_detector):
         if new_file_ids:
             objs = [
@@ -100,6 +103,7 @@ class SaveScanResultMixin:
                                           for item in file_license_scan_list}
             self.file_license_scan_dict.update(new_file_license_scan_dict)
 
+    @profile
     def save_license_detections(self, path_file_dict, data, license_detector):
         licenses = [
             [self.file_license_scan_dict.get(path_file_dict.get(x[0]))] + x[1:]
@@ -122,6 +126,7 @@ class SaveScanResultMixin:
                 LicenseDetection.objects.bulk_create(
                     new_objs, ignore_conflicts=True)
 
+    @profile
     def update_scan_flag(self, source, scan_type, detector):
         scan_flag = source.scan_flag
         if scan_type == "license_scan":
@@ -135,6 +140,7 @@ class SaveScanResultMixin:
         source.scan_flag = scan_flag
         source.save(update_fields=['scan_flag'])
 
+    @profile
     def save_file_copyright_scan(
             self, new_file_ids, copyright_detector):
         if new_file_ids:
@@ -147,6 +153,7 @@ class SaveScanResultMixin:
                 item.file_id: item.id for item in file_copyright_scan_list}
             self.file_copyright_scan_dict.update(new_file_copyright_scan_dict)
 
+    @profile
     def save_copyright_detections(
             self, path_file_dict, data, copyright_detector):
         # TODO: Schema needs an update for summary copyrights
@@ -173,6 +180,8 @@ class SaveScanResultMixin:
                 CopyrightDetection.objects.bulk_create(
                     objs, ignore_conflicts=True)
 
+    @timeit
+    @profile
     def save_scan_result(self, **kwargs):
         path_with_swhids = kwargs.pop('path_with_swhids')
         path_with_swhids = list(zip(*path_with_swhids))
