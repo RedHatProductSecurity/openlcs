@@ -97,6 +97,7 @@ build-ci-image:
       --build-arg KOJI_WEBURL=${KOJI_WEBURL}
       --build-arg KOJI_DOWNLOAD=${KOJI_DOWNLOAD}
       --build-arg LDAP_URI=${LDAP_URI}
+      --build-arg LOOKASIDE_CACHE_URL=${LOOKASIDE_CACHE_URL}
       -f containers/docker-ci/Dockerfile .
       | tee output
     - LOCAL_IMAGE_SHA=`cat output`
@@ -165,6 +166,7 @@ api-tests:
 #      --build-arg KOJI_WEBURL=${KOJI_WEBURL}
 #      --build-arg KOJI_DOWNLOAD=${KOJI_DOWNLOAD}
 #      --build-arg LDAP_URI=${LDAP_URI}
+#      --build-arg LOOKASIDE_CACHE_URL=${LOOKASIDE_CACHE_URL}
 #      -t $OPENLCS_IMAGE:ci -f containers/docker-openlcs/Dockerfile .;
 #    - docker login -u="$PELC_CI_USER" -p=$PELC_CI_PASSWORD quay.io
 #    - docker push $OPENLCS_IMAGE:ci
@@ -224,6 +226,7 @@ build-dev-image:
       --build-arg KOJI_WEBURL=${KOJI_WEBURL}
       --build-arg KOJI_DOWNLOAD=${KOJI_DOWNLOAD}
       --build-arg LDAP_URI=${LDAP_URI}
+      --build-arg LOOKASIDE_CACHE_URL=${LOOKASIDE_CACHE_URL}
       -t $OPENLCS_IMAGE:dev -f containers/docker-openlcs/Dockerfile .;
     - docker login -u="$PELC_CI_USER" -p=$PELC_CI_PASSWORD quay.io
     - docker push $OPENLCS_IMAGE:dev
@@ -263,6 +266,7 @@ build-release-image:
       --build-arg KOJI_WEBURL=${KOJI_WEBURL}
       --build-arg KOJI_DOWNLOAD=${KOJI_DOWNLOAD}
       --build-arg LDAP_URI=${LDAP_URI}
+      --build-arg LOOKASIDE_CACHE_URL=${LOOKASIDE_CACHE_URL}
       -t $OPENLCS_IMAGE:$CI_COMMIT_TAG -f containers/docker-openlcs/Dockerfile .;
     - docker login -u="$PELC_CI_USER" -p=$PELC_CI_PASSWORD quay.io
     - docker push $OPENLCS_IMAGE:$CI_COMMIT_TAG
