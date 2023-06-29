@@ -1,4 +1,5 @@
 import os
+from distutils.util import strtobool
 
 DEBUG = True
 TEMPLATE_DEBUG = True
@@ -14,7 +15,10 @@ STATICFILES_STORAGE = (
 TEST_EMAIL_TO = []
 TEST_EMAIL_CC = []
 
-HOSTNAME = '127.0.0.1'
+DRF_NAMESPACE = 'rest'
+DRF_API_VERSION = 'v1'
+HOSTNAME = '127.0.0.1:8000'
+REST_API_PATH = f'http://{HOSTNAME}/{DRF_NAMESPACE}/{DRF_API_VERSION}'
 
 SRC_ROOT_DIR = '/tmp/cgit'
 ADHOC_ARCHIVE_SRC_ROOT_DIR = os.path.join(SRC_ROOT_DIR, 'adhoc_storage')
@@ -56,6 +60,15 @@ LOGGING = {
             'level': 'DEBUG',
             'handlers': ['stderr'],
         },
+        'mozilla_django_oidc': {
+            'handlers': ['stderr'],
+            'level': 'DEBUG'
+        },
     }
 }
 
+# Setting OIDC login and logout URLs.
+OIDC_AUTH_URI = os.getenv("OIDC_AUTH_URI", "")
+LOGIN_REDIRECT_URL = REST_API_PATH
+LOGIN_REDIRECT_URL_FAILURE = REST_API_PATH
+LOGOUT_REDIRECT_URL = OIDC_AUTH_URI + '/logout?redirect_uri=' + REST_API_PATH

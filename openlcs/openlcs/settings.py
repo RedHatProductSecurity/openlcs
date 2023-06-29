@@ -11,11 +11,10 @@ https://docs.djangoproject.com/en/3.2/ref/settings/
 """
 import os
 import sys
+from distutils.util import strtobool
 from pathlib import Path
 
 from celery.schedules import crontab
-from cryptography.fernet import Fernet
-# from datetime import timedelta
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -26,9 +25,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-8c4w#_a7k&1^!#+af%unwddrcc0=og^j7k@n*gjxm$^8b#tzdm'  # noqa
-
-# secret key for auth token encrypt and decrypt
-TOKEN_SECRET_KEY = Fernet.generate_key().decode()
 
 # SECURITY WARNING: don't run with debug turned on in production!
 # This value will be overwritten in production configuration
@@ -48,6 +44,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django_celery_beat',
     'django_filters',
+    'mozilla_django_oidc',
     'rest_framework',
     'rest_framework.authtoken',
     'authentication',
@@ -67,7 +64,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'authentication.middleware.RemoteUserMiddleware',
+    'authentication.middleware.AuthRequiredMiddleware',
+    'mozilla_django_oidc.middleware.SessionRefresh'
 ]
 
 ROOT_URLCONF = 'openlcs.urls'
@@ -222,7 +220,7 @@ DRF_API_VERSION = 'v1'
 HOSTNAME = '127.0.0.1:8000'
 REST_API_PATH = f'http://{HOSTNAME}/{DRF_NAMESPACE}/{DRF_API_VERSION}'
 BROWSABLE_DOCUMENT_MACROS = {
-    # need to be rewritten with the real host name when deploy.
+    # need to be rewritten with the real host name when deployed.
     'HOST_NAME': f'http://{HOSTNAME}',
     # make consistent with rest api root.
     'API_PATH': f'{DRF_NAMESPACE}/{DRF_API_VERSION}',
@@ -236,6 +234,7 @@ REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS':
         'rest_framework.pagination.LimitOffsetPagination',
     'DEFAULT_AUTHENTICATION_CLASSES': (
+        'mozilla_django_oidc.contrib.drf.OIDCAuthentication',
         'rest_framework.authentication.TokenAuthentication',
         'rest_framework.authentication.SessionAuthentication',
     ),
@@ -282,8 +281,7 @@ EMAIL_REALM = 'REDHAT.COM'
 # Give superuser permission to these users.
 OPENLCS_ADMIN_LIST = [
     'jzhao', 'yuwang', 'huiwang', 'qduanmu', 'yulwang', 'chhan', 'axuan',
-    'openlcs-dev-worker01', 'openlcs-qe-worker01', 'openlcs-ci-worker01',
-    'openlcs-stage-worker01', 'openlcs-prod-worker01', 'openlcs'
+    'openlcs-stage', 'openlcs-prod', 'openlcs',
 ]
 
 # CSRF setting
@@ -324,6 +322,35 @@ CACHES = {
         },
     },
 }
+
+# OIDC settings
+# OIDC Authentication: https://mozilla-django-oidc.readthedocs.io/
+# Keycloak-specific (as per http://KEYCLOAK_SERVER/auth/realms/REALM/.well-known/openid-configuration) # noqa
+
+# OIDC authentication or not
+OIDC_AUTH_ENABLED = strtobool(os.getenv("OPENLCS_OIDC_AUTH_ENABLED", "false"))
+# OIDC authentication URL
+OIDC_AUTH_URI = os.getenv("OIDC_AUTH_URI", "")
+# URL of the OIDC OpenID Connect provider (OP) jwks endpoint
+OIDC_OP_JWKS_ENDPOINT = OIDC_AUTH_URI + '/certs'
+# URL of the OIDC OP authorization endpoint
+OIDC_OP_AUTHORIZATION_ENDPOINT = OIDC_AUTH_URI + '/auth'
+# URL of the OIDC OP token endpoint
+OIDC_OP_TOKEN_ENDPOINT = OIDC_AUTH_URI + '/token'
+# URL of the OIDC OP userinfo endpoint
+OIDC_OP_USER_ENDPOINT = OIDC_AUTH_URI + '/userinfo'
+
+# These two values come from your OP
+OIDC_RP_CLIENT_ID = os.getenv("OPENLCS_OIDC_RP_CLIENT_ID", "")
+OIDC_RP_CLIENT_SECRET = os.getenv("OPENLCS_OIDC_RP_CLIENT_SECRET", "")
+USER_OIDC_CLIENT_ID = os.getenv("USER_OIDC_CLIENT_ID", "")
+USER_OIDC_CLIENT_SECRET = os.getenv("USER_OIDC_CLIENT_SECRET", "")
+
+OIDC_RP_SIGN_ALGO = 'RS256'
+OIDC_DRF_AUTH_BACKEND = "authentication.backend.OpenLCSOIDCBackend"
+OIDC_CALLBACK_CLASS = "authentication.views.CustomOIDCAuthenticationCallbackView"  # noqa
+TOKEN_SECRET_KEY = os.getenv("TOKEN_SECRET_KEY", "")
+SESSION_ENGINE = "django.contrib.sessions.backends.cache"
 
 try:
     # pylint:disable=wildcard-import,unused-wildcard-import

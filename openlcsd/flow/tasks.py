@@ -26,7 +26,9 @@ from openlcs.libs.common import run_and_capture
 from openlcs.libs.common import ExhaustibleIterator
 from openlcs.libs.common import is_shared_remote_source_need_delete
 from openlcs.libs.corgi import CorgiConnector
+from openlcs.libs.distgit import get_distgit_sources
 from openlcs.libs.driver import OpenlcsClient
+from openlcs.libs.encrypt_decrypt import encrypt_with_secret_key
 from openlcs.libs.exceptions import TaskResubmissionException
 from openlcs.libs.kojiconnector import KojiConnector
 from openlcs.libs.logger import get_task_logger
@@ -35,6 +37,8 @@ from openlcs.libs.metadata import GolangMeta
 from openlcs.libs.metadata import NpmMeta
 from openlcs.libs.metadata import GemMeta
 from openlcs.libs.parsers import sha256sum
+from openlcs.libs.redis import generate_lock_key
+from openlcs.libs.redis import RedisClient
 from openlcs.libs.scanner import BaseScanner
 from openlcs.libs.scanner import LicenseScanner
 from openlcs.libs.scanner import CopyrightScanner
@@ -42,10 +46,6 @@ from openlcs.libs.sc_handler import SourceContainerHandler
 from openlcs.libs.swh_tools import get_swhids_with_paths
 from openlcs.libs.unpack import UnpackArchive
 from openlcs.utils.common import DateEncoder
-from openlcs.libs.encrypt_decrypt import encrypt_with_secret_key
-from openlcs.libs.redis import generate_lock_key
-from openlcs.libs.redis import RedisClient
-from openlcs.libs.distgit import get_distgit_sources
 
 
 redis_client = RedisClient()
@@ -64,21 +64,22 @@ def get_config(context, engine):
     @feeds: `post_dir`, destination dir where temporary post/adhoc_post data
                         file will be placed.
     """
-    config = {}
 
     # Get config data
     try:
         task_id = context.get('task_id')
         token = context.get('token')
-        token_sk = context.get('token_sk')
-        client = OpenlcsClient(task_id=task_id, token=token, token_sk=token_sk)
+        # If "parent_task_id" exist, that mean current task is a child task.
+        parent_task_id = context.get('parent_task_id')
+        client = OpenlcsClient(task_id=task_id, parent_task_id=parent_task_id,
+                               token=token)
         resp = client.get('obtain_config')
-        if resp.status_code == HTTPStatus.OK:
-            config = resp.json()
+        resp.raise_for_status()
+        config = resp.json()
     except RuntimeError as err:
         err_msg = f'Failed to get config data. Reason: {err}'
-        engine.logger.error(err_msg)
         raise RuntimeError(err_msg) from None
+
     # One-time file based logger configuration for each task.
     logger_dir = config.get("LOGGER_DIR")
     engine.logger = get_task_logger(logger_dir, task_id)
@@ -1407,9 +1408,8 @@ def fork_specified_type_imports(
         'parent_task_id': context.get('task_id'),
         'token': encrypt_with_secret_key(
             cli.headers['Authorization'].split()[-1],
-            context['config']['TOKEN_SECRET_KEY']
+            os.getenv("TOKEN_SECRET_KEY")
         ),
-        'token_sk': context['config']['TOKEN_SECRET_KEY'],
         'priority': context['priority']
     }
     # Fork srpm tasks for source container that downloaded src in src_dir
@@ -1450,9 +1450,8 @@ def fork_remote_source_components_imports(
         'parent_task_id': context.get('task_id'),
         'token': encrypt_with_secret_key(
             cli.headers['Authorization'].split()[-1],
-            context['config']['TOKEN_SECRET_KEY']
+            os.getenv("TOKEN_SECRET_KEY")
         ),
-        'token_sk': context['config']['TOKEN_SECRET_KEY'],
         'priority': context['priority']
     }
     # Fork remote source tasks for source container that
@@ -1494,9 +1493,8 @@ def fork_components_imports(context, engine, parent, components):
         'parent_task_id': context.get('task_id'),
         'token': encrypt_with_secret_key(
             cli.headers['Authorization'].split()[-1],
-            context['config']['TOKEN_SECRET_KEY']
+            os.getenv("TOKEN_SECRET_KEY")
         ),
-        'token_sk': context['config']['TOKEN_SECRET_KEY'],
         'provenance': context.get('provenance'),
         'priority': context['priority']
     }

@@ -3,7 +3,6 @@ from urllib.parse import urlparse
 
 import pytest
 import requests
-from django.core.management import call_command
 
 TESTDIR = dirname(__file__)
 TOPDIR = normpath(join(TESTDIR, pardir, pardir, pardir))
@@ -123,4 +122,3 @@ def openlcs_client_unprivileged(django_db_setup, live_server, openlcs_setup):
         live_server.url, 'test_privileges', 'privileges')
     openlcs_client.login()
     return openlcs_client
-

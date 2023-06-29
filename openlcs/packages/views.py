@@ -1,4 +1,5 @@
 import json
+import os
 import time
 from distutils.util import strtobool
 import django_filters
@@ -9,6 +10,7 @@ from django_celery_beat.models import (
     PeriodicTask,
     CrontabSchedule
 )
+from libs.encrypt_decrypt import encrypt_with_secret_key
 from libs.parsers import parse_manifest_file
 from packages.mixins import (
     SourceImportMixin,
@@ -21,7 +23,7 @@ from packages.models import (
     Path,
     Source
 )
-from packages.permissions import ReadOnlyModelPermission
+from authentication.permissions import ReadOnlyModelPermission
 from packages.serializers import (
     ComponentSerializer,
     ComponentSubscriptionSerializer,
@@ -349,11 +351,17 @@ file first, it should contain the following parameters:
             )
         if serializer.is_valid():
             parent_task_id = request.data.get('parent_task_id', '')
-            token = request.data.get('token')
-            token_sk = request.data.get('token_sk')
+            # For child task, token will be autubot user's token.
+            if parent_task_id:
+                token = request.data.get('token')
+            # For parent task, token will be user's token.
+            else:
+                token = encrypt_with_secret_key(
+                    request.headers['Authorization'].split()[-1],
+                    os.getenv("TOKEN_SECRET_KEY")
+                )
             resp = serializer.fork_import_tasks(
-                request.user.id, parent_task_id, token, token_sk
-            )
+                request.user.id, parent_task_id, token)
         else:
             return Response(
                 data=serializer.errors, status=status.HTTP_400_BAD_REQUEST

@@ -16,6 +16,13 @@ ARG KOJI_WEBURL
 ARG KOJI_DOWNLOAD
 ARG LDAP_URI
 ARG LOOKASIDE_CACHE_URL
+ARG OIDC_AUTH_URI
+ARG OPENLCS_OIDC_RP_CLIENT_ID
+ARG OPENLCS_OIDC_RP_CLIENT_SECRET
+ARG USER_OIDC_CLIENT_ID
+ARG USER_OIDC_CLIENT_SECRET
+ARG OPENLCS_OIDC_AUTH_ENABLED
+ARG TOKEN_SECRET_KEY
 
 LABEL name="openlcs" \
       maintainer="${PRODSEC_DEV_OPENLCS_MAIL}" \
@@ -40,7 +47,15 @@ ENV REQUESTS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt \
     KOJI_WEBURL=${KOJI_WEBURL} \
     KOJI_DOWNLOAD=${KOJI_DOWNLOAD} \
     LDAP_URI=${LDAP_URI} \
-    LOOKASIDE_CACHE_URL=${LOOKASIDE_CACHE_URL}
+    LOOKASIDE_CACHE_URL=${LOOKASIDE_CACHE_URL} \
+    LDAP_URI=${LDAP_URI} \
+    OIDC_AUTH_URI=${OIDC_AUTH_URI} \
+    OPENLCS_OIDC_RP_CLIENT_ID=${OPENLCS_OIDC_RP_CLIENT_ID} \
+    OPENLCS_OIDC_RP_CLIENT_SECRET=${OPENLCS_OIDC_RP_CLIENT_SECRET} \
+    USER_OIDC_CLIENT_ID=${USER_OIDC_CLIENT_ID} \
+    USER_OIDC_CLIENT_SECRET=${USER_OIDC_CLIENT_SECRET} \
+    OPENLCS_OIDC_AUTH_ENABLED=${OPENLCS_OIDC_AUTH_ENABLED} \
+    TOKEN_SECRET_KEY=${TOKEN_SECRET_KEY}
 
 RUN cd /etc/pki/ca-trust/source/anchors/ && \
         curl -skO "${ROOT_CA_URL}" && \
@@ -52,13 +67,15 @@ RUN cd /etc/pki/ca-trust/source/anchors/ && \
         --add-repo "${RHEL8_REPO_URL}" \
         --add-repo "${RHEL8_APPSTREAM_REPO_URL}" \
         --add-repo "${DOCKER_REPO_URL}" && \
-    dnf install --nogpgcheck --nodoc -y cpio-2.12 atool-0.39.0 vim krb5-workstation docker-ce-cli skopeo && \
+    dnf install --nogpgcheck --nodoc -y cpio-2.12 atool-0.39.0 vim docker-ce-cli skopeo && \
     dnf clean all && \
     # To make docker cache pip package, install dependencies
     pip install --upgrade pip && pip install -r /tmp/devel.txt --use-pep517 && \
     # Add permissions for openlcs
     mkdir -p /var/openlcs/static /var/log/openlcs/ /var/cache/ && \
     chmod a+rwX -R /var/log/openlcs/ /var/cache/ /var/openlcs/static "${HOME}" /etc/passwd && \
+    chmod a+rwX -R /opt/app-root/lib64/python3.8/site-packages/ && \
+    chown -R 1001:0 /opt/app-root/lib64/python3.8/site-packages/ && \
     chmod a+x -R "${HOME}"/containers/docker-openlcs/bin/* && \
     chown -R 1001:0 "${HOME}"
 
