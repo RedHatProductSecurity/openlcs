@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth import middleware
 from django.core.exceptions import ImproperlyConfigured
@@ -23,9 +24,9 @@ class AuthRequiredMiddleware(middleware.AuthenticationMiddleware):
         if 'Mozilla' not in user_agent:
             return
         # Avoid redirects to login loop.
-        paths = ['/oidc/login/', '/oidc/callback/']
-        for path in paths:
+        for path in ['/oidc/login/', '/oidc/callback/']:
             if request.META.get("PATH_INFO").startswith(path):
                 return
         if not bool(request.user and request.user.is_authenticated):
-            return HttpResponseRedirect(reverse('oidc_login'))
+            if 'openlcs' in settings.HOSTNAME:
+                return HttpResponseRedirect(reverse('oidc_login'))
