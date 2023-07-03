@@ -149,66 +149,84 @@ api-tests:
   script:
     - tox -e api --current-env
 
-## ======== build-openlcs-ci-image ========
-#build-openlcs-ci-image:
-#  except:
-#    - main
-#  tags:
-#    - pelc-shell-runner
-#  stage: build-openlcs-ci-image
-#  script:
-#    - >
-#      docker build
-#      --build-arg PRODSEC_DEV_OPENLCS_MAIL=${PRODSEC_DEV_OPENLCS_MAIL}
-#      --build-arg ROOT_CA_URL=${ROOT_CA_URL}
-#      --build-arg ENG_CA_URL=${ENG_CA_URL}
-#      --build-arg OPENSHIFT_CLI_URL=${OPENSHIFT_CLI_URL}
-#      --build-arg RHEL8_REPO_URL=${RHEL8_REPO_URL}
-#      --build-arg RHEL8_APPSTREAM_REPO_URL=${RHEL8_APPSTREAM_REPO_URL}
-#      --build-arg DOCKER_REPO_URL=${DOCKER_REPO_URL}
-#      --build-arg TITO_REPO_URL=${TITO_REPO_URL}
-#      --build-arg CORGI_API_STAGE=${CORGI_API_STAGE}
-#      --build-arg CORGI_API_PROD=${CORGI_API_PROD}
-#      --build-arg KOJI_WEBSERVICE=${KOJI_WEBSERVICE}
-#      --build-arg KOJI_WEBURL=${KOJI_WEBURL}
-#      --build-arg KOJI_DOWNLOAD=${KOJI_DOWNLOAD}
-#      --build-arg LDAP_URI=${LDAP_URI}
-#      --build-arg LOOKASIDE_CACHE_URL=${LOOKASIDE_CACHE_URL}
-#      -t $OPENLCS_IMAGE:ci -f containers/docker-openlcs/Dockerfile .;
-#    - docker login -u="$PELC_CI_USER" -p=$PELC_CI_PASSWORD quay.io
-#    - docker push $OPENLCS_IMAGE:ci
-#
-## ======== deploy-to-openlcs-ci ========
-#deploy-to-openlcs-ci:
-#  <<: *ci-image
-#  except:
-#    - main
-#  stage: deploy-to-openlcs-ci
-#  before_script:
-#    - oc login --token=$MPP_CI_TOKEN --server=$MPP_CI_API_URL
-#    - oc project openlcs--ci
-#    - pod_db=$(oc get pods | grep Running | grep database|cut -f1 -d " ")
-#    - oc cp tests/integration/resetdb.sh $pod_db:/tmp/
-#    - oc exec -it $pod_db /bin/bash "/tmp/resetdb.sh"
-#  after_script:
-#    - oc logout
-#  script:
-#    - tower-cli config verify_ssl false
-#    - >
-#      tower-cli job launch -J "OpenLCS deploy ci" --monitor --no-input --insecure
-#      -e "openlcs_image_tag: ci"
-#      -h "$AAP_HOST" -t "$AAP_CI_CD_TOKEN"
-#
-## ======== do the integration test agains ci env========
-#integration-test:
-#  <<: *ci-image
-#  except:
-#    - main
-#  stage: integration-test
-#  script:
-#    - echo $INTEGRATION_TEST_PASS | kinit $INTEGRATION_TEST_USER
-#    - export OPENLCS_TEST_URL="$OPENLCS_TEST_URL"
-#    - tox -e integration --current-env
+# ======== build-openlcs-ci-image ========
+build-openlcs-ci-image:
+  except:
+    - main
+  tags:
+    - pelc-shell-runner
+  stage: build-openlcs-ci-image
+  script:
+    - >
+      docker build
+      --build-arg PRODSEC_DEV_OPENLCS_MAIL=${PRODSEC_DEV_OPENLCS_MAIL}
+      --build-arg ROOT_CA_URL=${ROOT_CA_URL}
+      --build-arg ENG_CA_URL=${ENG_CA_URL}
+      --build-arg OPENSHIFT_CLI_URL=${OPENSHIFT_CLI_URL}
+      --build-arg RHEL8_REPO_URL=${RHEL8_REPO_URL}
+      --build-arg RHEL8_APPSTREAM_REPO_URL=${RHEL8_APPSTREAM_REPO_URL}
+      --build-arg DOCKER_REPO_URL=${DOCKER_REPO_URL}
+      --build-arg TITO_REPO_URL=${TITO_REPO_URL}
+      --build-arg CORGI_API_STAGE=${CORGI_API_STAGE}
+      --build-arg CORGI_API_PROD=${CORGI_API_PROD}
+      --build-arg KOJI_WEBSERVICE=${KOJI_WEBSERVICE}
+      --build-arg KOJI_WEBURL=${KOJI_WEBURL}
+      --build-arg KOJI_DOWNLOAD=${KOJI_DOWNLOAD}
+      --build-arg LDAP_URI=${LDAP_URI}
+      --build-arg LOOKASIDE_CACHE_URL=${LOOKASIDE_CACHE_URL}
+      --build-arg OIDC_AUTH_URI=${OIDC_AUTH_URI}
+      --build-arg OPENLCS_OIDC_RP_CLIENT_ID=${OPENLCS_OIDC_RP_CLIENT_ID}
+      --build-arg OPENLCS_OIDC_RP_CLIENT_SECRET=${OPENLCS_OIDC_RP_CLIENT_SECRET}
+      --build-arg USER_OIDC_CLIENT_ID=${USER_OIDC_CLIENT_ID}
+      --build-arg USER_OIDC_CLIENT_SECRET=${USER_OIDC_CLIENT_SECRET}
+      --build-arg OPENLCS_OIDC_AUTH_ENABLED=${OPENLCS_OIDC_AUTH_ENABLED}
+      --build-arg TOKEN_SECRET_KEY=${TOKEN_SECRET_KEY}
+      -t $OPENLCS_IMAGE:ci -f containers/docker-openlcs/Dockerfile .;
+    - docker login -u="$PELC_CI_USER" -p=$PELC_CI_PASSWORD quay.io
+    - docker push $OPENLCS_IMAGE:ci
+
+# ======== deploy-to-openlcs-ci ========
+deploy-to-openlcs-ci:
+  <<: *ci-image
+  except:
+    - main
+  stage: deploy-to-openlcs-ci
+  before_script:
+    - oc login --token=$MPP_CI_TOKEN --server=$MPP_CI_API_URL
+    - oc project openlcs--ci
+    - pod_db=$(oc get pods | grep Running | grep database|cut -f1 -d " ")
+    - oc cp tests/integration/resetdb.sh $pod_db:/tmp/
+    - oc exec -it $pod_db /bin/bash "/tmp/resetdb.sh"
+  after_script:
+    - oc logout
+  script:
+    - tower-cli config verify_ssl false
+    - >
+      tower-cli job launch -J "OpenLCS deploy ci" --monitor --no-input --insecure
+      -e "openlcs_image_tag: ci"
+      -h "$AAP_HOST" -t "$AAP_CI_CD_TOKEN"
+
+# ======== do the integration test agains ci env========
+integration-test:
+  <<: *ci-image
+  except:
+    - main
+  stage: integration-test
+  before_script:
+    - oc login --token=$MPP_CI_TOKEN --server=$MPP_CI_API_URL
+    - oc project openlcs--ci
+  after_script:
+    - oc logout
+  script:
+    - gunicorn_pod=$(oc get pods | grep Running | grep gunicorn | cut -f1 -d " ")
+    - >
+      token=$(oc rsh "$gunicorn_pod" bash \
+              -c "echo \"from rest_framework.authtoken.models import Token; \
+                        token=Token.objects.get(user__username='openlcs-stage').key; \
+                        print(token)\" | openlcs/manage.py shell;")
+    - export AUTOBOT_TOKEN="$token"
+    - export OPENLCS_TEST_URL="$OPENLCS_TEST_URL"
+    - tox -e integration --current-env
 
 # ======== build-dev-image ========
 build-dev-image:
