@@ -105,7 +105,7 @@ class OpenlcsClient:
 
         # For parent task, get a local user token or autobot user token.
         # Get local user's token for the local environment.
-        if self.config.get('general', 'hub_server') == 'xxx':
+        if self.config.get('general', 'hub_server') == 'local':
             token_obtain_url = 'obtain_token_local/'
             cmd = 'curl -sS -X POST -d "username={}&password={}" {}'.format(
                 self.config.get('local', 'username'),
