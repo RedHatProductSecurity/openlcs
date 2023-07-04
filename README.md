@@ -151,6 +151,20 @@ export OPENLCS_OIDC_AUTH_ENABLED="xxx"
 export TOKEN_SECRET_KEY="xxx"
 ```
 
+#### Set the following environment variables in the local settings
+```shell
+# Setting OIDC login and logout URLs.
+OIDC_AUTH_URI = xxx
+LOGIN_REDIRECT_URL = xxx
+LOGIN_REDIRECT_URL_FAILURE = xxx
+LOGOUT_REDIRECT_URL = xxx
+```
+
+#### Set autobot_token_file in conf.cfg
+```shell
+autobot_token_file = xxx(SRC_ROOT_DIR) + autobot_token_file
+```
+
 #### How to authentication
 Project GUI use a "KERBEROS ID" and "PIN" + "OTP" to login, and user can get 
 a project token from the url: /rest/v1/auth

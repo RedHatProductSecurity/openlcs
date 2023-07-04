@@ -65,7 +65,7 @@ class GetAutobotTokenMixin:
 
             access_token = f"{response_data['access_token']}"
         except (RequestException, HTTPError) as e:
-            err_msg = f'Failed to get token key. Reason: {e}'
+            err_msg = f'Failed to get access token key. Reason: {e}'
             raise RuntimeError(err_msg) from None
         return access_token
 

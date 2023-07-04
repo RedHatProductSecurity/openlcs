@@ -71,10 +71,12 @@ class OpenlcsClient:
     all requests.
     """
 
-    def __init__(self, task_id=None, parent_task_id=None, token=None):
+    def __init__(self, task_id=None, parent_task_id=None, token=None,
+                 provenance=None):
         self.task_id = task_id
         self.parent_task_id = parent_task_id
         self.token = token
+        self.provenance = provenance
         self.token_sk = os.getenv("TOKEN_SECRET_KEY")
         self.config = load_config()
         self.api_url_prefix = self.get_api_url_prefix()
@@ -82,6 +84,9 @@ class OpenlcsClient:
         self.headers = self.get_headers()
 
     def get_api_url_prefix(self):
+        """
+        Get prefix of the API URL.
+        """
         hub_server = self.config.get('general', 'hub_server')
         if hub_server == 'local':
             api_url_prefix = "http://{}:{}{}".format(
@@ -97,6 +102,9 @@ class OpenlcsClient:
         return api_url_prefix
 
     def get_token_key(self):
+        """
+        Get token string for authentication.
+        """
         # For child tasks, use exist autobot user's token in the child tasks,
         # reduce get token frequency
         if all([self.token, self.token_sk, self.parent_task_id]):
@@ -112,18 +120,37 @@ class OpenlcsClient:
                 self.config.get('local', 'password'),
                 self.api_url_prefix + token_obtain_url
             )
-        # Get autobot user's token from LDAP user's token for the OCP
-        # environment.
-        elif all([self.token, self.token_sk]):
-            token = decrypt_with_secret_key(self.token, self.token_sk)
-            cmd = 'curl -sS --negotiate -u : -H "{}" {}'.format(
-                f'Authorization: Token {token}',
-                self.api_url_prefix + 'get_autobot_token/'
-            )
+            token_key = self.run_get_token(cmd)
         else:
+            # Get autobot user's token from LDAP user's token for the OCP
+            # environment.
+            if all([self.token, self.token_sk]):
+                token = decrypt_with_secret_key(self.token, self.token_sk)
+                cmd = 'curl -sS --negotiate -u : -H "{}" {}'.format(
+                    f'Authorization: Token {token}',
+                    self.api_url_prefix + 'get_autobot_token/'
+                )
+                token_key = self.run_get_token(cmd)
+            # If tasks from subscription, provide autobot user's token
+            # directly.
+            elif self.provenance:
+                hub_server = self.config.get('general', 'hub_server')
+                token_file = self.config.get(hub_server, 'autobot_token_file')
+                with open(token_file, 'r', encoding='utf-8') as f:
+                    token_key = f.read().strip()
+            else:
+                token_key = None
+
+        if not token_key:
             err_msg = 'Failed to get token key.'
             raise RuntimeError(err_msg) from None
+        return token_key
 
+    @staticmethod
+    def run_get_token(cmd):
+        """
+        Run get token command and return result.
+        """
         try:
             output = subprocess.check_output(cmd, shell=True).decode('utf-8')
             token_key = ast.literal_eval(output).get('token')
@@ -133,6 +160,9 @@ class OpenlcsClient:
         return token_key
 
     def get_headers(self):
+        """
+        Get request headers.
+        """
         token_key = self.get_token_key()
         return {
             'content-type': 'application/json',
@@ -140,6 +170,9 @@ class OpenlcsClient:
         }
 
     def get_autobot_token(self, headers, params=None, timeout=300):
+        """
+        Get autobot user's token.
+        """
         url = "get_autobot_token"
         abs_url = self.get_abs_url(url)
         response = self.session.get(abs_url, headers=headers,
