@@ -2,7 +2,7 @@ import os
 import pytest
 import requests
 from urllib.parse import urlparse
-from requests_kerberos import HTTPKerberosAuth
+
 
 if OPENLCS_URL := os.environ.get('OPENLCS_TEST_URL'):
     OPENLCS_LOCAL_LOGIN = os.environ.get('OPENLCS_TEST_LOCAL')
@@ -16,7 +16,7 @@ OPENLCS_LOGIN_DATA = {
 }
 
 
-class OpenLCSTestClient(object):
+class OpenLCSTestClient:
     def __init__(self):
         self.session = requests.Session()
         self._token = None
@@ -39,8 +39,6 @@ class OpenLCSTestClient(object):
                     data=OPENLCS_LOGIN_DATA,
                     auth="",
                 )
-            else:
-                kwargs['auth'] = HTTPKerberosAuth(mutual_authentication=False)
         elif auth == "":
             # No auth
             pass
@@ -106,14 +104,14 @@ class OpenLCSTestClient(object):
                 data=OPENLCS_LOGIN_DATA,
                 auth="",
             )
+            assert response.status_code == 200, \
+                "Login returned status {}: {}"\
+                .format(response.status_code, response.content)
+            assert response.headers.get('Content-Type') == 'application/json',\
+                "Login didn't return json Content-Type"
+            self._token = response.json()['token']
         else:
-            response = self.request('/rest/v1/auth/obtain_token/')
-        assert response.status_code == 200, \
-            "Login returned status {}: {}"\
-            .format(response.status_code, response.content)
-        assert response.headers.get('Content-Type') == 'application/json', \
-            "Login didn't return json Content-Type"
-        self._token = response.json()['token']
+            self._token = os.getenv("AUTOBOT_TOKEN")
         return self._token
 
     def assert_url_same_host(self, url):
