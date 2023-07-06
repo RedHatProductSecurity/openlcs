@@ -348,10 +348,10 @@ file first, it should contain the following parameters:
             )
         if serializer.is_valid():
             parent_task_id = request.data.get('parent_task_id', '')
-            # For child task, token will be autubot user's token.
+            # For child task, will continue use autobot user's token.
             if parent_task_id:
                 token = request.data.get('token')
-            # For parent task, token will be user's token.
+            # For parent task in manual import, token will be user's token.
             else:
                 token = encrypt_with_secret_key(
                     request.headers['Authorization'].split()[-1],

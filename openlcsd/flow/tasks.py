@@ -71,8 +71,9 @@ def get_config(context, engine):
         token = context.get('token')
         # If "parent_task_id" exist, that mean current task is a child task.
         parent_task_id = context.get('parent_task_id')
+        provenance = context.get('provenance')
         client = OpenlcsClient(task_id=task_id, parent_task_id=parent_task_id,
-                               token=token)
+                               token=token, provenance=provenance)
         resp = client.get('obtain_config')
         resp.raise_for_status()
         config = resp.json()
