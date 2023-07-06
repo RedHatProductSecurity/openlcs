@@ -99,7 +99,8 @@ urlpatterns = [
          ObtainConfigView.as_view(), name='obtain_config'),
     path(f'{DRF_ROOT}/get_autobot_token/',
          auth_views.GetAutobotToken.as_view(),
-         name='get_autobot_token')
+         name='get_autobot_token'),
+    path('__debug__/', include('debug_toolbar.urls')),
 ]
 
 if settings.OIDC_AUTH_ENABLED:

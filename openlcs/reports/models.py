@@ -25,6 +25,15 @@ class FileLicenseScan(models.Model):
             ),
         ]
 
+    @classmethod
+    def bulk_create_objects(cls, new_file_ids, detector, batch_size=1000):
+        objs = [
+                FileLicenseScan(detector=detector,
+                                file_id=file_id) for file_id in new_file_ids
+        ]
+        print(objs)
+        return FileLicenseScan.objects.bulk_create(objs, batch_size=batch_size)
+
     def __str__(self):
         return f'{self.file}, {self.detector}'
 
@@ -97,6 +106,24 @@ class LicenseDetection(models.Model):
                 name='unique_license_detection'
             ),
         ]
+
+    @classmethod
+    def bulk_create_objects(cls, licenses, batch_size=1000):
+        objs = [
+                LicenseDetection(
+                    file_scan_id=lic[0],
+                    license_key=lic[1],
+                    score=lic[2],
+                    start_line=lic[3],
+                    end_line=lic[4],
+                    rule=lic[6],
+                ) for lic in licenses
+            ]
+        existing_objs = LicenseDetection.objects.all()
+        new_objs = [obj for obj in objs if obj not in existing_objs]
+        if new_objs:
+            LicenseDetection.objects.bulk_create(
+                new_objs, ignore_conflicts=True, batch_size=batch_size)
 
     def __str__(self):
         return f'{self.file_scan}, {self.license_key}'

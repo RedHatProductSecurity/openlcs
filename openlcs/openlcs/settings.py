@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     'authentication',
+    "debug_toolbar",
     'packages',
     'products',
     'reports',
@@ -64,6 +65,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    "debug_toolbar.middleware.DebugToolbarMiddleware",
     'authentication.middleware.AuthRequiredMiddleware',
     'mozilla_django_oidc.middleware.SessionRefresh'
 ]
@@ -212,6 +214,9 @@ KOJI_WEBSERVICE = os.getenv(
 KOJI_WEBURL = os.getenv(
     'KOJI_WEBURL',
     'https://koji.fedoraproject.org/koji/index')
+
+# LOOKASIDE_CACHE_URL
+LOOKASIDE_CACHE_URL = os.getenv("LOOKASIDE_CACHE_URL")
 
 # Used to identify namespace for restful api endpoints.
 DRF_NAMESPACE = 'rest'

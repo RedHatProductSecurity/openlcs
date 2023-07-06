@@ -16,3 +16,5 @@ pytest-redis==2.4.0
 curlify==2.2.1
 requests-kerberos
 ansible-tower-cli
+django-debug-toolbar
+memory-profiler
