@@ -249,7 +249,7 @@ REST_FRAMEWORK = {
 }
 
 # Bulk create retry settings
-SAVE_DATA_MAX_RETRIES = 5
+SAVE_DATA_MAX_RETRIES = 2
 
 # Directory where the source code will be hosted. Note that
 # appropriate permission(r+w) / secontext is needed.
