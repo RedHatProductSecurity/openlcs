@@ -272,10 +272,6 @@ POST_DIR = os.path.join(SRC_ROOT_DIR, 'post')
 # 'orphan' category will be used if product release is not specified
 ORPHAN_CATEGORY = 'orphan'
 
-# Ldap settings
-LDAP_URI = os.getenv("LDAP_URI")
-LDAP_USERS_DN = "ou=users,dc=redhat,dc=com"
-
 # Email REALM
 EMAIL_REALM = 'REDHAT.COM'
 
