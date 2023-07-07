@@ -50,8 +50,8 @@ class TokenViewSet(ModelViewSet):
 
     * Obtain token
 
-            curl -k --negotiate -u : -H "Content-Type: application/json" \
-%(HOST_NAME)s/%(API_PATH)s/auth/obtain_token/
+        You can only get your token when clink /rest/v1/auth, \
+"Extra Actions", "Obtain token" after you login to the system.
 
         you will get a `Response` like:
 
@@ -73,7 +73,11 @@ class TokenViewSet(ModelViewSet):
     * In case you want to refresh your token, you can do it with:
 
             curl -k --negotiate -u : -H "Content-Type: application/json" \
+-H 'Authorization: Token 00bf04e8187f6e6d54f510515e8bde88e5bb7904' \
 %(HOST_NAME)s/%(API_PATH)s/auth/refresh_token/
+
+        Or you can get the new token when clink /rest/v1/auth, \
+"Extra Actions", "Refresh token" after you login to the system.
 
         you will get a `Response` with refreshed token:
 
