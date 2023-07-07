@@ -96,7 +96,6 @@ build-ci-image:
       --build-arg KOJI_WEBSERVICE=${KOJI_WEBSERVICE}
       --build-arg KOJI_WEBURL=${KOJI_WEBURL}
       --build-arg KOJI_DOWNLOAD=${KOJI_DOWNLOAD}
-      --build-arg LDAP_URI=${LDAP_URI}
       --build-arg LOOKASIDE_CACHE_URL=${LOOKASIDE_CACHE_URL}
       --build-arg OIDC_AUTH_URI=${OIDC_AUTH_URI}
       --build-arg OPENLCS_OIDC_RP_CLIENT_ID=${OPENLCS_OIDC_RP_CLIENT_ID}
@@ -172,7 +171,6 @@ build-openlcs-ci-image:
       --build-arg KOJI_WEBSERVICE=${KOJI_WEBSERVICE}
       --build-arg KOJI_WEBURL=${KOJI_WEBURL}
       --build-arg KOJI_DOWNLOAD=${KOJI_DOWNLOAD}
-      --build-arg LDAP_URI=${LDAP_URI}
       --build-arg LOOKASIDE_CACHE_URL=${LOOKASIDE_CACHE_URL}
       --build-arg OIDC_AUTH_URI=${OIDC_AUTH_URI}
       --build-arg OPENLCS_OIDC_RP_CLIENT_ID=${OPENLCS_OIDC_RP_CLIENT_ID}
@@ -250,7 +248,6 @@ build-dev-image:
       --build-arg KOJI_WEBSERVICE=${KOJI_WEBSERVICE}
       --build-arg KOJI_WEBURL=${KOJI_WEBURL}
       --build-arg KOJI_DOWNLOAD=${KOJI_DOWNLOAD}
-      --build-arg LDAP_URI=${LDAP_URI}
       --build-arg LOOKASIDE_CACHE_URL=${LOOKASIDE_CACHE_URL}
       --build-arg OIDC_AUTH_URI=${OIDC_AUTH_URI}
       --build-arg OPENLCS_OIDC_RP_CLIENT_ID=${OPENLCS_OIDC_RP_CLIENT_ID}
@@ -297,7 +294,6 @@ build-release-image:
       --build-arg KOJI_WEBSERVICE=${KOJI_WEBSERVICE}
       --build-arg KOJI_WEBURL=${KOJI_WEBURL}
       --build-arg KOJI_DOWNLOAD=${KOJI_DOWNLOAD}
-      --build-arg LDAP_URI=${LDAP_URI}
       --build-arg LOOKASIDE_CACHE_URL=${LOOKASIDE_CACHE_URL}
       --build-arg OIDC_AUTH_URI=${OIDC_AUTH_URI}
       --build-arg OPENLCS_OIDC_RP_CLIENT_ID=${OPENLCS_OIDC_RP_CLIENT_ID}
