@@ -376,8 +376,7 @@ def download_package_archive(context, engine):
     @feeds: `tmp_pom_filepath`, absolute path to the pom file, None if
             not found. Note that this is available only for maven builds.
     """
-    tmp_dir = tempfile.mkdtemp(
-        prefix='download_', dir=context.get('tmp_root_dir'))
+    tmp_dir = tempfile.mkdtemp(prefix='download_')
     config = context.get('config')
     koji_connector = KojiConnector(config)
     component_type = context.get('component_type')
