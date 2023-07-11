@@ -12,7 +12,7 @@ class RedHatProfileInline(admin.StackedInline):
     can_delete = True
     verbose_name_plural = 'RedHatProfile'
     fk_name = 'user'
-    fields = ('sub', 'roles', 'full_name')
+    fields = ('sub', 'full_name')
 
 
 # Define a new User admin

@@ -3,7 +3,6 @@ import uuid as uuid
 from django.conf import settings
 from django.db import models
 from django.contrib.auth import get_user_model
-from django.contrib.postgres.fields import ArrayField
 from django.db.models.signals import post_save
 
 User = get_user_model()
@@ -19,12 +18,6 @@ class RedHatProfile(models.Model):
         on_delete=models.CASCADE
     )
     sub = models.UUIDField(default=uuid.uuid4)
-    roles = ArrayField(
-        models.CharField(max_length=1024),
-        default=list,
-        blank=True,
-        null=True,
-    )
     # Storing CN instead of trying to split it into Django's given/first/family/last  # noqa
     # bc https://www.kalzumeus.com/2010/06/17/falsehoods-programmers-believe-about-names/  # noqa
     full_name = models.CharField(max_length=256, blank=True, null=True)
