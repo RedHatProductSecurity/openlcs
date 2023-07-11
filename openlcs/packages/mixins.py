@@ -56,11 +56,9 @@ class SaveScanResultMixin:
     def save_file_copyright_scan(
             self, new_file_ids, copyright_detector):
         if new_file_ids:
-            objs = [
-                FileCopyrightScan(file_id=file_id, detector=copyright_detector)
-                for file_id in new_file_ids]
-            file_copyright_scan_list = FileCopyrightScan.objects.bulk_create(
-                objs)
+            file_copyright_scan_list = FileCopyrightScan.\
+                bulk_create_objs(new_file_ids, copyright_detector)
+
             new_file_copyright_scan_dict = {
                 item.file_id: item.id for item in file_copyright_scan_list}
             self.file_copyright_scan_dict.update(new_file_copyright_scan_dict)
@@ -72,24 +70,8 @@ class SaveScanResultMixin:
         copyrights = dict(
             (self.file_copyright_scan_dict.get(path_file_dict.get(k)), v) for
             (k, v) in raw_data.items())
-        if copyrights:
-            # Query copyrights detection that need to be created.
-            objs = []
-            for k, v in copyrights.items():
-                k_objs = [
-                    CopyrightDetection(
-                        file_scan_id=k,
-                        statement=statement["copyright"],
-                        start_line=statement["start_line"],
-                        end_line=statement["end_line"]
-                    ) for statement in v
-                ]
-                objs.extend(k_objs)
-            existing_objs = CopyrightDetection.objects.all()
-            new_objs = [obj for obj in objs if obj not in existing_objs]
-            if new_objs:
-                CopyrightDetection.objects.bulk_create(
-                    objs, ignore_conflicts=True)
+
+        CopyrightDetection.bulk_create_objs(copyrights)
 
     def save_scan_result(self, **kwargs):
         path_with_swhids = kwargs.pop('path_with_swhids')
