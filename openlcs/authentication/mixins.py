@@ -37,13 +37,6 @@ class GetAutobotTokenMixin:
             # Create a Red Hat Profile for this user
             redhat_profile = user.redhatprofile
             redhat_profile.sub = claims.get('sub')
-            if groups := claims.get("groups"):
-                roles = groups
-            elif realm_access := claims.get("realm_access"):
-                roles = realm_access.get("roles")
-            else:
-                roles = ""
-            redhat_profile.roles = roles
             redhat_profile.full_name = claims.get('name')
             redhat_profile.save()
         return user

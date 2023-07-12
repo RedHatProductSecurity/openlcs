@@ -17,9 +17,7 @@ USERS_KEYS = [
     'name',
     'given_name',
     'family_name',
-    'email',
-    'groups',
-    'realm_access'
+    'email'
 ]
 
 
@@ -85,14 +83,6 @@ class OpenLCSOIDCBackend(OIDCAuthenticationBackend):
         # Create a Red Hat Profile for this user
         redhat_profile = user.redhatprofile
         redhat_profile.sub = user_detail[0]
-        # kerberos user exist "groups", but client user exist "realm_access"
-        if groups := claims.get("groups"):
-            roles = groups
-        elif realm_access := claims.get("realm_access"):
-            roles = realm_access.get("roles")
-        else:
-            roles = ""
-        redhat_profile.roles = roles
         redhat_profile.full_name = user_detail[2]
         redhat_profile.save()
 
@@ -102,15 +92,8 @@ class OpenLCSOIDCBackend(OIDCAuthenticationBackend):
         """
         Update user settings.
         """
-        if groups := claims.get("groups"):
-            roles = groups
-        elif realm_access := claims.get("realm_access"):
-            roles = realm_access.get("roles")
-        else:
-            roles = ""
         RedHatProfile.objects.filter(user=user).update(
             sub=claims.get("sub", ""),
-            roles=roles,
             full_name=claims.get("name", ""),
         )
         return user

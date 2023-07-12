@@ -139,5 +139,6 @@ def test_autoimport_workflow(client):
               f"mins.", error)
 
     # Check if the scan result was synced to corgi
+    time.sleep(10)  # waiting for syncing result to corgi
     openlcs_scan_url = get_the_openlcs_scan_url(test_data_src)
     assert os.getenv('OPENLCS_TEST_URL') in openlcs_scan_url
