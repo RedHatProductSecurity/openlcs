@@ -21,6 +21,7 @@ from openlcsd.celery import app
 from openlcsd.flow.task_wrapper import WorkflowWrapperTask
 from openlcs.libs.common import get_component_name_version_combination
 from openlcs.libs.common import get_nvr_list_from_components
+from openlcs.libs.common import get_extension
 from openlcs.libs.common import remove_duplicates_from_list_by_key
 from openlcs.libs.common import run_and_capture
 from openlcs.libs.common import ExhaustibleIterator
@@ -44,6 +45,7 @@ from openlcs.libs.scanner import LicenseScanner
 from openlcs.libs.scanner import CopyrightScanner
 from openlcs.libs.sc_handler import SourceContainerHandler
 from openlcs.libs.swh_tools import get_swhids_with_paths
+from openlcs.libs.unpack import SP_EXTENSIONS
 from openlcs.libs.unpack import UnpackArchive
 from openlcs.utils.common import DateEncoder
 
@@ -641,14 +643,15 @@ def get_source_metadata(context, engine):
         context['project_url'] = ''
         context['declared_license'] = ''
 
+    archive_type = "dir" if is_src_dir else get_extension(
+            src_filepath, SP_EXTENSIONS)[1].lstrip('.')
     source_info = {
         'product_release': context.get('product_release'),
         "source": {
             "checksum": source_checksum,
             "name": source_name,
             "url": context.get("project_url"),
-            # The archive type used for source is incorrect, OLCS-639
-            "archive_type": "dir" if is_src_dir else list(build_type.keys())[0]
+            "archive_type": archive_type
         },
 
     }
