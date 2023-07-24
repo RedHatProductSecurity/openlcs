@@ -422,6 +422,7 @@ def download_package_archive(context, engine):
                     ret_code, err_msg = run_and_capture(cmd, tmp_dir)
                     if ret_code:
                         engine.logger.info("corgi download_url invalid")
+                        engine.logger.info(err_msg)
                         download_shared_remote_source(context, engine)
                 else:
                     engine.logger.info(f"Currently, we don't support this URL:"
