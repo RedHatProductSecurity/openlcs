@@ -301,8 +301,17 @@ class ComponentImportSerializer(ImportScanOptionsMixin, ReleaseImportMixin):
     def get_tasks_params(self):
         params = self.get_task_params()
         components = self.validated_data.get('components')
-        return [(component.get('nvr'), dict(component=component, **params))
-                for component in components]
+        need_keys = (
+            "uuid", "type", "name", "version", "release", "nvr", "arch",
+            "nevra", "software_build", "download_url"
+        )
+        comp_params = []
+        for component in components:
+            subcomp = {k: component[k] for k in component.keys() & need_keys}
+            updated_params = (
+                component.get('nvr'), dict(component=subcomp, **params))
+            comp_params.append(updated_params)
+        return comp_params
 
 
 class ComponentSerializer(serializers.ModelSerializer):
