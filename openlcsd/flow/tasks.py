@@ -15,7 +15,7 @@ from workflow.patterns.controlflow import IF_ELSE
 from workflow.patterns.controlflow import WHILE
 from packagedcode.rpm import RpmArchiveHandler
 from packagedcode.pypi import PypiSdistArchiveHandler
-from packagedcode.maven import parse as MavenPomXmlHandler
+from packagedcode.maven import MavenPomXmlHandler
 
 from openlcsd.celery import app
 from openlcsd.flow.task_wrapper import WorkflowWrapperTask
