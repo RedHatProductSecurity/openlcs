@@ -1,6 +1,7 @@
 import filetype
 import glob
 import mimetypes
+import http
 import os
 import re
 import shutil
@@ -12,6 +13,9 @@ from collections import defaultdict
 from itertools import groupby
 from operator import itemgetter
 from packageurl import PackageURL
+
+import requests
+from bs4 import BeautifulSoup
 
 
 def get_mime_type(filepath):
@@ -384,3 +388,20 @@ def is_shared_remote_source_need_delete(remote_source_path: str) -> bool:
                 return False
 
     return True
+
+
+def list_http_files(url: str) -> list:
+    """
+    List http file and dir name
+    """
+    r = requests.get(url, timeout=15)
+    if r.status_code != http.HTTPStatus.OK:
+        raise RuntimeError(f"{url} status code: {r.status_code}")
+    soup = BeautifulSoup(r.text, features='html.parser')
+
+    hrefs = []
+
+    for a in soup.find_all('a'):
+        hrefs.append(a['href'])
+
+    return hrefs
