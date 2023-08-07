@@ -26,6 +26,7 @@ from openlcs.libs.common import remove_duplicates_from_list_by_key
 from openlcs.libs.common import run_and_capture
 from openlcs.libs.common import ExhaustibleIterator
 from openlcs.libs.common import is_shared_remote_source_need_delete
+from openlcs.libs.common import list_http_files
 from openlcs.libs.corgi import CorgiConnector
 from openlcs.libs.distgit import get_distgit_sources
 from openlcs.libs.driver import OpenlcsClient
@@ -366,6 +367,44 @@ def download_shared_remote_source(context, engine):
         )
 
 
+def download_maven_source_from_corgi(context, engine, tmp_dir):
+    # deal with MAVEN component
+    component = context.get('component')
+    nvr = component.get("nvr")
+    download_url = component.get('download_url')
+    if not download_url:
+        raise RuntimeError(f"component {component['purl']} download_url empty")
+    name_list = list_http_files(download_url)
+    pom_filename, jar_filename_list = None, []
+    for name in name_list:
+        # nvr.pom
+        if name == nvr+".pom":
+            pom_filename = name
+        if name.endswith(".jar") and not name.endswith("javadoc.jar"):
+            jar_filename_list.append(name)
+
+    if not all([pom_filename, jar_filename_list]):
+        raise RuntimeError(f"{download_url} missing some source file")
+
+    # download pom file
+    link = os.path.join(download_url, pom_filename)
+    cmd = f'wget -q {link}'
+    ret_code, err_msg = run_and_capture(cmd, tmp_dir)
+    if ret_code:
+        raise RuntimeError(f"download {link} failed:{err_msg}")
+
+    # download jar file
+    for filename in jar_filename_list:
+        link = os.path.join(download_url, filename)
+        cmd = f'wget -q {link}'
+        ret_code, err_msg = run_and_capture(cmd, tmp_dir)
+        if ret_code:
+            raise RuntimeError(f"download {link} failed:{err_msg}")
+
+    context['tmp_src_filepath'] = tmp_dir
+    context['tmp_pom_filepath'] = os.path.join(tmp_dir, pom_filename)
+
+
 def download_package_archive(context, engine):
     """
     Download source of given build/archive.
@@ -383,6 +422,8 @@ def download_package_archive(context, engine):
     koji_connector = KojiConnector(config)
     component_type = context.get('component_type')
     component = context.get('component')
+    provenance = context.get('provenance')
+
     if build := context.get('build'):
         build_id = build.get('id')
         source_url = build.get('source')
@@ -398,6 +439,8 @@ def download_package_archive(context, engine):
             lookaside_url = config.get('LOOKASIDE_CACHE_URL')
             get_distgit_sources(
                     lookaside_url, source_url, build_id, tmp_dir)
+        elif component_type == "MAVEN" and provenance == 'sync_corgi':
+            download_maven_source_from_corgi(context, engine, tmp_dir)
         elif build_id:
             koji_connector.download_build_source(int(build_id),
                                                  dest_dir=tmp_dir)
@@ -474,6 +517,8 @@ def download_package_archive(context, engine):
             raise RuntimeError(msg) from None
 
         context['tmp_src_filepath'] = source_path
+    elif component_type == "MAVEN" and provenance == 'sync_corgi':
+        pass
     else:
         if len(os.listdir(tmp_dir)) == 1:
             tmp_src_filepath = os.path.join(tmp_dir, os.listdir(tmp_dir)[0])
@@ -556,15 +601,16 @@ def get_source_metadata(context, engine):
     src_filepath = context.get('tmp_src_filepath')
     is_src_dir = os.path.isdir(src_filepath)
     nvr = context.get('package_nvr')
-    if context.get('shared_remote_source') and is_src_dir:
-        component = context.get('component')
+    component = context.get('component')
+    if (context.get('shared_remote_source') and is_src_dir) or\
+            (component.get("type") == "MAVEN" and
+             context.get('provenance') == 'sync_corgi'):
         source_name = get_component_name_version_combination(component)
         source_checksum = dirhash(src_filepath, "sha256")
     elif context.get('source_url') and is_src_dir:
         if nvr is not None:
             source_name = f"{nvr}"
         else:
-            component = context.get('component')
             source_name = component.get("nvr")
         source_checksum = dirhash(src_filepath, "sha256")
     elif is_metadata_component_source(src_filepath):
