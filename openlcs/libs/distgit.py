@@ -53,7 +53,7 @@ def _clone_source(source_url: str,
 
     protocol = url.scheme
     if protocol.startswith("git+"):
-        protocol = protocol.removeprefix("git+")
+        protocol = protocol[4:]
     git_remote = f"{protocol}://{url.netloc}{url.path}"
     path_parts = url.path.rsplit("/", 2)
     if len(path_parts) != 3:
