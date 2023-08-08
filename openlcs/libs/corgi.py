@@ -16,7 +16,7 @@ from packageurl import PackageURL
 from requests.exceptions import RequestException, HTTPError
 from requests.status_codes import codes as http_codes
 from urllib import parse
-from urllib.parse import urljoin
+from urllib.parse import urljoin, unquote
 
 
 openlcs_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -490,7 +490,7 @@ class CorgiConnector:
                 return self.filter_go_package_component(component)
             return component
         else:
-            return component.get("purl")
+            return unquote(link.split("purl=")[-1])
 
     def get_provides_source_components(self, component, subscribed_purls=None,
                                        max_workers=4, max_queue_length=6):
