@@ -424,8 +424,15 @@ class CorgiConnector:
         :return: yields each page of data as a list
         """
         url = f"{self.base_url}{api_path}"
+        # Only necessary data should be obtained, a following update is needed
+        # to remove fields 'sources' and 'provides' due to 502 error. CORGI-729
+        includes = [
+            "uuid", "purl", "link", "type", "name", "version", "release",
+            "nvr", "arch", "nevra", "software_build", "sources", "provides",
+            "openlcs_scan_url"
+        ]
         while url:
-            data = self.get(url, query_params=query_params)
+            data = self.get(url, query_params=query_params, includes=includes)
             try:
                 if isinstance(data, dict) and "results" in data:
                     # Paginated response with "results" key
@@ -591,7 +598,8 @@ class CorgiConnector:
             query_params={
                 "nevra": component['nevra'],
                 "gomod_components": True
-            }
+            },
+            includes=self.default_includes
         )
 
         return None if result["count"] == 0 else component
