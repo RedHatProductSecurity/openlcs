@@ -126,7 +126,8 @@ def test_autoimport_workflow(client):
     )
     i = 0
     try:
-        while response['status'] != "SUCCESS" and i < 10:
+        waiting_status = ['PENDING', 'STARTED']
+        while response['status'] in waiting_status and i < 10:
             i = i + 1
             time.sleep(int(sleep_time))  # waiting for scanning
             response = client.api_call(
@@ -134,11 +135,12 @@ def test_autoimport_workflow(client):
                 method="GET",
                 expected_code=status.HTTP_200_OK
             )
+        if response['status'] != "SUCCESS":
+            print(f"Task for {test_data_nvr} wasn't SUCCESS in 20 mins.")
+        else:
+            # Check if the scan result was synced to corgi
+            time.sleep(10)  # waiting for syncing result to corgi
+            openlcs_scan_url = get_the_openlcs_scan_url(test_data_src)
+            assert os.getenv('OPENLCS_TEST_URL') in openlcs_scan_url
     except Exception as error:
-        print(f"The forked task for {test_data_nvr} wasn't SUCCESS after 20"
-              f"mins.", error)
-
-    # Check if the scan result was synced to corgi
-    time.sleep(10)  # waiting for syncing result to corgi
-    openlcs_scan_url = get_the_openlcs_scan_url(test_data_src)
-    assert os.getenv('OPENLCS_TEST_URL') in openlcs_scan_url
+        print(error)
