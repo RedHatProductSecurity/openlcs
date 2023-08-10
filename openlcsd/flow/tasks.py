@@ -435,10 +435,15 @@ def download_package_archive(context, engine):
     engine.logger.info('Start to download package source...')
     try:
         if component_type == 'RPM' and source_url:
-            # Download source from the source link provided by Corgi
-            lookaside_url = config.get('LOOKASIDE_CACHE_URL')
-            get_distgit_sources(
-                    lookaside_url, source_url, build_id, tmp_dir)
+            try:
+                # Download source from distgit if source link provided by Corgi
+                lookaside_url = config.get('LOOKASIDE_CACHE_URL')
+                get_distgit_sources(
+                        lookaside_url, source_url, build_id, tmp_dir)
+            except Exception:
+                # Download source from Brew if any exception
+                koji_connector.download_build_source(int(build_id),
+                                                     dest_dir=tmp_dir)
         elif component_type == "MAVEN" and provenance == 'sync_corgi':
             download_maven_source_from_corgi(context, engine, tmp_dir)
         elif build_id:

@@ -80,7 +80,7 @@ def _download_lookaside_sources(lookaside_url: str,
     lookaside_source = distgit_sources / "sources"
     if not lookaside_source.exists():
         logger.warning("No lookaside sources in %s", distgit_sources)
-        return []
+        return
 
     with open(lookaside_source, "r", encoding='utf-8') as source_content_file:
         source_content = source_content_file.readlines()
@@ -122,6 +122,7 @@ def get_distgit_sources(lookaside_url: str,
     raw_source, package_type, package_name = _clone_source(
         source_url, build_id, dest_dir)
     if not raw_source:
-        return []
+        logger.warning("No sources found in %s", source_url)
+        return
     _download_lookaside_sources(
         lookaside_url, raw_source, build_id, package_type, package_name)
