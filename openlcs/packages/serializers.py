@@ -302,8 +302,9 @@ class ComponentImportSerializer(ImportScanOptionsMixin, ReleaseImportMixin):
         params = self.get_task_params()
         components = self.validated_data.get('components')
         need_keys = (
-            "uuid", "link", "type", "name", "version", "release", "nvr",
-            "arch", "nevra", "software_build", "download_url"
+            "uuid", "link", "name", "version", "release", "arch", "type",
+            "nvr", "nevra", "license_declared", "software_build",
+            "download_url"
         )
         comp_params = []
         for component in components:
