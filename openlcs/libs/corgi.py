@@ -427,9 +427,9 @@ class CorgiConnector:
         # Only necessary data should be obtained, a following update is needed
         # to remove fields 'sources' and 'provides' due to 502 error. CORGI-729
         includes = [
-            "uuid", "purl", "link", "type", "name", "version", "release",
-            "nvr", "arch", "nevra", "software_build", "sources", "provides",
-            "openlcs_scan_url"
+            "uuid", "name", "version", "release", "arch", "type", "purl",
+            "link", "nvr", "nevra", "download_url", "license_declared",
+            "software_build", "openlcs_scan_url", "sources", "provides"
         ]
         while url:
             data = self.get(url, query_params=query_params, includes=includes)
