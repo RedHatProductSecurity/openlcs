@@ -11,6 +11,8 @@ import time
 import uuid
 import uvloop
 
+from .common import is_generator_empty
+
 from concurrent.futures import ThreadPoolExecutor
 from packageurl import PackageURL
 from requests.exceptions import RequestException, HTTPError
@@ -116,7 +118,6 @@ class CorgiConnector:
 
         Only used for corgi's /components endpoint.
         """
-        fields = []
         # basic fields needed, all calls should include these fields
         # any type-indenpendent fields should go here.
         base_fields = [
@@ -124,23 +125,8 @@ class CorgiConnector:
             "purl", "link", "nvr", "nevra", "download_url", "related_url",
             "license_declared", "software_build", "openlcs_scan_url"
         ]
-        fields.extend(base_fields)
 
-        if component_type.upper() == "RPM":
-            # sources could be a long list, need to truncate after obtained
-            fields.append("sources")
-            fields.remove("download_url")
-        elif component_type.upper() in ["OCI", "RPMMOD"]:
-            fields.append("provides")
-            fields.remove("download_url")
-            # No openlcs_scan_url will be provided for oci or rhelmod
-            fields.remove("openlcs_scan_url")
-        else:
-            # FIXME: any specific fields needed for other types?
-            # software_build makes no sense for non-rpm/non-ocis components.
-            fields.remove("software_build")
-
-        return fields
+        return base_fields
 
     # Inspired from https://gitlab.com/mh21/ocp-sso-token/-/blob/
     # main/ocp_sso_token/ocp_oauth_login.py#L21
@@ -175,8 +161,17 @@ class CorgiConnector:
         # srpm component has no sources
         if component["arch"] == "src":
             return component
-        sources = iter(component["sources"])
+
+        c = CorgiConnector()
+        # Only get needed field to get srpm, because there could be
+        # a lot of components in sources API list. After we find the
+        # srpm, get full information by link
+        sources = c.get_sources(
+            component['purl'], query_params={"type": "RPM", "arch": "src"})
         source = find_srpm_source(sources)
+        # get full information of srpm component
+        if source is not None:
+            source = c.get(source['link'], includes=c.rpm_includes)
         # Truncate unneeded sources.
         component["sources"] = [source] if source is not None else []
         return component
@@ -200,6 +195,21 @@ class CorgiConnector:
                         "Request exception: %s. Retry after %d seconds...",
                         e, retry_delay)
                     time.sleep(retry_delay)
+
+    def get_noarch_oci_component(self, purl):
+        """
+        get noarch oci component through arch specified oci purl
+        """
+        p = self.get(
+            f"{self.base_url}components",
+            query_params={"type": "OCI", "provides": purl,
+                          "arch": "noarch"},
+            includes=self.default_includes
+        )
+        if p['count'] == 0:
+            raise RuntimeError(f"{purl} has no mapping noarch component")
+
+        return p['results'][0]
 
     @classmethod
     def get_sync_fields(cls, component):
@@ -274,7 +284,8 @@ class CorgiConnector:
                     results = response.json().get('results')
                     for result in results:
                         parent_component = self.get_component_flat(result)
-                        provide_components = result.get('provides')
+                        provide_components = self.get_provides(
+                            result['purl'], includes=['link'])
                         for provide in provide_components:
                             component_links.append(provide.get('link'))
                         break
@@ -478,6 +489,40 @@ class CorgiConnector:
                 logger.error("Request failed: %s", e)
                 break
 
+    def get_sources(self, purl, query_params=None, includes=None):
+        """
+        get component sources information according to purl and parameters
+        default get purl and link field
+        return as a generator
+        """
+        if includes is None:
+            includes = ["purl", 'link']
+
+        if query_params is None:
+            query_params = {}
+
+        query_params["provides"] = purl
+
+        return self.get_paginated_data(
+            query_params=query_params, includes=includes)
+
+    def get_provides(self, purl, query_params=None, includes=None):
+        """
+        get component provides information according to purl and parameters
+        default get purl and link field
+        return as a generator
+        """
+        if includes is None:
+            includes = ["purl", 'link']
+
+        if query_params is None:
+            query_params = {}
+
+        query_params["sources"] = purl
+
+        return self.get_paginated_data(
+            query_params=query_params, includes=includes)
+
     def get_srpm_component(self, component, synced_purls=None):
         """
         Returns the source rpm component for a RPM component
@@ -543,27 +588,31 @@ class CorgiConnector:
         name = component.get("name")
         if name.endswith("-source"):
             logger.debug("This is a source container build")
-            sources = component.get("sources")
+            sources = self.get_sources(component["purl"], includes=['link'])
+
             # There are cases when a "-source" components in corgi does not
             # have a corresponding binary build, see also OLCS-459.
-            if not sources:
+            empty, first = is_generator_empty(sources)
+            if empty:
                 message = (f"Failed to find binary build for "
                            f"{component['nevra']} in component registry")
                 logger.debug(message)
                 raise MissingBinaryBuildException(message)
 
-            link = sources[0].get("link")
+            link = first.get("link")
             component = self.get(link, includes=self.oci_includes)
             logger.debug("Binary build %s retrieved.", component['nevra'])
         if component.get('arch') == 'noarch':
-            oci_noarch_provides = component.get("provides", [])
+            oci_noarch_provides = self.get_provides(component["purl"])
         else:
             # If the binary container arch is not noarch, get the provides
             # of the provides of the noarch container.
-            if component.get('sources'):
-                link = component.get('sources')[0].get("link")
+            sources = self.get_sources(component["purl"])
+            empty, first = is_generator_empty(sources)
+            if not empty:
+                link = first.get("link")
                 noarch_oci = self.get(link, includes=self.oci_includes)
-                oci_noarch_provides = noarch_oci.get("provides", [])
+                oci_noarch_provides = self.get_provides(noarch_oci["purl"])
         # For the noarch binary container, the different arch provides match
         # only one src component. Deduplication of these kind of provides
         # helps the performance.
@@ -704,7 +753,7 @@ class CorgiConnector:
             else:
                 sources.extend(components)
                 missings.extend(missings)
-            return (sources, missings)
+            return sources, missings
 
         def should_yield_data(component, result):
             """
