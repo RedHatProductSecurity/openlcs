@@ -44,18 +44,30 @@ def _clone_source(source_url: str,
     # (scheme, netloc, path, parameters, query, fragment)
     url = urlparse(source_url)
 
-    # We only support git, git+https, git+ssh
-    if not url.scheme.startswith("git"):
+    # Older builds have git, git+https, git+ssh, etc, newer builds have https
+    if not url.scheme.startswith("git") and url.scheme != "https":
         raise ValueError(
-            f"Build {build_id} had a source_url with a non-git protocol: "
-            f"{source_url}"
+            f"Build {build_id} had a source_url with a non-git, "
+            f"non-HTTPS protocol: {source_url}"
         )
+    path = url.path
+    if "kernel-rt.git" in path:
+        # Source URLs from Brew are incorrect, give 404
+        path = path.replace("kernel-rt.git", "kernel-rt")
 
     protocol = url.scheme
     if protocol.startswith("git+"):
+        # Make git+https, git+ssh, etc. into just https, ssh, etc
         protocol = protocol[4:]
-    git_remote = f"{protocol}://{url.netloc}{url.path}"
-    path_parts = url.path.rsplit("/", 2)
+    elif protocol == "git":
+        # dist-git now requires us to use https when cloning
+        protocol = "https"
+        path = '/git' + path
+    # Else protocol was already https
+    # Other protocols will raise an error above
+
+    git_remote = f"{protocol}://{url.netloc}{path}"
+    path_parts = path.rsplit("/", 2)
     if len(path_parts) != 3:
         raise ValueError(f"Build {build_id} had a source_url with a too-short "
                          f"path: {source_url}")
