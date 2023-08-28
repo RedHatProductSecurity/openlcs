@@ -304,7 +304,7 @@ class ComponentImportSerializer(ImportScanOptionsMixin, ReleaseImportMixin):
         need_keys = (
             "uuid", "link", "name", "version", "release", "arch", "type",
             "nvr", "nevra", "license_declared", "software_build",
-            "download_url"
+            "download_url", "purl"
         )
         comp_params = []
         for component in components:

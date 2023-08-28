@@ -54,16 +54,17 @@ def corgi_include_exclude_fields_wrapper(func):
             # work around for latencies by excluding costly related fields
             # queries, see also CORGI-482, another benefit is to minimize
             # the data returned, see OLCS-471
-            includes = kwargs.pop('includes', None)
-            excludes = kwargs.pop('excludes', None)
-            if excludes:
-                query_params['exclude_fields'] = ','.join(excludes)
-            if includes:
-                query_params['include_fields'] = ','.join(includes)
-                # includes/excludes are mutually exclusive, the former
-                # takes precedence.
-                query_params.pop('exclude_fields', None)
-            kwargs['query_params'] = query_params
+            if query_params is not None:
+                includes = kwargs.pop('includes', None)
+                excludes = kwargs.pop('excludes', None)
+                if excludes:
+                    query_params['exclude_fields'] = ','.join(excludes)
+                if includes:
+                    query_params['include_fields'] = ','.join(includes)
+                    # includes/excludes are mutually exclusive, the former
+                    # takes precedence.
+                    query_params.pop('exclude_fields', None)
+                kwargs['query_params'] = query_params
         return func(*args, **kwargs)
 
     return wrapper
@@ -229,6 +230,21 @@ class CorgiConnector:
         response = self.corgi_request(path, access_token, "PUT", data=data)
         response.raise_for_status()
         return response.json()
+
+    def get_binary_rpms(self, component):
+        '''
+        Retrun SRPM's binary RPMs UUIDs
+        '''
+        component_uuids = []
+        if component.get("arch") == 'src' and component.get("type") == 'RPM':
+            component_purl = component.get("purl")
+            params = {'sources': component_purl, 'type': 'RPM'}
+            results = self.get_paginated_data(query_params=params,
+                                              api_path="components",
+                                              includes=['uuid'])
+            for result in results:
+                component_uuids.append(result.get('uuid'))
+        return component_uuids
 
     @staticmethod
     def get_component_flat(data):
@@ -407,7 +423,8 @@ class CorgiConnector:
                 provides.append(oci_noarch_provide)
         return provides
 
-    def get_paginated_data(self, query_params=None, api_path="components"):
+    def get_paginated_data(self, query_params=None, api_path="components",
+                           includes=None):
         """
         Retrieves paginated data from `api_path`.
 
@@ -421,16 +438,21 @@ class CorgiConnector:
 
         :param query_params: a dictionary of query parameters.
         :param api_path: the path of the API endpoint, default to "components"
+        :param includes: include field of corgi component API
         :return: yields each page of data as a list
         """
         url = f"{self.base_url}{api_path}"
         # Only necessary data should be obtained, a following update is needed
         # to remove fields 'sources' and 'provides' due to 502 error. CORGI-729
-        includes = [
-            "uuid", "name", "version", "release", "arch", "type", "purl",
-            "link", "nvr", "nevra", "download_url", "license_declared",
-            "software_build", "openlcs_scan_url", "sources", "provides"
-        ]
+        if not includes:
+            includes = [
+                "uuid", "name", "version", "release", "arch", "type", "purl",
+                "link", "nvr", "nevra", "download_url", "license_declared",
+                "software_build", "openlcs_scan_url"
+            ]
+        if query_params is None:
+            query_params = {}
+
         while url:
             data = self.get(url, query_params=query_params, includes=includes)
             try:
@@ -439,8 +461,7 @@ class CorgiConnector:
                     yield from data["results"]
                     url = data.get("next")
                     # query_params is needed once and only once
-                    if query_params:
-                        query_params = None
+                    query_params = None
                 else:
                     # Hack to survive an edge case(query by purl or possibly
                     # other unidentified fields) that when only one instance
