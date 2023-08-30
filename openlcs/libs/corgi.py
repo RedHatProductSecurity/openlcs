@@ -115,6 +115,7 @@ class CorgiConnector:
     def get_include_fields(component_type=""):
         """
         Returns bare-minimum include fields needed based on component_type.
+        We do not need sources/provides field for all type of components now
 
         Only used for corgi's /components endpoint.
         """
