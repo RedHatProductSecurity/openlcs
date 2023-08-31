@@ -244,9 +244,9 @@ def find_srpm_source(sources):
     starting with "pkg:rpm" and contains "arch=src".
     Returns the matched source or None otherwise.
     """
-    pattern = re.compile(r'pkg:rpm.*arch=src')
+    # pattern = re.compile(r'pkg:rpm.*arch=src')
     for source in sources:
-        if pattern.search(source['purl']):
+        if source:
             return source
     return None
 
@@ -329,6 +329,20 @@ class ExhaustibleIterator:
 
     def is_active(self):
         return not self.exhausted
+
+
+def is_generator_empty(gen):
+    """
+    Tell if a generator is empty,
+    return True, first value tuple
+    """
+    first = None
+    try:
+        first = next(gen)
+    except StopIteration:
+        return True, first
+
+    return False, first
 
 
 def guess_env_from_principal(user_name):

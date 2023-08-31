@@ -19,14 +19,16 @@ from packagedcode.maven import MavenPomXmlHandler
 
 from openlcsd.celery import app
 from openlcsd.flow.task_wrapper import WorkflowWrapperTask
-from openlcs.libs.common import get_component_name_version_combination
-from openlcs.libs.common import get_nvr_list_from_components
-from openlcs.libs.common import get_extension
-from openlcs.libs.common import remove_duplicates_from_list_by_key
-from openlcs.libs.common import run_and_capture
-from openlcs.libs.common import ExhaustibleIterator
-from openlcs.libs.common import is_shared_remote_source_need_delete
-from openlcs.libs.common import list_http_files
+from openlcs.libs.common import (
+    get_component_name_version_combination,
+    get_nvr_list_from_components,
+    get_extension,
+    remove_duplicates_from_list_by_key,
+    run_and_capture,
+    ExhaustibleIterator,
+    is_shared_remote_source_need_delete,
+    list_http_files,
+)
 from openlcs.libs.corgi import CorgiConnector
 from openlcs.libs.distgit import get_distgit_sources
 from openlcs.libs.driver import OpenlcsClient
@@ -302,6 +304,7 @@ def download_shared_remote_source(context, engine):
     parent_component = context.get('parent_component')
     config = context.get('config')
     koji_connector = KojiConnector(config)
+    connector = CorgiConnector()
     sc = SourceContainerHandler(config=config)
 
     # mark this component use shared remote source
@@ -310,13 +313,14 @@ def download_shared_remote_source(context, engine):
     if not parent_component:
         # no parent component info, get from corgi
         component = context.get('component')
-        connector = CorgiConnector()
         component = connector.get(component.get("link"))
-        sources = component["sources"]
+        sources = connector.get_sources(
+            component["purl"], includes=['purl', 'link', 'arch'])
         oci_ts = 0
         # find the newest build oci according to build completion time
         for source in sources:
-            if not source['purl'].startswith("pkg:oci"):
+            if not source['purl'].startswith("pkg:oci") or\
+                    source['arch'] != "noarch":
                 continue
             # get build complete time from brew, get the newest one
             oci_component = connector.get(
@@ -338,7 +342,9 @@ def download_shared_remote_source(context, engine):
             "name": parent_component.get("name"),
             "version": parent_component.get("version"),
             "release": parent_component.get("release"),
-            "build_id": parent_component['software_build']['build_id']
+            "build_id": parent_component['software_build']['build_id'],
+            "purl": parent_component['purl'],
+            "arch": parent_component['arch']
         }
         context['parent_component'] = parent_component
 
@@ -349,6 +355,20 @@ def download_shared_remote_source(context, engine):
         # immediately when task done. Because this source only use for
         # this component
         context['shared_remote_source_dir'] = rs_root_dir
+
+    # if oci arch is not noarch, find it's noarch oci
+    # because binary arch oci have empty software_build field
+    if parent_component['arch'] != "noarch":
+        parent_component = connector.get_noarch_oci_component(
+            parent_component['purl'])
+        parent_component = {
+            "name": parent_component.get("name"),
+            "version": parent_component.get("version"),
+            "release": parent_component.get("release"),
+            "build_id": parent_component['software_build']['build_id'],
+            "purl": parent_component['purl'],
+            "arch": parent_component['arch']
+        }
 
     filename_list = koji_connector.get_oci_remote_source_archive_filenames(
         parent_component)
@@ -1568,7 +1588,9 @@ def fork_components_imports(context, engine, parent, components):
             "name": parent.get("name"),
             "version": parent.get("version"),
             "release": parent.get("release"),
-            "build_id": parent['software_build']['build_id']
+            "build_id": parent['software_build'].get('build_id'),
+            "purl": parent['purl'],
+            "arch": parent['arch']
         }
     msg = 'Start to fork imports for {} components...'.format(len(components))
     engine.logger.info(msg)
@@ -1802,9 +1824,11 @@ def populate_subscription_purls(context, engine):
     sources = source_components["sources"]
     subscription_purl_set = set()
     source_purl_set = set()
+    c = CorgiConnector()
+
     for component in sources:
         if component["type"] in ["OCI", "RPMMOD"]:
-            provides = component.get("provides", [])
+            provides = c.get_provides(component["purl"], includes=['purl'])
             # Store component provides purls.
             subscription_purl_set.update([p["purl"] for p in provides])
             # Store source component purls.

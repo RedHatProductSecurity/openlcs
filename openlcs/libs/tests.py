@@ -715,6 +715,7 @@ class TestCorgiConnector(TestCase):
             "name": "mock-container-source",
             "version": "1.0.0",
             "release": "1",
+            "purl": "mock-purl",
             "arch": "x86_64",
             "type": "OCI",
             "nevra": "mock-container-source-1.0.0-1.x86_64",
