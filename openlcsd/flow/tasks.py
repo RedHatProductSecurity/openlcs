@@ -836,6 +836,21 @@ def check_source_scan_status(context, engine):
                   f"meeting the requirements already imported. " \
                   f"The REST API link is: {context['source_api_url']}"
             engine.logger.info(msg)
+
+            # if component have the same source, create the component in
+            # olcs db and link source to it
+            component = context['source_info']['component']
+            checksum = context['source_info']['source']['checksum']
+            try:
+                get_data_using_post(
+                    context.get('client'),
+                    '/save_component_with_source/',
+                    {"checksum": checksum, "component": component}
+                )
+            except RuntimeError as err:
+                engine.logger.error(err)
+                raise RuntimeError(err) from None
+
     # If the source not exist, check if it needs to scan.
     else:
         license_scan_req = True if license_scan_tag else False

@@ -596,6 +596,14 @@ class PackageImportTransactionView(APIView):
                     else:
                         time.sleep(1 << i)
                         continue
+        else:
+            if component:
+                component_obj = Component.update_or_create_component(component)
+                component_obj.source = qs[0]
+                component_obj.save()
+                if product_release:
+                    ProductTreeNode.build_release_node(
+                        component, product_release)
 
         # link task to exist Source object
         task_obj.content_object = qs[0]
@@ -690,6 +698,22 @@ class CheckSourceStatus(APIView):
                 "source_scan_flag": source.scan_flag})
         return Response(data={"source_api_url": None,
                               "source_scan_flag": None})
+
+
+class SaveComponentWithSource(APIView):
+    """
+    Save component and related source into db
+    """
+    def post(self, request, *args, **kwargs):
+        checksum = request.data.get('checksum')
+        component = request.data.get('component')
+        source = Source.objects.get(checksum=checksum)
+
+        component_obj = Component.update_or_create_component(component)
+        component_obj.source = source
+        component_obj.save()
+
+        return Response(data={})
 
 
 class ComponentFilter(django_filters.FilterSet):
