@@ -5,6 +5,7 @@ from packages.models import File
 from packages.models import Path
 from packages.models import Source
 from packages.models import Component, ComponentSubscription
+from packages.models import MissingComponent
 
 
 # Register your models here.
@@ -50,6 +51,11 @@ activate_selected.short_description = "Activate selected subscriptions"
 deactivate_selected.short_description = "Deactivate selected subscriptions"
 
 
+@admin.register(MissingComponent)
+class MissingComponentAdmin(admin.ModelAdmin):
+    search_fields = ['purl']
+
+
 @admin.register(ComponentSubscription)
 class ComponentSubscriptionAdmin(admin.ModelAdmin):
     search_fields = ['name', 'query_params__icontains']
@@ -65,9 +71,6 @@ class ComponentSubscriptionAdmin(admin.ModelAdmin):
             ),
             'source_purls': forms.Textarea(
                 attrs={'rols': 100, 'cols': 100}
-            ),
-            'missing_components': forms.Textarea(
-                attrs={'rols': 100, 'cols': 50}
             )
         }
         return super().get_form(request, obj, **kwargs)
