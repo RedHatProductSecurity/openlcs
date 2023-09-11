@@ -326,13 +326,6 @@ class ComponentSubscription(models.Model):
         blank=True,
         null=True,
     )
-    # store missing components info in this Subscription
-    missing_components = ArrayField(
-        models.CharField(max_length=1024),
-        default=list,
-        blank=True,
-        null=True,
-    )
     source_purls = ArrayField(
         models.CharField(max_length=1024),
         default=list,
@@ -411,3 +404,18 @@ class ComponentSubscription(models.Model):
 
     def __str__(self):
         return f"{self.name}"
+
+
+class MissingComponent(models.Model):
+    purl = models.CharField(
+        max_length=1024,
+        unique=True,
+        help_text='Corgi component purl',
+    )
+    subscriptions = models.ManyToManyField(
+        ComponentSubscription,
+        related_name="missing_components"
+    )
+
+    def __str__(self):
+        return f"{self.purl}"
