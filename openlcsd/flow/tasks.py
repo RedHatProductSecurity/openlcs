@@ -394,16 +394,26 @@ def download_maven_source_from_corgi(context, engine, tmp_dir):
     download_url = component.get('download_url')
     if not download_url:
         raise RuntimeError(f"component {component['purl']} download_url empty")
+
+    # tmp workaround for some maven component download_url not correct
+    # detail: https://issues.redhat.com/browse/CORGI-816
+    if '#' in download_url:
+        split_url = download_url.split('#')
+        download_url = split_url[0] + '/' + \
+            split_url[1].split('/', maxsplit=1)[1]
+
     name_list = list_http_files(download_url)
-    pom_filename, jar_filename_list = None, []
+    pom_filename, source_filename_list = None, []
     for name in name_list:
         # nvr.pom
         if name == nvr+".pom":
             pom_filename = name
         if name.endswith(".jar") and not name.endswith("javadoc.jar"):
-            jar_filename_list.append(name)
+            source_filename_list.append(name)
+        if name.endswith(".zip") or name.endswith(".tar.gz"):
+            source_filename_list.append(name)
 
-    if not all([pom_filename, jar_filename_list]):
+    if not all([pom_filename, source_filename_list]):
         raise RuntimeError(f"{download_url} missing some source file")
 
     # download pom file
@@ -414,7 +424,7 @@ def download_maven_source_from_corgi(context, engine, tmp_dir):
         raise RuntimeError(f"download {link} failed:{err_msg}")
 
     # download jar file
-    for filename in jar_filename_list:
+    for filename in source_filename_list:
         link = os.path.join(download_url, filename)
         cmd = f'wget -q {link}'
         ret_code, err_msg = run_and_capture(cmd, tmp_dir)
