@@ -16,6 +16,7 @@ from packages.mixins import SaveScanResultMixin
 from packages.models import (
     Component,
     ComponentSubscription,
+    MissingComponent,
     File,
     Path,
     Source
@@ -24,6 +25,7 @@ from authentication.permissions import ReadOnlyModelPermission
 from packages.serializers import (
     ComponentSerializer,
     ComponentSubscriptionSerializer,
+    MissingComponentSerializer,
     FileSerializer,
     NVRImportSerializer,
     PathSerializer,
@@ -1303,6 +1305,90 @@ class GetSyncedPurls(APIView):
             components = Component.objects.filter(sync_status='synced')
             purls = [component.purl for component in components]
         return Response(data={"purls": purls})
+
+
+class MissingComponentViewSet(ModelViewSet):
+    """
+    Get the missing components synced from Corgi.
+    """
+
+    queryset = MissingComponent.objects.all()
+    serializer_class = MissingComponentSerializer
+    permission_classes = [ReadOnlyModelPermission]
+
+    def get_queryset(self):
+        sid = self.request.query_params.get('subscription', None)
+        if sid is not None:
+            queryset = self.queryset.filter(subscriptions__id=sid)
+        else:
+            queryset = self.queryset
+
+        return queryset
+
+    def list(self, request, *args, **kwargs):
+        """
+        Get a list of missing components.
+
+        ####__Request__####
+
+            curl -X GET -H "Content-Type: application/json" \
+%(HOST_NAME)s/%(API_PATH)s/missingcomponents/ -H 'Authorization: \
+Token your_token'
+
+        ####__Supported query params__####
+
+        ``subscription``: int, component subscription id.
+
+        ####__Response__####
+
+            HTTP 200 OK
+            Content-Type: application/json
+
+            {
+                "count": 1,
+                "next": null,
+                "previous": null,
+                "results": [
+                    {
+                        "id": 1,
+                        "purl": "pkg:golang/github.com/moby/sys/signal@v0.6.0",
+                        "subscriptions": [
+                            27,
+                            32,
+                            1
+                        ]
+                    }
+                ]
+            }
+        """
+        return super().list(request, *args, **kwargs)
+
+    def retrieve(self, request, *args, **kwargs):
+        """
+        Get a specific missing component.
+
+        ####__Request__####
+
+            curl -X GET -H "Content-Type: application/json" \
+%(HOST_NAME)s/%(API_PATH)s/missingcomponents/instance_pk/ -H 'Authorization: \
+Token your_token'
+
+        ####__Response__####
+
+            HTTP 200 OK
+            Content-Type: application/json
+
+            {
+                "id": 1,
+                "purl": "pkg:golang/github.com/moby/sys/signal@v0.6.0",
+                "subscriptions": [
+                    27,
+                    32,
+                    1
+                ]
+            }
+        """
+        return super().retrieve(request, *args, **kwargs)
 
 
 class PeriodicTaskViewSet(ModelViewSet):

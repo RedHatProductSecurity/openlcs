@@ -53,6 +53,8 @@ router.register(r'releases', product_views.ReleaseViewSet, basename='releases')
 router.register(r'sources', package_views.SourceViewSet, basename='sources')
 router.register(r'subscriptions', package_views.ComponentSubscriptionViewSet,
                 basename='subscriptions')
+router.register(r'missingcomponents', package_views.MissingComponentViewSet,
+                basename='missingcomponents')
 router.register(r'tasks', task_views.TaskViewSet, basename='tasks')
 
 # Router where APIView resides
