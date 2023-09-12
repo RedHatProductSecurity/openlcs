@@ -9,6 +9,7 @@ from packages.models import (
     Path,
     Source,
     ComponentSubscription,
+    MissingComponent
 )
 from products.models import Release
 from rest_framework import serializers
@@ -340,6 +341,12 @@ class ComponentSubscriptionSerializer(serializers.ModelSerializer):
     class Meta:
         model = ComponentSubscription
         fields = "__all__"
+
+
+class MissingComponentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MissingComponent
+        fields = '__all__'
 
 
 class PeriodicTaskSerializer(serializers.ModelSerializer):
