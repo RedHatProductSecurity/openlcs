@@ -196,7 +196,7 @@ CELERY_BROKER_TRANSPORT_OPTIONS = {
 LOGGER_DIR = '/var/log/openlcs/'
 
 # Scancode settings
-SCANCODE_LICENSE_SCORE = 20
+SCANCODE_LICENSE_SCORE = 80
 SCANCODE_PROCESSES = 1
 SCANCODE_TIMEOUT = 300
 # Update below path to your virtualenv path in local
