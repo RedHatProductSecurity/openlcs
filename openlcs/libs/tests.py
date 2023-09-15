@@ -236,7 +236,7 @@ class TestLicenseScan(TestCase):
         (_, licenses, errors, has_exception) = scanner.scan(scanner='scancode')
 
         self.assertEqual(licenses[0][0], 'license_file')
-        self.assertEqual(licenses[0][1], 'zlib')
+        self.assertEqual(licenses[0][1], 'Zlib')
         self.assertEqual(licenses[0][2], 100.0)
         self.assertEqual(licenses[0][3], 1)
         self.assertEqual(licenses[0][4], 1)

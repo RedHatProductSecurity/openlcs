@@ -93,8 +93,11 @@ class LicenseScanner(BaseScanner):
                         rid = lic['matched_rule']['identifier']
                         is_text_matched = lic['matched_rule']['is_license_text']  # noqa
                         license_list.append(
-                            (filepath, lic.get('key'), lic.get('score'),
-                             lic.get('start_line'), lic.get('end_line'),
+                            (filepath,
+                             lic.get('spdx_license_key'),
+                             lic.get('score'),
+                             lic.get('start_line'),
+                             lic.get('end_line'),
                              is_text_matched, rid)
                         )
                 license_list = list(set(license_list))
