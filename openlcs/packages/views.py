@@ -6,6 +6,7 @@ import django_filters
 from django.conf import settings
 from django.db import IntegrityError, transaction
 from django.db.models import Q
+from django.http.request import QueryDict
 from django_celery_beat.models import (
     PeriodicTask,
     CrontabSchedule
@@ -1309,7 +1310,7 @@ class GetSyncedPurls(APIView):
 
 class MissingComponentViewSet(ModelViewSet):
     """
-    Get the missing components synced from Corgi.
+    API endpoints for missing components.
     """
 
     queryset = MissingComponent.objects.all()
@@ -1317,7 +1318,7 @@ class MissingComponentViewSet(ModelViewSet):
     permission_classes = [ReadOnlyModelPermission]
 
     def get_queryset(self):
-        sid = self.request.query_params.get('subscription', None)
+        sid = self.request.query_params.get('subscription_id', None)
         if sid is not None:
             queryset = self.queryset.filter(subscriptions__id=sid)
         else:
@@ -1337,7 +1338,7 @@ Token your_token'
 
         ####__Supported query params__####
 
-        ``subscription``: int, component subscription id.
+        ``subscription_id``: int, component subscription id.
 
         ####__Response__####
 
@@ -1389,6 +1390,40 @@ Token your_token'
             }
         """
         return super().retrieve(request, *args, **kwargs)
+
+    def create(self, request, *args, **kwargs):
+        """
+        Create missing components.
+
+        ####__Request__####
+
+            curl -X POST -H "Content-Type: application/json" \
+%(HOST_NAME)s/%(API_PATH)s/missingcomponents/ -H 'Authorization: \
+Token your_token' -d '{"missing_purls": ['pkg:rpm/389-admin@1.1.42'], \
+"subscription_id": 1}'
+
+        ####__Response__####
+
+            HTTP 200 OK
+        """
+        sid = request.data.get('subscription_id')
+        if isinstance(request.data, QueryDict):
+            purls = request.data.getlist('missing_purls')
+        else:
+            purls = request.data.get('missing_purls')
+        if purls and isinstance(purls, list):
+            missing_objs = [MissingComponent(purl=purl) for purl in purls]
+            MissingComponent.objects.bulk_create(
+                    missing_objs, ignore_conflicts=True)
+            if sid:
+                subscription = ComponentSubscription.objects.get(pk=sid)
+                missing_components = MissingComponent.objects.filter(
+                        purl__in=purls)
+                subscription.missing_components.add(*missing_components)
+            msg = 'Save missing components successfully.'
+            return Response(data={'message': msg}, status=status.HTTP_200_OK)
+        else:
+            return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
 class PeriodicTaskViewSet(ModelViewSet):
