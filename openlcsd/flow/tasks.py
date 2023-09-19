@@ -1839,6 +1839,7 @@ def populate_subscription_purls(context, engine):
     @requires: client
     @feeds: None
     """
+    client = context["client"]
     source_components = context["source_components"]
     subscription_id = source_components["subscription_id"]
     missings = list(set(source_components["missings"]))
@@ -1846,11 +1847,23 @@ def populate_subscription_purls(context, engine):
         msg = f'Failed to sync these component(s) data from Corgi: ' \
               f'{missings}'
         engine.logger.warning(msg)
+        data = {
+            'missing_purls': missings,
+            'subscription_id': subscription_id
+        }
+        resp = client.post("missingcomponents", data=data)
+        if resp.status_code == 200:
+            engine.logger.info(
+                f"Missing purls from subscription {subscription_id} added.")
+        else:
+            err_msg = f'Failed to update missing purls {missings} '\
+                      f'from subscription {subscription_id} into DB.'
+            engine.logger.warning(err_msg)
+
     sources = source_components["sources"]
     subscription_purl_set = set()
     source_purl_set = set()
     c = CorgiConnector()
-
     for component in sources:
         if component["type"] in ["OCI", "RPMMOD"]:
             provides = c.get_provides(component["purl"], includes=['purl'])
@@ -1862,12 +1875,10 @@ def populate_subscription_purls(context, engine):
         else:
             subscription_purl_set.add(component["purl"])
             source_purl_set.add(component["purl"])
-    client = context["client"]
     resp = client.patch(
         f"subscriptions/{subscription_id}",
         data={
             "component_purls": list(subscription_purl_set),
-            "missing_components": missings,
             "source_purls": list(source_purl_set)
         }
     )
