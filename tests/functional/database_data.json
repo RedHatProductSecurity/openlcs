@@ -110830,5 +110830,15 @@
         ],
         "object_id": 1
     }
+},
+{
+    "model": "packages.missingcomponent",
+    "pk": 1,
+    "fields": {
+        "purl": "pkg:golang/github.com/moby/sys/signal@v0.6.0",
+	"subscriptions": [
+	    1
+	]
+    }
 }
 ]
