@@ -90,15 +90,16 @@ class LicenseScanner(BaseScanner):
                         license_errors.append("{}: {}".format(
                             filepath, f['scan_errors']))
                     for lic in matched_licenses:
-                        rid = lic['matched_rule']['identifier']
-                        is_text_matched = lic['matched_rule']['is_license_text']  # noqa
+                        spdx_key = lic.get('spdx_license_key', '')
+                        lic_key = spdx_key if not spdx_key.startswith('LicenseRef-') else lic.get('key')  # noqa: E501
                         license_list.append(
                             (filepath,
-                             lic.get('spdx_license_key'),
+                             lic_key,
                              lic.get('score'),
                              lic.get('start_line'),
                              lic.get('end_line'),
-                             is_text_matched, rid)
+                             lic['matched_rule']['is_license_text'],
+                             lic['matched_rule']['identifier'])
                         )
                 license_list = list(set(license_list))
 
