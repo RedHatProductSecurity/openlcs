@@ -49,6 +49,18 @@ class WorkflowWrapperTask(celery.Task):
 
     def on_failure(self, exc, task_id, args, kwargs, einfo):
         """This is run by the worker when the task fails."""
+        if isinstance(args[0], dict) and 'retry' not in args[0]:
+            component = args[0].get('component')
+            purl = component.get('purl') if component else None
+            if purl:
+                url = '/missingcomponents/'
+                data = {"missing_purls": [purl]}
+                sid = args[0].get('subscription_id')
+                if sid:
+                    data.update({'subscription_id': sid})
+                client = args[0].get('client')
+                client.post(url, data=data)
+
         super().on_failure(exc, task_id, args, kwargs, einfo)
 
     def on_retry(self, exc, task_id, args, kwargs, einfo):
