@@ -15,6 +15,7 @@ from operator import itemgetter
 from packageurl import PackageURL
 
 import requests
+from requests.exceptions import HTTPError
 from bs4 import BeautifulSoup
 
 
@@ -419,3 +420,15 @@ def list_http_files(url: str) -> list:
         hrefs.append(a['href'])
 
     return hrefs
+
+
+def get_data_using_post(client, url, data):
+    """
+    Run the API command, and return response data.
+    """
+    resp = client.post(url, data)
+    try:
+        resp.raise_for_status()
+    except HTTPError as err:
+        raise RuntimeError(err) from None
+    return resp.json()

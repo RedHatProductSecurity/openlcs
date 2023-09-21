@@ -1,8 +1,10 @@
 import celery
 import os
 from commoncode.fileutils import delete
+from packageurl import PackageURL
 
 from openlcs.libs.redis import RedisClient
+from openlcs.libs.common import get_data_using_post
 
 
 class WorkflowWrapperTask(celery.Task):
@@ -69,4 +71,26 @@ class WorkflowWrapperTask(celery.Task):
 
     def on_success(self, retval, task_id, args, kwargs):
         """Run by the worker if the task executes successfully."""
+
+        # if component exist in MissingComponent table, delete it from db
+        if isinstance(args[0], dict) and args[0].get('retry', False):
+            context = args[0]
+            client = context.get('client')
+            url = '/delete_success_component_from_missing/'
+            component = context.get('component')
+            if isinstance(component, dict) and component.get('purl'):
+                # deal with rpm component, delete all rpm from missing,
+                # arch independence
+                c = PackageURL.from_string(component['purl']).to_dict()
+                if c['type'] == 'rpm':
+                    parameter = {
+                        "is_rpm": True,
+                        "purl": component['purl'].rstrip(
+                            "?arch="+c['qualifiers']['arch'])
+                    }
+                else:
+                    parameter = {"purl": component['purl']}
+
+                get_data_using_post(client, url, parameter)
+
         super().on_success(retval, task_id, args, kwargs)

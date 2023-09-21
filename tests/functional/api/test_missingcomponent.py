@@ -68,3 +68,23 @@ def test_create_missingcomponents(openlcs_client):
         }
     ]
     assert response.get("results") == expected
+
+
+def test_delete_missingcomponents(openlcs_client):
+    """
+    Test for creating missing components.
+    """
+    url = '/delete_success_component_from_missing/'
+    data = {
+        "purl": "pkg:golang/github.com/moby/sys/signal@v0.6.0",
+    }
+    openlcs_client.api_call(
+        url,
+        method="POST",
+        data=data,
+        expected_code=status.HTTP_200_OK
+    )
+    url = '/missingcomponents/?subscription_id=1'
+    response = openlcs_client.api_call(url, 'GET')
+    expected = []
+    assert response.get("results") == expected
