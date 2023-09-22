@@ -1132,7 +1132,7 @@ def save_package_data(context, engine):
             'task_id': context.get('task_id')
         }
         json.dump(file_content, destination, cls=DateEncoder)
-    resp = cli.post(url, data={"file_path": tmp_file_path}, timeout=420)
+    resp = cli.post(url, data={"file_path": tmp_file_path}, timeout=600)
     context['client'] = cli
     try:
         # Raise it in case we made a bad request:
@@ -1239,7 +1239,7 @@ def save_scan_result(context, engine):
         err_msg = f"Failed to create scan result file: {e}"
         engine.logger.error(err_msg)
         raise RuntimeError(err_msg) from None
-    resp = cli.post(url, data={"file_path": tmp_file_path})
+    resp = cli.post(url, data={"file_path": tmp_file_path}, timeout=600)
     context['client'] = cli
     try:
         resp.raise_for_status()
