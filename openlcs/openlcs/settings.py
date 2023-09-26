@@ -183,8 +183,14 @@ CELERY_BEAT_SCHEDULE = {
                 'clean_unused_shared_remote_source',
         'schedule': crontab(minute=0, hour=0),
         'kwargs': {'provenance': 'sync_corgi'}
+    },
+    'retry': {
+        'task': 'openlcsd.flow.periodic_tasks.retry',
+        'schedule': crontab(minute=0, hour=12),
+        'kwargs': {'provenance': 'sync_corgi', 'retry': True}
     }
 }
+
 # https://docs.celeryq.dev/en/v5.2.7/userguide/routing.html#redis-message-priorities
 CELERY_BROKER_TRANSPORT_OPTIONS = {
     'visibility_timeout': 86400,
