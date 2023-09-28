@@ -28,6 +28,8 @@ from openlcs.libs.common import (
     ExhaustibleIterator,
     is_shared_remote_source_need_delete,
     list_http_files,
+    get_data_using_post,
+    find_srpm_source
 )
 from openlcs.libs.corgi import CorgiConnector
 from openlcs.libs.distgit import get_distgit_sources
@@ -202,14 +204,16 @@ def filter_duplicate_import(context, engine):
     msg = f'Start to check duplicate import for {data}'
     engine.logger.info(msg)
     resp = cli.post(url, data=data)
-    if resp.status_code == 200:
-        if results := resp.json().get('results'):
-            if obj_url := results.get('obj_url'):
-                task_id = context.get('task_id')
-                msg = f'Found duplicate import for task: ' \
-                      f'{task_id}, obj_url: {obj_url}'
-                engine.logger.warning(msg)
-                context['duplicate_import'] = True
+    resp.raise_for_status()
+
+    if results := resp.json().get('results'):
+        if obj_url := results.get('obj_url'):
+            task_id = context.get('task_id')
+            msg = f'Found duplicate import for task: ' \
+                f'{task_id}, obj_url: {obj_url}'
+            engine.logger.info(msg)
+            context['duplicate_import'] = True
+
     engine.logger.info("Finished checking duplicate import.")
 
 
@@ -1031,18 +1035,6 @@ def get_source_files_paths(source_dir):
     return path_list
 
 
-def get_data_using_post(client, url, data):
-    """
-    Run the API command, and return the data.
-    """
-    resp = client.post(url, data)
-    try:
-        resp.raise_for_status()
-    except HTTPError as err:
-        raise RuntimeError(err) from None
-    return resp.json()
-
-
 def deduplicate_source(context, engine):
     """
     Exclude files that were already in db, and returns a subset of source
@@ -1603,6 +1595,9 @@ def fork_components_imports(context, engine, parent, components):
         'priority': context['priority']
     }
 
+    if (retry := context.get('retry')) is not None:
+        data['retry'] = retry
+
     source_components = context.get("source_components")
     if source_components is not None:
         data["subscription_id"] = source_components["subscription_id"]
@@ -1925,7 +1920,7 @@ def trigger_corgi_components_imports(context, engine):
         components = corgi_source.get('components')
         scan_components = []
 
-        # Only fork for components without a openlcs_scan_url
+        # Only fork for components without an openlcs_scan_url
         for comp in components:
             if comp.get('openlcs_scan_url'):
                 continue
@@ -1951,6 +1946,44 @@ def clear_unused_resource_source(context, engine):
         if is_shared_remote_source_need_delete(release_dir):
             delete(release_dir)
             engine.logger.info(f"{release_dir} deleted")
+
+
+def trigger_missing_components_imports(context, engine):
+    """
+    get missing components and fork task to retry import
+    """
+    client = context['client']
+    c = CorgiConnector()
+    context['priority'] = 'low'
+
+    components = []
+
+    for missing_component in client.get_paginated_data("missingcomponents"):
+        component_url = c.base_url+'components?purl='+missing_component["purl"]
+        component = c.get(component_url, includes=c.default_includes)
+        # if rpm component arch is not src, find its source rpm
+        if component['type'] == "RPM" and component['arch'] != 'src':
+            sources = c.get_sources(
+                component['purl'],
+                query_params={"type": "RPM", "arch": "src"},
+                includes=c.default_includes)
+            source = find_srpm_source(sources)
+            if source is None:
+                engine.logger.warning(
+                    f'{component["purl"]} source rpm not found')
+                continue
+
+            component = source
+
+        components.append(component)
+        # fork import every 10 components
+        if len(components) >= 10:
+            fork_components_imports(context, engine, None, components)
+            components = []
+
+    # fork the rest of import
+    if components:
+        fork_components_imports(context, engine, None, components)
 
 
 # sub-flow of `flow_get_corgi_components`
@@ -1980,6 +2013,11 @@ flow_get_active_subscriptions = [
 flow_clean_unused_shared_remote_source = [
     get_config,
     clear_unused_resource_source
+]
+
+flow_rescan_missing_components = [
+    get_config,
+    trigger_missing_components_imports
 ]
 
 
@@ -2019,3 +2057,5 @@ register_task_flow('flow.tasks.flow_collect_components_for_subscription',
                    flow_collect_components_for_subscription)
 register_task_flow('flow.tasks.flow_clean_unused_shared_remote_source',
                    flow_clean_unused_shared_remote_source)
+register_task_flow('flow.tasks.flow_rescan_missing_components',
+                   flow_rescan_missing_components)

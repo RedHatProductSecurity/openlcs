@@ -208,6 +208,7 @@ class ImportScanOptionsMixin(ImportSerializer):
     priority = serializers.CharField(required=False)
     subscription_id = serializers.IntegerField(required=False)
     parent_component = serializers.JSONField(required=False)
+    retry = serializers.BooleanField(required=False)
 
     def validate_priority(self, value):
         if value not in ALLOW_PRIORITY:
@@ -242,6 +243,7 @@ class ReleaseImportMixin(ImportSerializer):
         provenance = data.get('provenance')
         subscription_id = data.get("subscription_id")
         parent_component = data.get("parent_component")
+        retry = data.get('retry')
 
         if src_dir is not None:
             params['src_dir'] = src_dir
@@ -259,6 +261,8 @@ class ReleaseImportMixin(ImportSerializer):
             params['subscription_id'] = subscription_id
         if parent_component:
             params['parent_component'] = parent_component
+        if retry is not None:
+            params['retry'] = retry
 
         return params
 

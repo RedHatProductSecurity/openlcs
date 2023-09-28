@@ -22,3 +22,9 @@ def run_corgi_sync(self, **kwargs):
 def clean_unused_shared_remote_source(self, **kwargs):
     flow = "flow.tasks.flow_clean_unused_shared_remote_source"
     app.send_task(flow, [kwargs], **generate_priority_kwargs("low"))
+
+
+@app.task(bind=True)
+def retry(self, **kwargs):
+    flow = "flow.tasks.flow_rescan_missing_components"
+    app.send_task(flow, [kwargs], **generate_priority_kwargs("low"))

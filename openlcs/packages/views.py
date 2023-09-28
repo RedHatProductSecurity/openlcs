@@ -719,6 +719,22 @@ class SaveComponentWithSource(APIView):
         return Response(data={})
 
 
+class DeleteSuccessComponentFromMissing(APIView):
+    """
+    Save component and related source into db
+    """
+    def post(self, request, *args, **kwargs):
+        purl = request.data.get('purl')
+        is_rpm = request.data.get('is_rpm', False)
+
+        if is_rpm:
+            MissingComponent.objects.filter(purl__startswith=purl).delete()
+        else:
+            MissingComponent.objects.filter(purl=purl).delete()
+
+        return Response(data={})
+
+
 class ComponentFilter(django_filters.FilterSet):
     """Class that filters queries to Component list views."""
 
@@ -1028,22 +1044,18 @@ class CheckDuplicateImport(APIView):
             return Response(data={
                     'results': results})
         imported_components = Component.objects.filter(
-                name=data.get('name', ''),
-                version=data.get('version', ''),
-                release=data.get('release', ''),
-                arch=data.get('arch', ''),
-                type=data.get('type', ''),
+            name=data.get('name', ''),
+            version=data.get('version', ''),
+            release=data.get('release', ''),
+            arch=data.get('arch', ''),
+            type=data.get('type', ''),
+            sync_status=str(Component.SyncStatus.SYNCED)
         )
         serializer = ComponentSerializer(imported_components, many=True)
         serializer_data = serializer.data
 
         if serializer_data and len(serializer_data) == 1:
             obj = serializer_data[0]
-            source_ready = 'source' in obj and \
-                obj['source'] is None and parent != ''
-            if source_ready:
-                return Response(data={
-                        'results': results})
             obj_url = 'http://{}/rest/v1/components/{}/'.format(
                 settings.HOSTNAME, obj.get('id', -1))
             results['obj_url'] = obj_url

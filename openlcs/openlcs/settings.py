@@ -13,6 +13,7 @@ import os
 import sys
 from distutils.util import strtobool
 from pathlib import Path
+from datetime import timedelta
 
 from celery.schedules import crontab
 
@@ -183,8 +184,14 @@ CELERY_BEAT_SCHEDULE = {
                 'clean_unused_shared_remote_source',
         'schedule': crontab(minute=0, hour=0),
         'kwargs': {'provenance': 'sync_corgi'}
+    },
+    'retry': {
+        'task': 'openlcsd.flow.periodic_tasks.retry',
+        'schedule': timedelta(days=2),
+        'kwargs': {'provenance': 'sync_corgi', 'retry': True}
     }
 }
+
 # https://docs.celeryq.dev/en/v5.2.7/userguide/routing.html#redis-message-priorities
 CELERY_BROKER_TRANSPORT_OPTIONS = {
     'visibility_timeout': 86400,
