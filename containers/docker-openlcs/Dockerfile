@@ -67,7 +67,7 @@ RUN cd /etc/pki/ca-trust/source/anchors/ && \
     dnf install --nogpgcheck --nodoc -y cpio-2.12 atool-0.39.0 vim docker-ce-cli skopeo && \
     dnf clean all && \
     # To make docker cache pip package, install dependencies
-    pip install --upgrade pip && pip install -r /tmp/devel.txt --use-pep517 && \
+    pip install --upgrade pip && pip install -r /tmp/base.txt --use-pep517 && \
     # Add permissions for openlcs
     mkdir -p /var/openlcs/static /var/log/openlcs/ /var/cache/ && \
     chmod a+rwX -R /var/log/openlcs/ /var/cache/ /var/openlcs/static "${HOME}" /etc/passwd && \
