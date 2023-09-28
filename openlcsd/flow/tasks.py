@@ -208,7 +208,6 @@ def filter_duplicate_import(context, engine):
 
     if results := resp.json().get('results'):
         if obj_url := results.get('obj_url'):
-            # check if corgi has the result
             task_id = context.get('task_id')
             msg = f'Found duplicate import for task: ' \
                 f'{task_id}, obj_url: {obj_url}'
@@ -1983,7 +1982,8 @@ def trigger_missing_components_imports(context, engine):
             components = []
 
     # fork the rest of import
-    fork_components_imports(context, engine, None, components)
+    if components:
+        fork_components_imports(context, engine, None, components)
 
 
 # sub-flow of `flow_get_corgi_components`

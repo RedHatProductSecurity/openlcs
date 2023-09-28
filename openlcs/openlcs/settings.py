@@ -13,6 +13,7 @@ import os
 import sys
 from distutils.util import strtobool
 from pathlib import Path
+from datetime import timedelta
 
 from celery.schedules import crontab
 
@@ -186,7 +187,7 @@ CELERY_BEAT_SCHEDULE = {
     },
     'retry': {
         'task': 'openlcsd.flow.periodic_tasks.retry',
-        'schedule': crontab(minute=0, hour=12),
+        'schedule': timedelta(days=2),
         'kwargs': {'provenance': 'sync_corgi', 'retry': True}
     }
 }

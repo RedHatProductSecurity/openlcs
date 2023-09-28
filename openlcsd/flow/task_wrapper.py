@@ -86,7 +86,7 @@ class WorkflowWrapperTask(celery.Task):
                     parameter = {
                         "is_rpm": True,
                         "purl": component['purl'].rstrip(
-                            "?arch="+c['qualifiers']['arch'])
+                            "arch="+c['qualifiers']['arch'])
                     }
                 else:
                     parameter = {"purl": component['purl']}
