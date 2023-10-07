@@ -1,8 +1,8 @@
 import logging
+import os
 from typing import Any
 from urllib.parse import urlparse, urlunparse
 
-from django.conf import settings
 from django.contrib.auth import get_user_model
 from mozilla_django_oidc.auth import OIDCAuthenticationBackend
 
@@ -75,7 +75,7 @@ class OpenLCSOIDCBackend(OIDCAuthenticationBackend):
         )
 
         # Set user permission.
-        if user_detail[1] in settings.OPENLCS_ADMIN_LIST:
+        if user_detail[1] in os.getenv("OPENLCS_ADMIN_LIST"):
             user.is_staff = True
             user.is_superuser = True
         user.save()

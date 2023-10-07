@@ -4,7 +4,6 @@ import requests
 
 from requests.exceptions import RequestException, HTTPError
 
-from django.conf import settings
 from django.contrib.auth import get_user_model
 User = get_user_model()
 
@@ -28,7 +27,7 @@ class GetAutobotTokenMixin:
         )
 
         # Set user permission.
-        if claims.get('preferred_username') in settings.OPENLCS_ADMIN_LIST:
+        if claims.get('preferred_username') in os.getenv("OPENLCS_ADMIN_LIST"):
             user.is_staff = True
             user.is_superuser = True
         user.save()
