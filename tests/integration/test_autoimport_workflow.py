@@ -68,7 +68,7 @@ def test_autoimport_workflow(client):
     assert response['active'] is True
     # Create crontab schedule
     now = datetime.now()
-    future_time = now + timedelta(seconds=600)
+    future_time = now + timedelta(minutes=5)
     crontab_resp = client.api_call(
         "/crontabschedule/",
         method="POST",

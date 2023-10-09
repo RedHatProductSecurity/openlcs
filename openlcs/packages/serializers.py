@@ -357,7 +357,8 @@ class PeriodicTaskSerializer(serializers.ModelSerializer):
     class Meta:
         model = PeriodicTask
         fields = ['id', 'name', 'task', 'one_off', 'last_run_at',
-                  'date_changed', 'crontab', 'priority', 'enabled']
+                  'date_changed', 'crontab', 'priority', 'enabled',
+                  'interval', 'solar', 'clocked']
 
 
 class CrontabScheduleSerializer(serializers.ModelSerializer):
