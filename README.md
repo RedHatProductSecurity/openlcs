@@ -170,3 +170,8 @@ a project token from the url: /rest/v1/auth
 Project commands will add this kerberos token in the header to authenticate, 
 and according to this kerberos user's token to get the autobot user's token. In 
 the internal fork tasks, will use the autobot user's token.
+
+### Set the superuser permission to these users
+```shell
+export OPENLCS_ADMIN_LIST="[xxx]"
+```

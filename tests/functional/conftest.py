@@ -41,6 +41,7 @@ def pytest_configure():
     del conf_vars['crontab']
     del conf_vars['strtobool']
     del conf_vars['timedelta']
+    del conf_vars['get_random_secret_key']
     settings.configure(**conf_vars)
 
 
