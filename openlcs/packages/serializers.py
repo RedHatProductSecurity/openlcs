@@ -1,6 +1,7 @@
 import copy
 import os
 import sys
+from libs.constants import PARENT_COMPONENT_TYPES
 from libs.swh_tools import swhid_check
 from libs.celery_helper import generate_priority_kwargs, ALLOW_PRIORITY
 from packages.models import (
@@ -330,7 +331,7 @@ class ComponentSerializer(serializers.ModelSerializer):
 
     def get_provides(self, obj):
         provides = []
-        if obj.type in ['OCI', 'RPMMOD']:
+        if obj.type in PARENT_COMPONENT_TYPES:
             node = obj.component_nodes.get()
             descendant_nodes = node.get_descendants()
             descendant_components = Component.objects.filter(

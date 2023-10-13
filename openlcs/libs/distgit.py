@@ -8,8 +8,9 @@ from pathlib import Path
 from typing import Tuple
 from urllib.parse import urlparse
 
+from .constants import EXTENDED_REQUEST_TIMEOUT
 
-LOOKASIDE_SCRATCH_SUBDIR = "lookaside"
+
 LOOKASIDE_REGEX_SOURCE_PATTERNS = [
     # https://regex101.com/r/xYoHtX/1
     r"^(?P<hash>[a-f0-9]*)[ ]+(?P<file>[a-zA-Z0-9.\-_]*)",
@@ -31,7 +32,7 @@ def _download_source(download_url: str, target_filepath: Path) -> None:
     logger.info("Downloading sources from: %s, to: %s",
                 download_url, target_filepath)
 
-    response = requests.get(download_url, timeout=600)
+    response = requests.get(download_url, timeout=EXTENDED_REQUEST_TIMEOUT)
     if response.status_code == 404:
         # Source URLs from Brew / _clone_source / _download_lookaside_sources
         # sometimes have .git in their path, and this ends up in package_name
@@ -44,7 +45,8 @@ def _download_source(download_url: str, target_filepath: Path) -> None:
             download_url, target_filepath
         )
         response = requests.get(
-            download_url.replace(".git", "", 1), timeout=600)
+            download_url.replace(".git", "", 1),
+            timeout=EXTENDED_REQUEST_TIMEOUT)
     response.raise_for_status()
     with target_filepath.open("wb") as target_file:
         target_file.write(response.content)

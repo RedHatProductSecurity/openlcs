@@ -10,6 +10,8 @@ from django.db.models.signals import post_delete, post_save
 from mptt.models import MPTTModel, TreeForeignKey
 from packages.models import Component
 
+from libs.constants import PARENT_COMPONENT_TYPES
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -136,7 +138,7 @@ class ComponentTreeNode(MpttTreeNodeMixin):
         """
         component_ctype = ContentType.objects.get_for_model(Component)
         component_type = component_data['type']
-        if component_type in ['OCI', 'RPMMOD']:
+        if component_type in PARENT_COMPONENT_TYPES:
             # Handle nested components
             source_components = component_data.pop('source_components', [])
             component = Component.update_or_create_component(component_data)

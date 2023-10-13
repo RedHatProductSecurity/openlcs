@@ -8,8 +8,11 @@ import subprocess
 from pathlib import Path
 from requests.exceptions import RequestException, HTTPError
 
-from openlcs.libs.constants import CONF_FILEPATH
-from openlcs.libs.encrypt_decrypt import decrypt_with_secret_key
+from .constants import (
+    CONF_FILEPATH,
+    DEFAULT_REQUEST_TIMEOUT
+)
+from .encrypt_decrypt import decrypt_with_secret_key
 
 
 def get_config_file(config_file=Path(CONF_FILEPATH)):
@@ -169,7 +172,8 @@ class OpenlcsClient:
             'Authorization': 'Token {}'.format(token_key)
         }
 
-    def get_autobot_token(self, headers, params=None, timeout=300):
+    def get_autobot_token(self, headers, params=None,
+                          timeout=DEFAULT_REQUEST_TIMEOUT):
         """
         Get autobot user's token.
         """
@@ -186,12 +190,12 @@ class OpenlcsClient:
             return url
         return sep.join(s.strip(sep) for s in [self.api_url_prefix, url]) + sep
 
-    def get(self, url, params=None, timeout=300):
+    def get(self, url, params=None, timeout=DEFAULT_REQUEST_TIMEOUT):
         abs_url = self.get_abs_url(url)
         return self.session.get(abs_url, headers=self.headers,
                                 params=params, timeout=timeout)
 
-    def post(self, url, data, timeout=300):
+    def post(self, url, data, timeout=DEFAULT_REQUEST_TIMEOUT):
         abs_url = self.get_abs_url(url)
         # http://stackoverflow.com/a/25895504
         # To resolve the issue that datetime.datetime object is not
@@ -203,7 +207,7 @@ class OpenlcsClient:
             abs_url, headers=self.headers, data=json.dumps(
                 data, default=date_handler), timeout=timeout)
 
-    def patch(self, url, data, timeout=300):
+    def patch(self, url, data, timeout=DEFAULT_REQUEST_TIMEOUT):
         abs_url = self.get_abs_url(url)
         # http://stackoverflow.com/a/25895504
         # To resolve the issue that datetime.datetime object is not

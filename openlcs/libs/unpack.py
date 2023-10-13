@@ -3,9 +3,11 @@ import shutil
 import tempfile
 import traceback
 from kobo.shortcuts import run
-from libs.common import get_mime_type, get_extension
-from libs.common import run_and_capture
-from libs.common import search_content_by_patterns
+from .common import (
+    get_mime_type, get_extension,
+    run_and_capture,
+    search_content_by_patterns
+)
 
 
 SUPPORTED_FILE_EXTENSIONS = [

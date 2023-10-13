@@ -27,7 +27,7 @@ class SaveScanResultMixin:
             file_license_scan_list = FileLicenseScan.bulk_create_objects(
                     new_file_ids=new_file_ids,
                     detector=license_detector,
-                    batch_size=1000)
+                    batch_size=settings.BULK_CREATE_BATCH_SIZE)
             new_file_license_scan_dict = {item.file_id: item.id
                                           for item in file_license_scan_list}
             self.file_license_scan_dict.update(new_file_license_scan_dict)
@@ -38,7 +38,8 @@ class SaveScanResultMixin:
             for x in data]
         if licenses:
             # Query license detection that need to be created.
-            LicenseDetection.bulk_create_objects(licenses, batch_size=1000)
+            LicenseDetection.bulk_create_objects(
+                    licenses, batch_size=settings.BULK_CREATE_BATCH_SIZE)
 
     def update_scan_flag(self, source, scan_type, detector):
         scan_flag = source.scan_flag
