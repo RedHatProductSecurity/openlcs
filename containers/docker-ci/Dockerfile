@@ -60,7 +60,7 @@ RUN cd /etc/pki/ca-trust/source/anchors/ && \
     dnf remove python2-urllib3 && \
     dnf clean all && \
     # To make docker cache pip package, install dependencies
-    pip install --upgrade pip && pip install -r /tmp/devel.txt --use-pep517 && \
+    pip install --upgrade pip && pip install --upgrade setuptools && pip install -r /tmp/devel.txt --use-pep517 && \
     # This download url is from currently ocp cluster console
     curl -k "${OPENSHIFT_CLI_URL}" | tar xf - -C /usr/local/bin/ && \
     # Link the site-packages to correct location, so that tox can find it when use current-env plugin
