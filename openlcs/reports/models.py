@@ -2,6 +2,7 @@ from itertools import islice
 
 from django.db import models
 from django.core.validators import MaxValueValidator, MinValueValidator
+from django.conf import settings
 
 from packages.models import File
 
@@ -28,7 +29,8 @@ class FileLicenseScan(models.Model):
         ]
 
     @classmethod
-    def bulk_create_objects(cls, new_file_ids, detector, batch_size=1000):
+    def bulk_create_objects(cls, new_file_ids, detector,
+                            batch_size=settings.BULK_CREATE_BATCH_SIZE):
         objs = (
             FileLicenseScan(detector=detector,
                             file_id=file_id) for file_id in new_file_ids
@@ -62,7 +64,7 @@ class FileCopyrightScan(models.Model):
 
     @classmethod
     def bulk_create_objs(cls, new_file_ids, copyright_detector,
-                         batch_size=1000):
+                         batch_size=settings.BULK_CREATE_BATCH_SIZE):
         objs = (
             FileCopyrightScan(file_id=file_id, detector=copyright_detector)
             for file_id in new_file_ids)
@@ -136,7 +138,8 @@ class LicenseDetection(models.Model):
         ]
 
     @classmethod
-    def bulk_create_objects(cls, licenses, batch_size=1000):
+    def bulk_create_objects(cls, licenses,
+                            batch_size=settings.BULK_CREATE_BATCH_SIZE):
         objs = (
                 LicenseDetection(
                     file_scan_id=lic[0],
@@ -200,7 +203,8 @@ class CopyrightDetection(models.Model):
         # existing_objs = CopyrightDetection.objects.all()
         # new_objs = [obj for obj in objs if obj not in existing_objs]
         CopyrightDetection.objects.bulk_create(
-            objs, ignore_conflicts=True, batch_size=1000)
+            objs, ignore_conflicts=True,
+            batch_size=settings.BULK_CREATE_BATCH_SIZE)
 
     class Meta:
         app_label = 'reports'

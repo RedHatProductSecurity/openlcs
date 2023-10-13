@@ -13,7 +13,7 @@ from kobo.shortcuts import run
 from urllib.parse import urlparse
 from urllib.request import urlopen
 
-from libs.common import get_component_flat, group_components
+from .common import get_component_flat, group_components
 
 
 class KojiConnector:

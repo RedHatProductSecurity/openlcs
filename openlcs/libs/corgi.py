@@ -6,13 +6,9 @@ import logging
 import os
 import re
 import requests
-import sys
 import time
 import uuid
 import uvloop
-
-from .common import is_generator_empty
-
 from concurrent.futures import ThreadPoolExecutor
 from packageurl import PackageURL
 from requests.exceptions import RequestException, HTTPError
@@ -20,16 +16,17 @@ from requests.status_codes import codes as http_codes
 from urllib import parse
 from urllib.parse import urljoin, unquote
 
+from .common import (
+    find_srpm_source,
+    get_nvr_from_purl,
+    group_components,
+    is_generator_empty,
+    is_prod,
+    remove_duplicates_from_list_by_key
+)
+from .constants import PARENT_COMPONENT_TYPES
+from .exceptions import MissingBinaryBuildException
 
-openlcs_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-if openlcs_dir not in sys.path:
-    sys.path.append(openlcs_dir)
-from libs.common import get_nvr_from_purl  # noqa: E402
-from libs.common import group_components  # noqa: E402
-from libs.common import find_srpm_source  # noqa: E402
-from libs.common import remove_duplicates_from_list_by_key  # noqa: E402
-from libs.common import is_prod  # noqa: E402
-from libs.exceptions import MissingBinaryBuildException  # noqa: E402
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
@@ -684,7 +681,7 @@ class CorgiConnector:
             component = CorgiConnector.truncate_rpm_component_sources(
                 component)
             yield self.get_srpm_component(component, synced_purls)
-        elif component_type in ["OCI", "RPMMOD"]:
+        elif component_type in PARENT_COMPONENT_TYPES:
             yield from self.get_provides_source_components(
                 component, subscribed_purls)
         # for GOLANG type component, filter go-package type
@@ -747,7 +744,7 @@ class CorgiConnector:
             gen = self.get_source_component(
                     component, subscribed_purls, synced_purls)
             components, missings = CorgiConnector.source_component_to_list(gen)
-            if component.get("type") in ["OCI", "RPMMOD"]:
+            if component.get("type") in PARENT_COMPONENT_TYPES:
                 # Nest source components in `olcs_sources`
                 component["olcs_sources"] = components
                 sources.append(component)

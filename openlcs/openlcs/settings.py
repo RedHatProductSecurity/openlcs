@@ -91,7 +91,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'openlcs.wsgi.application'
 
-
 # Database
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
 
@@ -106,13 +105,7 @@ DATABASES = {
     }
 }
 
-REST_FRAMEWORK_EXTENSIONS = {
-    'DEFAULT_CACHE_RESPONSE_TIMEOUT': 60 * 10,
-    'DEFAULT_USE_CACHE': 'default'
-}
-
 RELEASE_LIST_CACHE_TIMEOUT = 60 * 60
-
 RELEASE_RETRIEVE_CACHE_TIMEOUT = 60 * 15
 
 # Password validation
@@ -200,13 +193,10 @@ CELERY_BROKER_TRANSPORT_OPTIONS = {
     'queue_order_strategy': 'priority',
 }
 
-LOGGER_DIR = '/var/log/openlcs/'
-
 # Scancode settings
 SCANCODE_LICENSE_SCORE = 80
 SCANCODE_PROCESSES = 1
 SCANCODE_TIMEOUT = 300
-# Update below path to your virtualenv path in local
 SCANCODE_CLI = '/opt/app-root/bin/scancode'
 EXTRACTCODE_CLI = '/opt/app-root/bin/extractcode'
 
@@ -221,12 +211,13 @@ KOJI_WEBURL = os.getenv(
     'KOJI_WEBURL',
     'https://koji.fedoraproject.org/koji/index')
 
+# Update the HOSTNAME to that of the running server
+HOSTNAME = '127.0.0.1:8000'
+
 # Used to identify namespace for restful api endpoints.
 DRF_NAMESPACE = 'rest'
 DRF_API_VERSION = 'v1'
 
-# Update the HOSTNAME to that of the running server
-HOSTNAME = '127.0.0.1:8000'
 REST_API_PATH = f'http://{HOSTNAME}/{DRF_NAMESPACE}/{DRF_API_VERSION}'
 BROWSABLE_DOCUMENT_MACROS = {
     # need to be rewritten with the real host name when deployed.
@@ -234,7 +225,6 @@ BROWSABLE_DOCUMENT_MACROS = {
     # make consistent with rest api root.
     'API_PATH': f'{DRF_NAMESPACE}/{DRF_API_VERSION}',
 }
-
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
@@ -256,32 +246,33 @@ REST_FRAMEWORK = {
     ),
 }
 
-# Bulk create retry settings
+REST_FRAMEWORK_EXTENSIONS = {
+    'DEFAULT_CACHE_RESPONSE_TIMEOUT': 60 * 10,
+    'DEFAULT_USE_CACHE': 'default'
+}
+
+# Bulk create settings
+BULK_CREATE_BATCH_SIZE = 1000
 SAVE_DATA_MAX_RETRIES = 2
 
 # Directory where the source code will be hosted. Note that
 # appropriate permission(r+w) / secontext is needed.
 SRC_ROOT_DIR = '/srv/git/repos/openlcs'
-LOOKASIDE_CACHE_URL = os.getenv("LOOKASIDE_CACHE_URL")
-
-# The root directory for remote source package source tarball import
-RS_SRC_ROOT_DIR = os.path.join(SRC_ROOT_DIR, 'remote_source')
-RS_TYPES = ['GOLANG', 'NPM', 'YARN', 'PYPI', 'CARGO', 'GEM']
-
 # The root directory for package source tarball for package import retry
 RETRY_DIR = os.path.join(SRC_ROOT_DIR, 'retry')
-
 # The root directory for temporary package source tarball for package import
 TMP_ROOT_DIR = os.path.join(SRC_ROOT_DIR, 'tmp')
-
 # The root directory for post/adhoc post data file for package import
 POST_DIR = os.path.join(SRC_ROOT_DIR, 'post')
+# The root directory for remote source package source tarball import
+RS_SRC_ROOT_DIR = os.path.join(SRC_ROOT_DIR, 'remote_source')
+
+LOGGER_DIR = '/var/log/openlcs/'
 
 # 'orphan' category will be used if product release is not specified
 ORPHAN_CATEGORY = 'orphan'
 
-# Email REALM
-EMAIL_REALM = 'REDHAT.COM'
+LOOKASIDE_CACHE_URL = os.getenv("LOOKASIDE_CACHE_URL")
 
 # Give superuser permission to these users.
 OPENLCS_ADMIN_LIST = os.getenv("OPENLCS_ADMIN_LIST", "")
@@ -291,29 +282,16 @@ OPENLCS_ADMIN_LIST = os.getenv("OPENLCS_ADMIN_LIST", "")
 # CSRF_COOKIE_DOMAIN = ['.redhat.com', '127.0.0.1']
 CSRF_COOKIE_DOMAIN = '127.0.0.1'
 
+# Email REALM
+EMAIL_REALM = 'REDHAT.COM'
 
 # Corgi setting
 CORGI_API_STAGE = os.getenv("CORGI_API_STAGE", "")
 CORGI_API_PROD = os.getenv("CORGI_API_PROD", "")
-# https://github.com/RedHatProductSecurity/component-registry/blob/main/corgi/core/models.py#L721    # noqa
-CORGI_COMPONENT_TYPES = [
-    "CARGO",
-    "OCI",
-    "GEM",
-    "GENERIC",
-    "GITHUB",
-    "GOLANG",
-    "MAVEN",
-    "NPM",
-    "RPMMOD",
-    "RPM",
-    "PYPI"
-]
 
-# cache location settings
+# Redis cache location settings
 REDIS_CACHE_LOCATION = os.environ.get('REDIS_CACHE_LOCATION',
                                       'redis://localhost:6379/1')
-
 CACHES = {
     'default': {
         'BACKEND': 'django_redis.cache.RedisCache',

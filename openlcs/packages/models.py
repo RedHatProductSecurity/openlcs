@@ -1,5 +1,6 @@
 from django.db import models
 from django.db.models import Q
+from django.conf import settings
 from django.contrib.contenttypes.fields import GenericRelation
 from django.contrib.postgres.fields import ArrayField
 from django.core.validators import URLValidator
@@ -124,7 +125,8 @@ class Path(models.Model):
         ]
 
     @classmethod
-    def bulk_create_objects(cls, source, paths, batch_size=1000):
+    def bulk_create_objects(cls, source, paths,
+                            batch_size=settings.BULK_CREATE_BATCH_SIZE):
         file_ids = [p.get('file') for p in paths]
         files = File.objects.filter(swhid__in=file_ids).values('swhid', 'id')
         file_mapping = {file['swhid']: file['id'] for file in files}

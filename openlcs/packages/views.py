@@ -578,7 +578,7 @@ class PackageImportTransactionView(APIView):
                             #  query, which reduces memory consumption
                             File.objects.bulk_create(
                                 file_objs,
-                                batch_size=1000)
+                                batch_size=settings.BULK_CREATE_BATCH_SIZE)
                         if paths:
                             Path.bulk_create_objects(source_obj, paths)
                         if component:

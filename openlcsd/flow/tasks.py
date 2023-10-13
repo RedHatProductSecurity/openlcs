@@ -31,6 +31,11 @@ from openlcs.libs.common import (
     get_data_using_post,
     find_srpm_source
 )
+from openlcs.libs.constants import (
+    EXTENDED_REQUEST_TIMEOUT,
+    PARENT_COMPONENT_TYPES,
+    RS_TYPES
+)
 from openlcs.libs.corgi import CorgiConnector
 from openlcs.libs.distgit import get_distgit_sources
 from openlcs.libs.driver import OpenlcsClient
@@ -138,7 +143,7 @@ def get_build(context, engine):
         rs_comp = context.get('rs_comp')
         if rs_comp:
             rs_type = rs_comp.get('type')
-            if rs_type in config.get('RS_TYPES'):
+            if rs_type in RS_TYPES:
                 context['build_type'] = {rs_type: None}
                 context['build'] = {
                     'name': rs_comp.get('name'),
@@ -889,7 +894,6 @@ def prepare_dest_dir(context, engine):
     release = context.get('product_release')
     parent = context.get('parent')
     component_type = context.get('component_type')
-    rs_types = config.get('RS_TYPES')
     engine.logger.info('Start to prepare destination directory...')
     # TODO: Currently we don't store product and release data, so the
     # release should be added manually if release is needed in import.
@@ -908,7 +912,7 @@ def prepare_dest_dir(context, engine):
         dest_root = os.path.join(dest_root, parent)
     if component_type == 'RPM':
         src_dir = os.path.join(dest_root, nvr)
-    elif component_type in rs_types:
+    elif component_type in RS_TYPES:
         rs_comp = context.get('rs_comp')
         component = context.get('component')
         rs_comp = rs_comp if rs_comp else component
@@ -1124,7 +1128,8 @@ def save_package_data(context, engine):
             'task_id': context.get('task_id')
         }
         json.dump(file_content, destination, cls=DateEncoder)
-    resp = cli.post(url, data={"file_path": tmp_file_path}, timeout=600)
+    resp = cli.post(url, data={"file_path": tmp_file_path},
+                    timeout=EXTENDED_REQUEST_TIMEOUT)
     context['client'] = cli
     try:
         # Raise it in case we made a bad request:
@@ -1231,7 +1236,8 @@ def save_scan_result(context, engine):
         err_msg = f"Failed to create scan result file: {e}"
         engine.logger.error(err_msg)
         raise RuntimeError(err_msg) from None
-    resp = cli.post(url, data={"file_path": tmp_file_path}, timeout=600)
+    resp = cli.post(url, data={"file_path": tmp_file_path},
+                    timeout=EXTENDED_REQUEST_TIMEOUT)
     context['client'] = cli
     try:
         resp.raise_for_status()
@@ -1400,16 +1406,15 @@ def get_container_remote_source(context, engine):
     @requires: `rs_dir`, directory that store remote source after collate.
     """
     config = context.get('config')
-    rs_types = config.get('RS_TYPES')
     components = context.get('components')
 
-    if any([True for rs_type in rs_types if rs_type in components.keys()]):
+    if any([True for t in RS_TYPES if t in components.keys()]):
         engine.logger.info('Start to get remote source in source container...')
         rs_dir = context.get('rs_dir')
         src_dest_dir = os.path.dirname(rs_dir)
         sc_handler = SourceContainerHandler(config, dest_dir=src_dest_dir)
         rs_components = []
-        for comp_type in rs_types:
+        for comp_type in RS_TYPES:
             type_components = components.get(comp_type)
             if type_components:
                 rs_components.extend(type_components)
@@ -1654,9 +1659,8 @@ def fork_imports(context, engine):
                 'OCI', context.get('misc_dir'))
 
         # Fork remote source component tasks.
-        config = context.get('config')
         rs_comps = []
-        for comp_type in config.get('RS_TYPES'):
+        for comp_type in RS_TYPES:
             comps = components.get(comp_type)
             if comps:
                 rs_comps.extend(comps)
@@ -1860,7 +1864,7 @@ def populate_subscription_purls(context, engine):
     source_purl_set = set()
     c = CorgiConnector()
     for component in sources:
-        if component["type"] in ["OCI", "RPMMOD"]:
+        if component["type"] in PARENT_COMPONENT_TYPES:
             provides = c.get_provides(component["purl"], includes=['purl'])
             # Store component provides purls.
             subscription_purl_set.update([p["purl"] for p in provides])
@@ -1894,7 +1898,7 @@ def translate_components(context, engine):
     source_components = context["source_components"]
     sources = source_components.get('sources')
     for source in sources:
-        if source.get('type') in ['OCI', 'RPMMOD']:
+        if source.get('type') in PARENT_COMPONENT_TYPES:
             olcs_sources = source.pop('olcs_sources')
             corgi_source = {'parent': source, 'components': olcs_sources}
             corgi_sources.append(corgi_source)

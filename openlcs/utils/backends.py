@@ -2,6 +2,9 @@ from django.contrib.auth.backends import RemoteUserBackend
 from django.conf import settings
 
 
+USERNAME_LENGTH = 30
+
+
 class ModAuthKerbBackend(RemoteUserBackend):
     """
     mod_auth_kerb modules authorization backend for OpenLCS.
@@ -14,8 +17,8 @@ class ModAuthKerbBackend(RemoteUserBackend):
         for node in nodes:
             # FIXME: the max length of the builtin user model is 30.
             # Thus longer usernames get truncated under ModAuthKerbBackend.
-            if len(node) > 30:
-                node = node[:30]
+            if len(node) > USERNAME_LENGTH:
+                node = node[:USERNAME_LENGTH]
             # Grant permissions for worker nodes automatically
             # FIXME: sort out needed permissions for worker nodes.
             # Apply them instead of simply add to 'reviewers' group.
@@ -43,4 +46,6 @@ class ModAuthKerbBackend(RemoteUserBackend):
         username_tuple = username.split('/')
         if len(username_tuple) > 1:
             username = username_tuple[1]
-        return len(username) > 30 and username[:30] or username
+        if len(username) > USERNAME_LENGTH:
+            username = username[:USERNAME_LENGTH]
+        return username
