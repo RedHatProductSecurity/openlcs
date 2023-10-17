@@ -5,7 +5,6 @@ ARG ROOT_CA_URL
 ARG ENG_CA_URL
 ARG TITO_REPO_URL
 ARG RHEL8_REPO_URL
-ARG RHEL8_APPSTREAM_REPO_URL
 ARG OPENSHIFT_CLI_URL
 ARG CORGI_API_STAGE
 ARG CORGI_API_PROD
@@ -55,8 +54,7 @@ RUN cd /etc/pki/ca-trust/source/anchors/ && \
         cd - && \
     dnf -y upgrade && \
     dnf config-manager --add-repo "${TITO_REPO_URL}" \
-        --add-repo "${RHEL8_REPO_URL}" \
-        --add-repo "${RHEL8_APPSTREAM_REPO_URL}" && \
+        --add-repo "${RHEL8_REPO_URL}" && \
     dnf install --nogpgcheck --nodoc -y cpio-2.12 atool-0.39.0 && \
     # Remove it caused by vulnerabilities CVE-2021-33503 and CVE-2020-26137
     dnf remove python2-urllib3 && \
