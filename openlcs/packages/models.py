@@ -314,7 +314,7 @@ class ComponentSubscription(models.Model):
     Subscription model controls which components in component registry
     should be processed.
     """
-    name = models.CharField(max_length=255)
+    name = models.CharField(unique=True, max_length=255)
     # various query params being used in corgi's `/components` api endpoint
     query_params = models.JSONField()
     # component purls are populated/updated in the periodical tasks.
