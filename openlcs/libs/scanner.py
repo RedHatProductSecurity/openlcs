@@ -48,7 +48,7 @@ class LicenseScanner(BaseScanner):
     Package source license detection.
     """
     def scancode_scan(self):
-        scancode_license_score = self.config.get('SCANCODE_LICENSE_SCORE', 80)
+        scancode_license_score = self.config.get('SCANCODE_LICENSE_SCORE', 90)
         scancode_timeout = self.config.get('SCANCODE_TIMEOUT', 300)
         scancode_processes = self.config.get('SCANCODE_PROCESSES', 1)
         scancode_cli = self.config.get('SCANCODE_CLI', '/bin/scancode')
