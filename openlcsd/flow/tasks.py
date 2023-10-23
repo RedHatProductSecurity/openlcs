@@ -1926,7 +1926,7 @@ def trigger_corgi_components_imports(context, engine):
 
         # Only fork for components without an openlcs_scan_url
         for comp in components:
-            if comp.get('openlcs_scan_url'):
+            if comp.get('openlcs_scan_url') or comp.get("license_declared"):
                 continue
             scan_components.append(comp)
         if scan_components:
