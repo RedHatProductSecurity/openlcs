@@ -206,7 +206,7 @@ def filter_duplicate_import(context, engine):
             'arch': '' if component_type == 'RPMMOD' else build_data.get(
                 'arch', 'src')
         }
-    msg = f'Start to check duplicate import for {data}'
+    msg = f'[CHECK DUPLICATE] Start to check duplicate import for {data}'
     engine.logger.info(msg)
     resp = cli.post(url, data=data)
     resp.raise_for_status()
@@ -219,7 +219,7 @@ def filter_duplicate_import(context, engine):
             engine.logger.info(msg)
             context['duplicate_import'] = True
 
-    engine.logger.info("Finished checking duplicate import.")
+    engine.logger.info("[CHECK DUPLICATE] Done")
 
 
 def get_source_container_build(context, engine):
@@ -296,11 +296,11 @@ def download_source_image(context, engine):
         engine.logger.info("Start getting source from registry......")
         koji_connector.get_source_from_registry(repository, tmp_dir)
     else:
-        msg = "Start to download container source image build from Brew/Koji, "
-        msg += "please wait for the task log update..."
+        msg = "[DOWNLOAD IMAGE] Start to download container source "
+        msg += "image, please wait for the task log update..."
         engine.logger.info(msg)
         koji_connector.download_container_image_archives(build, tmp_dir, arch)
-    engine.logger.info('Done')
+    engine.logger.info('[DOWNLOAD IMAGE] Done')
     tmp_src_filepath = os.path.join(tmp_dir, os.listdir(tmp_dir)[0])
     context['tmp_src_filepath'] = tmp_src_filepath
 
@@ -471,7 +471,7 @@ def download_package_archive(context, engine):
         build_id = software_build.get('build_id') if software_build else None
         source_url = software_build.get('source') if software_build else None
     context['source_url'] = source_url
-    engine.logger.info('Start to download package source...')
+    engine.logger.info('[DOWNLOAD SOURCE] Start to download package source...')
     try:
         if component_type == 'RPM' and source_url:
             try:
@@ -512,11 +512,11 @@ def download_package_archive(context, engine):
                         engine.logger.info(err_msg)
                         download_shared_remote_source(context, engine)
                 else:
-                    engine.logger.info(f"Currently, we don't support this URL:"
+                    engine.logger.info(f"OLCS doesn't support this URL:"
                                        f" {download_url}.")
                     download_shared_remote_source(context, engine)
             else:
-                engine.logger.info("corgi download_url not exist.")
+                engine.logger.info("download_url not exist in Corgi.")
                 download_shared_remote_source(context, engine)
     except RuntimeError as err:
         nvr = build.get('nvr') if build else component.get('nvr')
@@ -546,18 +546,18 @@ def download_package_archive(context, engine):
                 )
                 if unpack_errors:
                     engine.logger.warning(f"unpack error:{unpack_errors}")
-                engine.logger.info('Shallow unpack remote source archive done')
+                engine.logger.info('Done')
 
-        # find component corresponding remote source
+        # Find component corresponding remote source
         source_path, _ = sc.get_remote_source_path(
             context.get('component'), rs_root_dir
         )
-        engine.logger.info(f"search component source result: {source_path}")
+        engine.logger.info(f"Component source path: {source_path}")
 
         # source not found
         if not source_path:
-            msg = f"component:{context.get('component')} not found in " \
-                  f"parent component: {parent_component} remote source file"
+            msg = f"Component: {context.get('component')} source not found " \
+                  f"in its parent: {parent_component} remote source tarball."
             raise RuntimeError(msg) from None
 
         context['tmp_src_filepath'] = source_path
@@ -583,7 +583,7 @@ def download_package_archive(context, engine):
             if pom_files:
                 context['tmp_pom_filepath'] = pom_files[0]
 
-    engine.logger.info('Finished downloading source.')
+    engine.logger.info("[DOWNLOAD SOURCE] Done")
 
 
 def is_metadata_component_source(src_filepath):
@@ -641,7 +641,7 @@ def get_source_metadata(context, engine):
     @feeds: 'declared_license' - string, package declared license.
     """
 
-    engine.logger.info("Start to get source package metadata...")
+    engine.logger.info("[GET METADATA] Start to get package metadata...")
     src_filepath = context.get('tmp_src_filepath')
     is_src_dir = os.path.isdir(src_filepath)
     nvr = context.get('package_nvr')
@@ -777,7 +777,7 @@ def get_source_metadata(context, engine):
     # Per previous discussions about metadata, below should be removed
     if nvr and source_name == f"{nvr}-metadata":
         context['source_info']['source']['archive_type'] = 'tar'
-    engine.logger.info("Done")
+    engine.logger.info("[GET METADATA] Done")
 
 
 def check_source_status(context, engine):
@@ -894,7 +894,8 @@ def prepare_dest_dir(context, engine):
     release = context.get('product_release')
     parent = context.get('parent')
     component_type = context.get('component_type')
-    engine.logger.info('Start to prepare destination directory...')
+    engine.logger.info('[PREPARE DESTINATION] Start to prepare destination '
+                       'directory...')
     # TODO: Currently we don't store product and release data, so the
     # release should be added manually if release is needed in import.
     src_root = config.get('SRC_ROOT_DIR')
@@ -932,7 +933,7 @@ def prepare_dest_dir(context, engine):
         msg = f"Failed to create directory {src_dir}: {err}"
         engine.logger.error(msg)
         raise RuntimeError(msg) from None
-    engine.logger.info('Finished preparing destination directory.')
+    engine.logger.info("[PREPARE DESTINATION] Done")
     context['src_dest_dir'] = src_dir
 
 
@@ -946,14 +947,14 @@ def extract_source(context, engine):
     src_dest_dir = context.get('src_dest_dir', '/tmp')
     # FIXME: exception handling
     tmp_src_filepath = context.get('tmp_src_filepath', None)
-    engine.logger.info('Start to extract source...')
+    engine.logger.info('[EXTRACT SOURCE] Start to extract source...')
 
     if os.path.isdir(tmp_src_filepath):
         shutil.copytree(tmp_src_filepath, src_dest_dir, dirs_exist_ok=True)
     else:
         ua = UnpackArchive(src_file=tmp_src_filepath, dest_dir=src_dest_dir)
         ua.extract()
-    engine.logger.info('Finished extracting source.')
+    engine.logger.info("[EXTRACT SOURCE] Done")
 
 
 def unpack_source(context, engine):
@@ -969,16 +970,18 @@ def unpack_source(context, engine):
     if not context.get('shared_remote_source'):
         extract_source(context, engine)
         src_dest_dir = context.get('src_dest_dir')
-        engine.logger.info('Start to unpack source archives...')
+        engine.logger.info('[UNPACK SOURCE] Start to unpack source '
+                           'archives...')
         ua = UnpackArchive(config=config, dest_dir=src_dest_dir)
         unpack_errors = ua.unpack_archives()
         if unpack_errors:
             err_msg = "---- %s" % "\n".join(unpack_errors)
             engine.logger.warning(err_msg)
-        engine.logger.info("Finished unpacking source.")
+        engine.logger.info("[UNPACK SOURCE] Done")
     else:
         source_file_path = context['tmp_src_filepath']
-        engine.logger.info('Start to unpack remote source archives...')
+        engine.logger.info('[UNPACK SOURCE] Start to unpack remote source '
+                           'archives...')
         # unpack component corresponding source file
         ua = UnpackArchive(config=config)
         unpack_errors = ua.unpack_archives_using_extractcode(
@@ -988,8 +991,7 @@ def unpack_source(context, engine):
         if unpack_errors:
             engine.logger.warning(unpack_errors)
 
-        engine.logger.info("Finished unpacking remote source archives.")
-
+        engine.logger.info("[UNPACK SOURCE] Done")
         context['src_dest_dir'] = source_file_path
 
 
@@ -1010,7 +1012,7 @@ def unpack_container_source_archive(context, engine):
 
     # Unpack the source container image.
     sc_handler = SourceContainerHandler(config, tmp_src_filepath, src_dest_dir)
-    engine.logger.info('Start to unpack source container files...')
+    engine.logger.info('[UNPACK IMAGE] Start to unpack source image...')
     try:
         srpm_dir, rs_dir, misc_dir, errs = \
                 sc_handler.unpack_source_container_image()
@@ -1020,7 +1022,7 @@ def unpack_container_source_archive(context, engine):
         raise RuntimeError(err_msg) from None
     if len(errs) > 0:
         engine.logger.error(errs)
-    engine.logger.info('Finished unpacking the source files.')
+    engine.logger.info("[UNPACK IMAGE] Done")
     context['misc_dir'], context['srpm_dir'], context['rs_dir'] = \
         misc_dir, srpm_dir, rs_dir
 
@@ -1052,7 +1054,7 @@ def deduplicate_source(context, engine):
     @feeds: `swhids`, swhid list for files in the source.
     @feeds: `paths`, path information list for files in the source.
     """
-    engine.logger.info('Start to deduplicate source...')
+    engine.logger.info('[DEDUPLICATE SOURCE] Start to deduplicate source...')
     src_dest_dir = context.get("src_dest_dir")
     if src_dest_dir:
         path_list = get_source_files_paths(src_dest_dir)
@@ -1102,7 +1104,7 @@ def deduplicate_source(context, engine):
         err_msg = "Failed to find unpack source directory path."
         engine.logger.error(err_msg)
         raise RuntimeError(err_msg)
-    engine.logger.info("Finished deduplicating source.")
+    engine.logger.info("[DEDUPLICATE SOURCE] Done")
 
 
 def save_package_data(context, engine):
@@ -1117,8 +1119,8 @@ def save_package_data(context, engine):
     else:
         package_nvr = context.get('package_nvr')
         component_nvr = package_nvr if package_nvr else context.get('rs_comp')
-    engine.logger.info(f"Start to send {component_nvr} data to hub for "
-                       f"further processing...")
+    engine.logger.info(f"[SAVE PACKAGE] Start to send {component_nvr} data to "
+                       f"hub for further processing...")
     # Post data file name instead of post context data
     fd, tmp_file_path = tempfile.mkstemp(prefix='send_package_',
                                          dir=context.get('post_dir'))
@@ -1141,7 +1143,7 @@ def save_package_data(context, engine):
         raise RuntimeError(err_msg) from None
     finally:
         os.remove(tmp_file_path)
-    engine.logger.info(f"Finished saving {component_nvr} data to database.")
+    engine.logger.info("[SAVE PACKAGE] Done")
 
 
 def license_scan(context, engine):
@@ -1155,11 +1157,11 @@ def license_scan(context, engine):
     src_dir = context.get('src_dest_dir')
     config = context.get('config')
     # Scanner could be provided when multiple scanners supported in the future.
-    engine.logger.info("Start to scan source licenses with Scancode...")
+    engine.logger.info("[SCAN LICENSE] Start to scan source licenses...")
     scanner = LicenseScanner(
             config=config, src_dir=src_dir, logger=engine.logger)
     (detector, licenses, errors, has_exception) = scanner.scan()
-    engine.logger.info("Done")
+    engine.logger.info("[SCAN LICENSE] Done")
     scan_result = {
         "source_checksum": context.get("source_info").get("source").get(
             "checksum")}
@@ -1188,11 +1190,11 @@ def copyright_scan(context, engine):
     """
     src_dir = context.get('src_dest_dir')
     config = context.get('config')
-    engine.logger.info("Start to scan copyrights with Scancode...")
+    engine.logger.info("[SCAN COPYRIGHT] Start to scan copyrights...")
     scanner = CopyrightScanner(
             config=config, src_dir=src_dir, logger=engine.logger)
     (detector, copyrights, errors, has_exception) = scanner.scan()
-    engine.logger.info("Done")
+    engine.logger.info("[SCAN COPYRIGHT] Done")
     scan_result = context.get('scan_result', {})
     if "source_checksum" not in scan_result:
         scan_result["source_checksum"] = context.get("source_info").get(
@@ -1224,8 +1226,8 @@ def save_scan_result(context, engine):
     else:
         package_nvr = context.get('package_nvr')
         component_nvr = package_nvr if package_nvr else context.get('rs_comp')
-    engine.logger.info(f"Start to send {component_nvr} scan result to hub for "
-                       f"further processing...")
+    engine.logger.info(f"[SAVE RESULT] Start to send {component_nvr} scan "
+                       f"result to hub for further processing...")
 
     fd, tmp_file_path = tempfile.mkstemp(prefix='scan_result_',
                                          dir=context.get('post_dir'))
@@ -1247,7 +1249,7 @@ def save_scan_result(context, engine):
         raise RuntimeError(err_msg) from None
     finally:
         os.remove(tmp_file_path)
-    engine.logger.info("Finished saving scan result to database.")
+    engine.logger.info("[SAVE RESULT] Done")
 
 
 def sync_result_to_corgi(context, engine):
@@ -1259,6 +1261,8 @@ def sync_result_to_corgi(context, engine):
     client = context['client']
     olcs_component_api_url = client.get_abs_url("components")
     component_uuid = component["uuid"]
+    engine.logger.info(f"[TO CORGI] Start to sync Component({component_uuid}) "
+                       f"to Corgi...")
     response = client.get("components", params={"uuid": component_uuid})
     response.raise_for_status()
     response = response.json()
@@ -1277,8 +1281,8 @@ def sync_result_to_corgi(context, engine):
     if not source:
         # Component without source info means no scan is done.
         # FIXME: are there any other circumstances cause no source?
-        engine.logger.warning(f"Component({component_uuid}) sync to corgi "
-                              f"failed, no source found.")
+        engine.logger.error(f"Component({component_uuid}) sync to corgi "
+                            f"failed, no source found.")
         client.patch(
             f"components/{olcs_component['id']}",
             data={"sync_status": "sync_failed",
@@ -1304,11 +1308,12 @@ def sync_result_to_corgi(context, engine):
             "copyright_text": ", ".join(copyright_detections),
         }
         connector.sync_to_corgi(component_data, fields=sync_fields)
-        engine.logger.info(f"Component({uuid}) synced to corgi.")
+        engine.logger.info(f"-- Component {uuid} synced")
+    engine.logger.info("[TO CORGI] Done")
     client.patch(
         f"components/{olcs_component['id']}",
         data={"sync_status": "synced"})
-    engine.logger.info(f"Component({component_uuid}) synced in OLCS.")
+    engine.logger.info(f"Component({component_uuid}) updated in OLCS.")
 
 
 def get_source_components(context, engine):
@@ -1328,7 +1333,7 @@ def get_container_components(context, engine):
     """
     Get all component in the source container.
     """
-    engine.logger.info('Start to get container components data...')
+    engine.logger.info('[GET COMPONENTS] Start to collect components...')
     # Collect container components from Corgi
     components = get_components_product_from_corgi(context, engine)
     # If we cannot get components from Corgi, parse them from source container
@@ -1336,7 +1341,7 @@ def get_container_components(context, engine):
         components = get_components_from_source_container(
             context, engine)
     context['components'] = components
-    engine.logger.info("Finished getting container components data.")
+    engine.logger.info("[GE COMPONENTS] Done")
 
 
 def get_components_product_from_corgi(context, engine):
@@ -1360,7 +1365,8 @@ def get_remote_source_components(context, engine):
     """
     config = context.get('config')
     koji_connector = KojiConnector(config)
-    engine.logger.info('Start to get remote source components...')
+    engine.logger.info('[GET RS COMPONENT] Start to get remote source '
+                       'components...')
     try:
         rs_components = koji_connector.get_remote_source_components(
             context.get('binary_build'))
@@ -1368,7 +1374,7 @@ def get_remote_source_components(context, engine):
         err_msg = f"Failed to get remote source components. Reason: {err}"
         engine.logger.error(err_msg)
         raise RuntimeError(err_msg) from None
-    engine.logger.info('Finished getting remote source components.')
+    engine.logger.info("[GET RS COMPONENT] Done")
     return rs_components
 
 
@@ -1409,7 +1415,8 @@ def get_container_remote_source(context, engine):
     components = context.get('components')
 
     if any([True for t in RS_TYPES if t in components.keys()]):
-        engine.logger.info('Start to get remote source in source container...')
+        engine.logger.info(
+                '[GET RS] Start to get remote source in source container...')
         rs_dir = context.get('rs_dir')
         src_dest_dir = os.path.dirname(rs_dir)
         sc_handler = SourceContainerHandler(config, dest_dir=src_dest_dir)
@@ -1426,8 +1433,7 @@ def get_container_remote_source(context, engine):
 
         # Redefine the 'rs_dir' after collate remote source.
         context['rs_dir'] = os.path.join(context.get('src_dest_dir'), 'rs_dir')
-        msg = "Finished getting remote source in source container."
-        engine.logger.info(msg)
+        engine.logger.info("[GET RS] Done")
 
 
 def save_components(context, engine):
@@ -1443,7 +1449,7 @@ def save_components(context, engine):
         'product_release': context.get('product_release'),
         'component_type': component_type
     }
-    msg = f'Start to save components in {component_type} {package_nvr}...'
+    msg = f'[SAVE COMPONENTS] Start to save components in {package_nvr}...'
     engine.logger.info(msg)
     fd, tmp_file_path = tempfile.mkstemp(
         prefix='save_components_', dir=context.get('post_dir'))
@@ -1460,18 +1466,18 @@ def save_components(context, engine):
         raise RuntimeError(err_msg) from None
     finally:
         os.remove(tmp_file_path)
-    engine.logger.info(f'Finished saving {component_type} components.')
+    engine.logger.info("[SAVE COMPONENTS] Done")
 
 
 def get_module_components_from_corgi(context, engine):
     """
     Get module components from corgi
     """
-    engine.logger.info("Start to get module components data...")
+    engine.logger.info("[GET COMPONENTS] Start to get module components...")
     mc = CorgiConnector()
     nvr = context.get("package_nvr")
     context['components'] = mc.get_components_data(nvr, 'RPMMOD')
-    engine.logger.info("Finished getting module components data.")
+    engine.logger.info("[GET COMPONENTS] Done")
 
 
 def get_module_components_from_brew(context, engine):
@@ -1483,10 +1489,10 @@ def get_module_components_from_brew(context, engine):
     """
     config = context.get('config')
     module_nvr = context.get('package_nvr')
-    engine.logger.info("Start to get module components data...")
+    engine.logger.info("[GET COMPONENTS] Start to get module components...")
     koji_connector = KojiConnector(config)
     context['components'] = koji_connector.get_module_components(module_nvr)
-    engine.logger.info("Finished getting module components data.")
+    engine.logger.info("[GET COMPONENTS] Done")
 
 
 def fork_specified_type_imports(
@@ -1516,7 +1522,8 @@ def fork_specified_type_imports(
     # Fork srpm tasks for source container that downloaded src in src_dir
     if src_dir:
         data.update({'src_dir': src_dir})
-    msg = 'Start to fork imports for {} components...'.format(len(nvr_list))
+    msg = '[FORK IMPORT] Start to fork imports for {} components...'.format(
+            len(nvr_list))
     engine.logger.info(msg)
     nvrs = "\n\t" + "\n\t".join(nvr_list)
     resp = cli.post(url, data=data)
@@ -1531,7 +1538,7 @@ def fork_specified_type_imports(
         raise RuntimeError(err_msg) from None
     msg = f'-- Forked import tasks for components: {nvrs}'
     engine.logger.info(msg)
-    engine.logger.info('Done')
+    engine.logger.info('FORK IMPORT] Done')
 
 
 def fork_remote_source_components_imports(
@@ -1559,7 +1566,8 @@ def fork_remote_source_components_imports(
     # downloaded src in src_dir
     if src_dir:
         data.update({'src_dir': src_dir})
-    msg = 'Start to fork imports for {} components...'.format(len(rs_comps))
+    msg = '[FORK RS IMPORT] Start to fork imports for {} components...'.format(
+            len(rs_comps))
     engine.logger.info(msg)
     components_string = ""
     for rs_comp in rs_comps:
@@ -1578,7 +1586,7 @@ def fork_remote_source_components_imports(
 
     msg = f'-- Forked import tasks for components: {components_string}'
     engine.logger.info(msg)
-    engine.logger.info('Done')
+    engine.logger.info('FORK RS IMPORT] Done')
 
 
 def fork_components_imports(context, engine, parent, components):
@@ -1617,7 +1625,8 @@ def fork_components_imports(context, engine, parent, components):
             "purl": parent['purl'],
             "arch": parent['arch']
         }
-    msg = 'Start to fork imports for {} components...'.format(len(components))
+    msg = '[FORK IMPORT] Start to fork imports for {} components...'.format(
+            len(components))
     engine.logger.info(msg)
     components_string = "\n\t" + "\n\t".join([component.get('nvr')
                                               for component in components])
@@ -1634,7 +1643,7 @@ def fork_components_imports(context, engine, parent, components):
 
     msg = f'-- Forked import tasks for components: {components_string}'
     engine.logger.info(msg)
-    engine.logger.info('Done')
+    engine.logger.info('[FORK IMPORT] Done')
 
 
 def fork_imports(context, engine):
@@ -1916,7 +1925,6 @@ def trigger_corgi_components_imports(context, engine):
     Trigger fork tasks directly using Corgi source.
     """
     # set corgi source forked task medium priority
-    engine.logger.info("Start to trigger Corgi component import.")
     context['priority'] = "medium"
     corgi_sources = context.get('corgi_sources')
     for corgi_source in corgi_sources:
@@ -1932,11 +1940,8 @@ def trigger_corgi_components_imports(context, engine):
         if scan_components:
             fork_components_imports(
                     context, engine, parent, scan_components)
-            scan_purls = [c['purl'] for c in scan_components]
-            engine.logger.info(f"Forked imports for: {', '.join(scan_purls)}")
         else:
             engine.logger.info("The collected components have been scanned.")
-    engine.logger.info("Done.")
 
 
 def clear_unused_resource_source(context, engine):
@@ -1976,10 +1981,9 @@ def trigger_missing_components_imports(context, engine):
                 engine.logger.warning(
                     f'{component["purl"]} source rpm not found')
                 continue
-
             component = source
-
         components.append(component)
+
         # fork import every 10 components
         if len(components) >= 10:
             fork_components_imports(context, engine, None, components)
