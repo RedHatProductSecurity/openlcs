@@ -69,6 +69,12 @@ def corgi_include_exclude_fields_wrapper(func):
     return wrapper
 
 
+def skip_scan(component):
+    license_declared = component.get("license_declared")
+    openlcs_scan_url = component.get("openlcs_scan_url")
+    return license_declared or openlcs_scan_url
+
+
 class CorgiConnector:
     """
     Get parent component data list from Corgi
@@ -494,7 +500,7 @@ class CorgiConnector:
         return as a generator
         """
         if includes is None:
-            includes = ["purl", 'link']
+            includes = ["purl", 'link', 'license_declared', 'openlcs_scan_url']
 
         if query_params is None:
             query_params = {}
@@ -511,35 +517,30 @@ class CorgiConnector:
         return as a generator
         """
         if includes is None:
-            includes = ["purl", 'link']
-
+            includes = ["purl", 'link', 'license_declared', 'openlcs_scan_url']
         if query_params is None:
             query_params = {}
-
+        # CORGI-873: Add license_declared to get unscanned provides only
         query_params["sources"] = purl
 
         return self.get_paginated_data(
             query_params=query_params, includes=includes)
 
-    def get_srpm_component(self, component, synced_purls=None):
+    def get_unscanned_srpm_component(self, component):
         """
         Returns the source rpm component for a RPM component
         """
         if component["type"] != "RPM":
             raise ValueError(f"Unsupported component type {component['type']}")
-        if component["arch"] == "src":
+        if component["arch"] == "src" and not skip_scan(component):
             return component
         sources = component.get("sources")
         if sources:
-            purl, link = sources[0].get("purl"), sources[0].get("link")
-            # Skip corgi query if the srpm component has been synced
-            if synced_purls and purl in synced_purls:
-                return None
-            if link:
+            if not skip_scan(sources[0]):
+                link = sources[0].get("link")
                 logger.info("Querying component: %s", link)
                 component = self.get(link, includes=self.rpm_includes)
-                if component:
-                    return component
+                return component if component else None
 
     def _fetch_component(self, link, component_type):
         """
@@ -553,13 +554,11 @@ class CorgiConnector:
             if component.get("type") == "RPM":
                 component = CorgiConnector.truncate_rpm_component_sources(
                     component)
-                srpm_component = self.get_srpm_component(component)
-                return srpm_component if srpm_component else component.get(
-                        "purl")
-            # Filter go-package component for GOLANG type
-            if component.get("type") == "GOLANG":
-                return self.filter_go_package_component(component)
-            return component
+                return self.get_unscanned_srpm_component(component)
+            elif component.get("type") == "GOLANG":
+                return self.get_unscanned_gomod_component(component)
+            elif not skip_scan(component):
+                return component
         else:
             return unquote(link.split("purl=")[-1])
 
@@ -619,8 +618,9 @@ class CorgiConnector:
         provides = []
         for provide in oci_provides:
             purl = provide.get("purl")
-            # exclude those that are already retrieved earlier
-            if subscribed_purls and purl in subscribed_purls:
+            # exclude those already retrieved, scanned or with a license data:
+            if (subscribed_purls and purl in subscribed_purls) or \
+                    skip_scan(provide):
                 continue
 
             purl_dict = PackageURL.from_string(purl).to_dict()
@@ -630,7 +630,7 @@ class CorgiConnector:
             if component_type.upper() == "OCI":
                 continue
             provides.append((provide.get("link"), component_type))
-        logger.debug("List of provides(%d) collected", len(provides))
+        logger.debug("List of unscanned provides(%d) collected", len(provides))
         remaining_provides = len(provides)
         provides_iter = iter(provides)
 
@@ -654,7 +654,7 @@ class CorgiConnector:
                     yield result
                     del tasks[task]
 
-    def filter_go_package_component(self, component):
+    def get_unscanned_gomod_component(self, component):
         """
         Pass a GOLANG type component
         Filter go-package component, if component is a
@@ -669,25 +669,22 @@ class CorgiConnector:
             },
             includes=self.default_includes
         )
+        if result["count"] > 0:
+            return None if skip_scan(component) else component
 
-        return None if result["count"] == 0 else component
-
-    def get_source_component(self,
-                             component,
-                             subscribed_purls=None,
-                             synced_purls=None):
+    def get_source_component(self, component, subscribed_purls=None):
         component_type = component.get("type")
         if component_type == "RPM":
             component = CorgiConnector.truncate_rpm_component_sources(
                 component)
-            yield self.get_srpm_component(component, synced_purls)
+            yield self.get_unscanned_srpm_component(component)
         elif component_type in PARENT_COMPONENT_TYPES:
             yield from self.get_provides_source_components(
                 component, subscribed_purls)
         # for GOLANG type component, filter go-package type
         elif component_type == "GOLANG":
-            yield self.filter_go_package_component(component)
-        else:
+            yield self.get_unscanned_gomod_component(component)
+        elif not skip_scan(component):
             yield component
 
     @classmethod
@@ -736,13 +733,10 @@ class CorgiConnector:
         data at once, this function provides a mechanism to dynamically yield
         components, based on the `should_yield_data` inner function.
         """
-        def process_component(component,
-                              subscribed_purls=None,
-                              synced_purls=None):
+        def process_component(component, subscribed_purls=None):
             sources = []
             missings = []
-            gen = self.get_source_component(
-                    component, subscribed_purls, synced_purls)
+            gen = self.get_source_component(component, subscribed_purls)
             components, missings = CorgiConnector.source_component_to_list(gen)
             if component.get("type") in PARENT_COMPONENT_TYPES:
                 # Nest source components in `olcs_sources`
@@ -766,8 +760,8 @@ class CorgiConnector:
         query_params = subscription.get("query_params")
         # subscription purls obtained from previous sync
         subscribed_purls = subscription.get("component_purls", [])
-        synced_purls = subscription.get("synced_purls", [])
         if query_params:
+            # CORGI-873: Add license_declared to get unscanned components only
             components = self.get_paginated_data(query_params)
             result = {"subscription_id": subscription["id"]}
             while True:
@@ -787,7 +781,7 @@ class CorgiConnector:
                         continue
                     try:
                         sources, missings = process_component(
-                            component, subscribed_purls, synced_purls)
+                                component, subscribed_purls)
                     except MissingBinaryBuildException as e:
                         logger.error(str(e))
                         # FIMXE: subsequent calls for missing binary build

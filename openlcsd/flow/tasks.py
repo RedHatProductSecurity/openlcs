@@ -1829,12 +1829,6 @@ def collect_components(subscription):
 
 def populate_components_generator(context, engine):
     subscription = context.get("subscription", [])
-    cli = context.get('client')
-    # Collect synced components of the subscription
-    params = {"subscription_id": subscription['id']}
-    response = cli.get("get_synced_purls", params)
-    response.raise_for_status()
-    subscription['synced_purls'] = response.json().get('purls')
     components = collect_components(subscription)
     context["components_generator"] = ExhaustibleIterator(components)
 
@@ -1930,16 +1924,8 @@ def trigger_corgi_components_imports(context, engine):
     for corgi_source in corgi_sources:
         parent = corgi_source.get('parent')
         components = corgi_source.get('components')
-        scan_components = []
-
-        # Only fork for components without an openlcs_scan_url
-        for comp in components:
-            if comp.get('openlcs_scan_url') or comp.get("license_declared"):
-                continue
-            scan_components.append(comp)
-        if scan_components:
-            fork_components_imports(
-                    context, engine, parent, scan_components)
+        if components:
+            fork_components_imports(context, engine, parent, components)
         else:
             engine.logger.info("The collected components have been scanned.")
 
