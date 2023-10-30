@@ -418,6 +418,7 @@ class MissingComponent(models.Model):
         ComponentSubscription,
         related_name="missing_components"
     )
+    retry_count = models.IntegerField(default=0)
 
     def __str__(self):
         return f"{self.purl}"

@@ -12,6 +12,7 @@ def test_list_missingcomponents(openlcs_client):
         {
             "id": 1,
             "purl": "pkg:golang/github.com/moby/sys/signal@v0.6.0",
+            "retry_count": 1,
             "subscriptions": [
                 1
             ]
@@ -34,6 +35,7 @@ def test_retrieve_missingcomponent(openlcs_client):
     expected = {
         "id": 1,
         "purl": "pkg:golang/github.com/moby/sys/signal@v0.6.0",
+        "retry_count": 1,
         "subscriptions": [
             1
         ]
@@ -62,6 +64,7 @@ def test_create_missingcomponents(openlcs_client):
         {
             "id": 2,
             "purl": "pkg:rpm/389-admin@1.1.42",
+            "retry_count": 0,
             "subscriptions": [
                 2
             ]
@@ -88,3 +91,56 @@ def test_delete_missingcomponents(openlcs_client):
     response = openlcs_client.api_call(url, 'GET')
     expected = []
     assert response.get("results") == expected
+
+
+def test_increase_retry_count(openlcs_client):
+    """
+    Test for increase missing components retry count.
+    """
+    url = f'/missingcomponents/1/increase_retry_count'
+    openlcs_client.api_call(
+        url,
+        method="PATCH",
+        expected_code=status.HTTP_200_OK
+    )
+    url = f'/missingcomponents/1'
+    response = openlcs_client.api_call(url, 'GET')
+    expected = {
+        "id": 1,
+        "purl": "pkg:golang/github.com/moby/sys/signal@v0.6.0",
+        "retry_count": 2,
+        "subscriptions": [
+            1
+        ]
+    }
+
+    assert response == expected
+
+
+def test_reset_retry_count(openlcs_client):
+    """
+    Test for reset missing components retry count.
+    """
+    data = {
+        "purl_list": ["pkg:golang/github.com/moby/sys/signal@v0.6.0"]
+    }
+    url = '/missingcomponents/reset_retry_count/'
+    openlcs_client.api_call(
+        url,
+        method="PATCH",
+        expected_code=status.HTTP_200_OK,
+        json=data
+    )
+
+    url = '/missingcomponents/1/'
+    response = openlcs_client.api_call(url, 'GET')
+    expected = {
+        "id": 1,
+        "purl": "pkg:golang/github.com/moby/sys/signal@v0.6.0",
+        "retry_count": 0,
+        "subscriptions": [
+            1
+        ]
+    }
+
+    assert response == expected

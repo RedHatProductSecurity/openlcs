@@ -13,6 +13,7 @@ from django_celery_beat.models import (
 )
 from libs.encrypt_decrypt import encrypt_with_secret_key
 from libs.parsers import parse_manifest_file
+from libs.exceptions import ParamsErrorException
 from packages.mixins import SaveScanResultMixin
 from packages.models import (
     Component,
@@ -1418,6 +1419,53 @@ Token your_token' -d '{"missing_purls": ['pkg:rpm/389-admin@1.1.42'], \
             return Response(data={'message': msg}, status=status.HTTP_200_OK)
         else:
             return Response(status=status.HTTP_400_BAD_REQUEST)
+
+    @action(methods=['patch', 'put'], detail=True,
+            url_path='increase_retry_count')
+    def increase_retry_count(self, request, pk=None):
+        """
+        Increase missing components retry count.
+
+        ####__Request__####
+
+            curl -X PUT/PATCH -H "Content-Type: application/json" \
+%(HOST_NAME)s/%(API_PATH)s/missingcomponents/id/increase_retry_count/ \
+ -H 'Authorization: Token your_token'
+
+        ####__Response__####
+
+            HTTP 200 OK
+        """
+        m_component = MissingComponent.objects.get(id=int(pk))
+        m_component.retry_count = m_component.retry_count + 1
+        m_component.save()
+
+        return Response(data={'message': "success"})
+
+    @action(methods=['patch', 'put'], detail=False,
+            url_path='reset_retry_count')
+    def reset_retry_count(self, request, *args, **kwargs):
+        """
+        Reset missing components retry count to 0.
+
+        ####__Request__####
+
+            curl -X PUT/PATCH -H "Content-Type: application/json" \
+%(HOST_NAME)s/%(API_PATH)s/missingcomponents/reset_retry_count/ -H \
+'Authorization: Token your_token' -d '{"purl_list": \
+["pkg:generic/aap-cloud-metrics-collector@0.0.1"]}'
+
+        ####__Response__####
+
+            HTTP 200 OK
+        """
+        purl_list = request.data.get('purl_list')
+        if not isinstance(purl_list, list):
+            raise ParamsErrorException("purl_list should be a list of purl")
+        MissingComponent.objects.filter(
+            purl__in=purl_list).update(retry_count=0)
+
+        return Response(data={'message': "success"})
 
 
 class PeriodicTaskViewSet(ModelViewSet):
