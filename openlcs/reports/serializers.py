@@ -3,7 +3,8 @@ from rest_framework import serializers
 from reports.models import LicenseDetection
 from reports.models import CopyrightDetection
 from reports.models import FileLicenseScan, FileCopyrightScan
-from packages.views import Path
+from packages.models import Path
+from packages.models import ComponentSubscription
 
 
 class LicenseDetectionSerializer(serializers.ModelSerializer):
@@ -91,3 +92,20 @@ class CopyrightDetectionSerializer(serializers.ModelSerializer):
             'file_scan': file_scan
         }
         return file_data
+
+
+class ReportMetricsSerializer(serializers.ModelSerializer):
+    """
+    Report metrics serializer.
+    """
+
+    total_scans = serializers.SerializerMethodField()
+    # success_scans = serializers.SerializerMethodField()  # OLCS-699
+    # complete_scans = serializers.SerializerMethodField()  # OLCS-702
+
+    class Meta:
+        model = ComponentSubscription
+        fields = ["name", "active", "query_params", "total_scans"]
+
+    def get_total_scans(self, obj):
+        return len(obj.source_purls) if obj.source_purls else 0

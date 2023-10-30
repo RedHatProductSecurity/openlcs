@@ -1,10 +1,12 @@
+import django_filters
 from rest_framework.viewsets import ModelViewSet
 
+from packages.models import ComponentSubscription
 from reports.models import LicenseDetection
 from reports.models import CopyrightDetection
 from reports.serializers import LicenseDetectionSerializer
 from reports.serializers import CopyrightDetectionSerializer
-import django_filters
+from reports.serializers import ReportMetricsSerializer
 
 
 class LicenseDetectionFilter(django_filters.FilterSet):
@@ -201,3 +203,8 @@ class CopyrightDetectionViewSet(ModelViewSet):
             }
         """
         return super().retrieve(request, *args, **kwargs)
+
+
+class ReportMetricsViewSet(ModelViewSet):
+    queryset = ComponentSubscription.objects.all()
+    serializer_class = ReportMetricsSerializer
