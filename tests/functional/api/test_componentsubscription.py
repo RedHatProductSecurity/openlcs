@@ -9,7 +9,7 @@ def test_list_subscription(openlcs_client):
         method="GET",
         expected_code=status.HTTP_200_OK
     )
-    assert response["count"] == 2
+    assert response["count"] == 3
     assert response["results"][0]["name"] == 'ansible_automation_platform:2.2'
 
 

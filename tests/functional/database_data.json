@@ -49,6 +49,21 @@
     }
 },
 {
+    "model": "packages.componentsubscription",
+    "pk": 3,
+    "fields": {
+      "name": "success_scan",
+      "query_params": {
+        "nvr": "zxcvbn-4.4.2"
+      },
+      "component_purls": "[\"pkg:npm/zxcvbn@4.4.2\"]",
+      "source_purls": "[\"pkg:npm/zxcvbn@4.4.2\"]",
+      "active": true,
+      "created_at": "2023-11-01T07:01:48.972Z",
+      "updated_at": "2023-11-01T07:01:48.972Z"
+    }
+  },
+{
     "model": "packages.file",
     "pk": 1,
     "fields": {
@@ -110775,6 +110790,24 @@
         "path": "ansible-2.4.2.0.tar.gz/ansible-2.4.2.0/test/utils/shippable/tools/run.py"
     }
 },
+{
+    "model": "packages.component",
+    "pk": 1,
+    "fields": {
+      "uuid": "d5556d2d-47a2-4a8f-9591-d379ba7be298",
+      "type": "NPM",
+      "name": "zxcvbn",
+      "version": "4.4.2",
+      "release": "rhel-8.9.0",
+      "arch": "src",
+      "purl": "pkg:npm/zxcvbn@4.4.2",
+      "summary_license": "",
+      "is_source": true,
+      "from_corgi": true,
+      "sync_status": "synced",
+      "sync_failure_reason": null
+    }
+  },
 {
     "model": "tasks.taskmeta",
     "pk": 1,

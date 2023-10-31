@@ -100,12 +100,19 @@ class ReportMetricsSerializer(serializers.ModelSerializer):
     """
 
     total_scans = serializers.SerializerMethodField()
-    # success_scans = serializers.SerializerMethodField()  # OLCS-699
+    success_scans = serializers.SerializerMethodField()
     # complete_scans = serializers.SerializerMethodField()  # OLCS-702
 
     class Meta:
         model = ComponentSubscription
-        fields = ["name", "active", "query_params", "total_scans"]
+        fields = ["name", "active", "query_params", "total_scans",
+                  "success_scans"]
 
     def get_total_scans(self, obj):
         return len(obj.source_purls) if obj.source_purls else 0
+
+    def get_success_scans(self, obj):
+        purls = []
+        components = obj.get_synced_components()
+        purls = [component.purl for component in components]
+        return len(purls)
