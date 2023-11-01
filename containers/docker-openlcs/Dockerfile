@@ -35,9 +35,6 @@ USER 0
 COPY ./requirements /tmp
 COPY . /opt/app-root/src
 
-# To avoid docker cache invaild , put these code in the last part
-ARG quay_expiration
-LABEL quay.expires-after=$quay_expiration
 ENV REQUESTS_CA_BUNDLE=/etc/pki/tls/certs/ca-bundle.crt \
     HOME=/opt/app-root/src \
     PYTHONUNBUFFERED=1 \
