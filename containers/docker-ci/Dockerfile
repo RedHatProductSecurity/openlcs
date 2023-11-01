@@ -79,6 +79,3 @@ RUN patch -p0 < extract.patch && \
 
 WORKDIR /opt/app-root/src
 USER 1001
-# To avoid docker cache invaild , put this in the last
-ARG quay_expiration
-LABEL quay.expires-after=$quay_expiration
