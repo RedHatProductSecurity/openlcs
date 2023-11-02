@@ -14,7 +14,8 @@ Depending on the local configuration, you may need to update some of below varia
 - OLCS_TEST_DB_USER: test database username
 - OLCS_TEST_DB_HOST: test database password
 
->Note: each of the variable above has a default value, only update those that are inconsistent with the default.
+>Note: each of the variable above has a default value, only update those that are inconsistent with the default,
+e.g., update the OLCS_TEST_DB_HOST to 'localhost' which has a default 'postgres'.
 
 ## Run the tests
 There are a few methods how you can run test cases. Always run the commands from
