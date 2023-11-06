@@ -110871,9 +110871,10 @@
     "pk": 1,
     "fields": {
         "purl": "pkg:golang/github.com/moby/sys/signal@v0.6.0",
-	"subscriptions": [
-	    1
-	]
+        "retry_count": 1,
+        "subscriptions": [
+            1
+        ]
     }
 }
 ]

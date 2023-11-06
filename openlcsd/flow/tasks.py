@@ -1968,6 +1968,15 @@ def trigger_missing_components_imports(context, engine):
                     f'{component["purl"]} source rpm not found')
                 continue
             component = source
+
+        # check retry times
+        if missing_component['retry_count'] >= 3:
+            continue
+        # increase retry time number
+        client.patch(
+            f"missingcomponents/{missing_component['id']}/"
+            f"increase_retry_count", data={})
+
         components.append(component)
 
         # fork import every 10 components

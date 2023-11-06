@@ -55,7 +55,10 @@ usermod -aG docker gitlab-runner
 sudo systemctl restart gitlab-runner
 
 # Register Shell runner https://docs.gitlab.com/runner/register/index.html#linux
-# "URL" and "PROJECT_REGISTRATION_TOKEN" are from "Runners" in project CI/CD settings
+# "PROJECT_REGISTRATION_TOKEN" are from "Runners" in project CI/CD settings.Click the 3 dot
+# button next to "New project runner"
+# "URL" If your project is hosted on gitlab.example.com/yourname/yourproject, 
+# your GitLab instance URL is https://gitlab.example.com 
 sudo gitlab-runner register \
   --non-interactive \
   --url "URL" \

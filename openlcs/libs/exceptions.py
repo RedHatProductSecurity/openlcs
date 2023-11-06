@@ -25,3 +25,10 @@ class TaskResubmissionException(OpenLCSException):
     with identical name/args are allowed to be submitted again.
     """
     pass  # pylint: disable=unnecessary-pass
+
+
+class ParamsErrorException(OpenLCSException):
+    """
+    Raised when API params error
+    """
+    pass  # pylint: disable=unnecessary-pass
