@@ -29,6 +29,17 @@ def test_list_tasks(openlcs_client):
             'traceback': None,
             'object_url': 'http://{}/rest/v1/sources/2/'.format(settings.HOSTNAME),
             'parent_task_id': ''
+        },
+        {
+            "id": 3,
+            "meta_id": "e06038ad-4144-4fb5-b812-67df3a8e5dde",
+            'owner': 'admin',
+            "params": '{"package_nvr": "zxcvbn-4.4.2", "license_scan": true, "copyright_scan": true, "product_release": "satellite-6.9.0", "subscription_id": 3}',
+            'status': 'SUCCESS',
+            'date_done': '2022-11-11T05:18:34.601000',
+            'traceback': None,
+            'object_url': 'http://{}/rest/v1/sources/2/'.format(settings.HOSTNAME),
+            'parent_task_id': ''
         }
     ]
 
@@ -64,6 +75,17 @@ def test_list_tasks(openlcs_client):
             'date_done': '2022-11-11T04:28:59.961000',
             'traceback': None,
             'object_url': 'http://{}/rest/v1/sources/1/'.format(settings.HOSTNAME),
+            'parent_task_id': ''
+        },
+        {
+            "id": 3,
+            "meta_id": "e06038ad-4144-4fb5-b812-67df3a8e5dde",
+            'owner': 'admin',
+            "params": '{"package_nvr": "zxcvbn-4.4.2", "license_scan": true, "copyright_scan": true, "product_release": "satellite-6.9.0", "subscription_id": 3}',
+            'status': 'SUCCESS',
+            'date_done': '2022-11-11T05:18:34.601000',
+            'traceback': None,
+            'object_url': 'http://{}/rest/v1/sources/2/'.format(settings.HOSTNAME),
             'parent_task_id': ''
         }
     ]

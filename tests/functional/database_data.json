@@ -110831,6 +110831,17 @@
     }
 },
 {
+    "model": "tasks.taskmeta",
+    "pk": 3,
+    "fields": {
+        "task_id": "e06038ad-4144-4fb5-b812-67df3a8e5dde",
+        "status": "SUCCESS",
+        "result": null,
+        "date_done": "2022-11-11T05:18:34.601Z",
+        "traceback": null
+    }
+},
+{
     "model": "tasks.task",
     "pk": 1,
     "fields": {
@@ -110864,6 +110875,24 @@
             "source"
         ],
         "object_id": 1
+    }
+},
+{
+    "model": "tasks.task",
+    "pk": 3,
+    "fields": {
+        "owner": [
+            "admin"
+        ],
+        "meta_id": "e06038ad-4144-4fb5-b812-67df3a8e5dde",
+        "params": "{\"package_nvr\": \"zxcvbn-4.4.2\", \"license_scan\": true, \"copyright_scan\": true, \"product_release\": \"satellite-6.9.0\", \"subscription_id\": 3}",
+        "task_flow": "flow.tasks.flow_default",
+        "retries": 0,
+        "content_type": [
+            "packages",
+            "source"
+        ],
+        "object_id": 2
     }
 },
 {
