@@ -182,7 +182,12 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'openlcsd.flow.periodic_tasks.retry',
         'schedule': timedelta(days=2),
         'kwargs': {'provenance': 'sync_corgi', 'retry': True}
-    }
+    },
+    'publish_confluence': {
+        'task': 'openlcsd.flow.periodic_tasks.publish_confluence',
+        'schedule': crontab(minute=0, hour=2),
+        'kwargs': {'provenance': 'sync_corgi'}
+    },
 }
 
 # https://docs.celeryq.dev/en/v5.2.7/userguide/routing.html#redis-message-priorities
@@ -331,6 +336,13 @@ OIDC_DRF_AUTH_BACKEND = "authentication.backend.OpenLCSOIDCBackend"
 OIDC_CALLBACK_CLASS = "authentication.views.CustomOIDCAuthenticationCallbackView"  # noqa
 TOKEN_SECRET_KEY = os.getenv("TOKEN_SECRET_KEY", "")
 SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+
+# Confluence related settings
+CONFLUENCE_URL = os.getenv("CONFLUENCE_URL")
+CONFLUENCE_TOKEN = os.getenv("CONFLUENCE_TOKEN")
+# Use other space/page for non-prod publishment
+CONFLUENCE_NAMESPACE = 'PRODSEC'
+CONFLUENCE_PAGE_TITLE = 'OLCS License Scanning Metrics'
 
 try:
     # pylint:disable=wildcard-import,unused-wildcard-import

@@ -1,0 +1,14 @@
+{# Set panels title background color #}
+{% set titleBGColor = "D9E5FE" %}
+
+{% set summary_max_length = 2048 %}
+{panel:title=The table is used for tracking the products scanning progress in OLCS.|borderStyle=solid|borderColor=black|titleBGColor=#{{titleBGColor}}|titleColor=black|bgColor=white}
+*Note*: The page is on a daily update. 
+
+h3. Report Metrics 
+{% if subscriptions is defined -%}
+||Subscription Name||Corgi Link||Total scans||Complete Scans||Success Scans||Active||
+{% for subscription in subscriptions -%}
+|{{subscription['name']}}|[{{subscription['corgi_link']}}|{{subscription['corgi_link']}}]|{{subscription['total_scans']}}|{{subscription['complete_scans']}}|{{subscription['success_scans']}}|{{subscription['active']}}|
+{% endfor -%}
+{% endif %}

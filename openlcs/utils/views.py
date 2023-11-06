@@ -38,6 +38,10 @@ class ObtainConfigView(generics.RetrieveAPIView):
             'RELEASE_LIST_CACHE_TIMEOUT',
             'RELEASE_RETRIEVE_CACHE_TIMEOUT',
             'LOOKASIDE_CACHE_URL',
+            'CONFLUENCE_URL',
+            'CONFLUENCE_TOKEN',
+            'CONFLUENCE_NAMESPACE',
+            'CONFLUENCE_PAGE_TITLE',
         ]
         for attr_name in allowable_attrs:
             attr = getattr(settings, attr_name, None)

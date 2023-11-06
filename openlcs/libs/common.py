@@ -2,6 +2,7 @@ import filetype
 import glob
 import mimetypes
 import http
+import jinja2
 import os
 import re
 import shutil
@@ -245,7 +246,6 @@ def find_srpm_source(sources):
     starting with "pkg:rpm" and contains "arch=src".
     Returns the matched source or None otherwise.
     """
-    # pattern = re.compile(r'pkg:rpm.*arch=src')
     for source in sources:
         if source:
             return source
@@ -432,3 +432,9 @@ def get_data_using_post(client, url, data):
     except HTTPError as err:
         raise RuntimeError(err) from None
     return resp.json()
+
+
+def render_template(template_file, params, **kwargs):
+    with open(template_file, "r", encoding="utf-8") as f:
+        template = f.read()
+        return jinja2.Template(template).render(**params, **kwargs)
