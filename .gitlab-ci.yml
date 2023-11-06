@@ -104,6 +104,8 @@ build-ci-image:
       --build-arg USER_OIDC_CLIENT_SECRET=${USER_OIDC_CLIENT_SECRET}
       --build-arg OPENLCS_OIDC_AUTH_ENABLED=${OPENLCS_OIDC_AUTH_ENABLED}
       --build-arg TOKEN_SECRET_KEY=${TOKEN_SECRET_KEY}
+      --build-arg CONFLUENCE_URL=${CONFLUENCE_URL}
+      --build-arg CONFLUENCE_TOKEN=${CONFLUENCE_TOKEN}
       -f containers/docker-ci/Dockerfile .
       | tee output
     - LOCAL_IMAGE_SHA=`cat output`
@@ -180,6 +182,8 @@ build-openlcs-ci-image:
       --build-arg OPENLCS_OIDC_AUTH_ENABLED=${OPENLCS_OIDC_AUTH_ENABLED}
       --build-arg TOKEN_SECRET_KEY=${TOKEN_SECRET_KEY}
       --build-arg OPENLCS_ADMIN_LIST="${OPENLCS_ADMIN_LIST}"
+      --build-arg CONFLUENCE_URL=${CONFLUENCE_URL}
+      --build-arg CONFLUENCE_TOKEN=${CONFLUENCE_TOKEN}
       -t $OPENLCS_IMAGE:ci -f containers/docker-openlcs/Dockerfile .;
     - docker login -u="$PELC_CI_USER" -p=$PELC_CI_PASSWORD quay.io
     - docker push $OPENLCS_IMAGE:ci
@@ -258,6 +262,8 @@ build-dev-image:
       --build-arg OPENLCS_OIDC_AUTH_ENABLED=${OPENLCS_OIDC_AUTH_ENABLED}
       --build-arg TOKEN_SECRET_KEY=${TOKEN_SECRET_KEY}
       --build-arg OPENLCS_ADMIN_LIST="${OPENLCS_ADMIN_LIST}"
+      --build-arg CONFLUENCE_URL=${CONFLUENCE_URL}
+      --build-arg CONFLUENCE_TOKEN=${CONFLUENCE_TOKEN}
       -t $OPENLCS_IMAGE:dev -f containers/docker-openlcs/Dockerfile .;
     - docker login -u="$PELC_CI_USER" -p=$PELC_CI_PASSWORD quay.io
     - docker push $OPENLCS_IMAGE:dev
@@ -305,6 +311,8 @@ build-release-image:
       --build-arg OPENLCS_OIDC_AUTH_ENABLED=${OPENLCS_OIDC_AUTH_ENABLED}
       --build-arg TOKEN_SECRET_KEY=${TOKEN_SECRET_KEY}
       --build-arg OPENLCS_ADMIN_LIST="${OPENLCS_ADMIN_LIST}"
+      --build-arg CONFLUENCE_URL=${CONFLUENCE_URL}
+      --build-arg CONFLUENCE_TOKEN=${CONFLUENCE_TOKEN}
       -t $OPENLCS_IMAGE:$CI_COMMIT_TAG -f containers/docker-openlcs/Dockerfile .;
     - docker login -u="$PELC_CI_USER" -p=$PELC_CI_PASSWORD quay.io
     - docker push $OPENLCS_IMAGE:$CI_COMMIT_TAG

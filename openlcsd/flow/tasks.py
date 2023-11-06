@@ -16,6 +16,7 @@ from workflow.patterns.controlflow import WHILE
 from packagedcode.rpm import RpmArchiveHandler
 from packagedcode.pypi import PypiSdistArchiveHandler
 from packagedcode.maven import MavenPomXmlHandler
+from pathlib import Path
 
 from openlcsd.celery import app
 from openlcsd.flow.task_wrapper import WorkflowWrapperTask
@@ -29,7 +30,8 @@ from openlcs.libs.common import (
     is_shared_remote_source_need_delete,
     list_http_files,
     get_data_using_post,
-    find_srpm_source
+    find_srpm_source,
+    render_template
 )
 from openlcs.libs.constants import (
     EXTENDED_REQUEST_TIMEOUT,
@@ -57,6 +59,7 @@ from openlcs.libs.sc_handler import SourceContainerHandler
 from openlcs.libs.swh_tools import get_swhids_with_paths
 from openlcs.libs.unpack import SP_EXTENSIONS
 from openlcs.libs.unpack import UnpackArchive
+from openlcs.libs.confluence import ConfluenceClient
 from openlcs.utils.common import DateEncoder
 
 
@@ -1989,6 +1992,58 @@ def trigger_missing_components_imports(context, engine):
         fork_components_imports(context, engine, None, components)
 
 
+def publish_confluence(context, engine):
+    """
+    Publish the scanning report metrics to Confluence page.
+    """
+    config = context['config']
+    confluence_url = config.get("CONFLUENCE_URL")
+    token = config.get('CONFLUENCE_TOKEN')
+    username = config.get('CONFLUENCE_USERNAME')
+    password = config.get('CONFLUENCE_PASSWORD')
+
+    if token:
+        confluence_client = ConfluenceClient(
+            confluence_url=confluence_url, token=token, auth_type="token"
+        )
+    elif username and password:
+        confluence_client = ConfluenceClient(
+            confluence_url=confluence_url, username=username, password=password
+        )
+    else:
+        msg = (
+            "Confluence token or combination of Confluence username and"
+            "password is required to publish content."
+        )
+        engine.logger.error(msg)
+        raise KeyError(msg)
+
+    namespace = config.get("CONFLUENCE_NAMESPACE")
+    page_title = config.get("CONFLUENCE_PAGE_TITLE")
+    page = confluence_client.find_page(space=namespace, page_title=page_title)
+    if not page:
+        raise RuntimeError(f"Failed to find page {page_title} in {namespace}")
+
+    url = "/reportmetrics/"
+    cli = context['client']
+    response = cli.get(url)
+    response.raise_for_status()
+    subscriptions = response.json().get('results')
+
+    dirname = Path(__file__).parent.parent.parent.absolute()
+    template = f"{dirname}/templates/reportmetrics.j2"
+    corgi_url = config.get('CORGI_API_PROD')
+    corgi_endpoint = 'components'
+    for subscription in subscriptions:
+        query_params = subscription['query_params']
+        params = '&'.join([k + '=' + v for k, v in query_params.items()])
+        subscription['corgi_link'] = f"{corgi_url}{corgi_endpoint}?{params}"
+    content = render_template(template, {"subscriptions": subscriptions})
+    engine.logger.info(f"Start to update page {page_title} in {namespace}")
+    confluence_client.update_page(page['id'], content)
+    engine.logger.info("Done")
+
+
 # sub-flow of `flow_get_corgi_components`
 process_collected_components = [
     populate_source_components,
@@ -2021,6 +2076,10 @@ flow_clean_unused_shared_remote_source = [
 flow_rescan_missing_components = [
     get_config,
     trigger_missing_components_imports
+]
+flow_publish_confluence = [
+    get_config,
+    publish_confluence
 ]
 
 
@@ -2062,3 +2121,5 @@ register_task_flow('flow.tasks.flow_clean_unused_shared_remote_source',
                    flow_clean_unused_shared_remote_source)
 register_task_flow('flow.tasks.flow_rescan_missing_components',
                    flow_rescan_missing_components)
+register_task_flow('flow.tasks.flow_publish_confluence',
+                   flow_publish_confluence)
