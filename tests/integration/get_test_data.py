@@ -3,10 +3,11 @@ import requests
 
 
 def get_no_scanned_rpm_testdata():
-    package_name = os.getenv('TEST_PACAGE_NAME')
+    package_name = os.getenv('TEST_PACKAGE_NAME')
     params = {
              "name": package_name,
              "missing_scan_url": True,
+             "missing_license_declared": True,
              "type": "RPM",
              "namespace": "REDHAT",
              "arch": "src"

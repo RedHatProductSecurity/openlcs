@@ -17,5 +17,5 @@ You should always run the commands from OpenLCS root directory.
 6. `kinit "Your name"@IPA.REDHAT.COM`
 7. `export OPENLCS_TEST_URL="$OPENLCS_TEST_URL"`
 8. `export CORGI_API_STAGE="$CORGI_API_STAGE"`
-9. `export TEST_PACAGE_NAME=$TEST_PACAGE_NAME`
+9. `export TEST_PACKAGE_NAME=$TEST_PACKAGE_NAME`
 10. `tox -e  integration --  -v tests/integration/$testfile.py`
