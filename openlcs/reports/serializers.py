@@ -5,6 +5,9 @@ from reports.models import CopyrightDetection
 from reports.models import FileLicenseScan, FileCopyrightScan
 from packages.models import Path
 from packages.models import ComponentSubscription
+from tasks.models import Task
+
+from celery.states import SUCCESS, FAILURE
 
 
 class LicenseDetectionSerializer(serializers.ModelSerializer):
@@ -32,7 +35,7 @@ class LicenseDetectionSerializer(serializers.ModelSerializer):
         if source_id is not None:
             try:
                 package_path = Path.objects.filter(
-                        file_id=file_id, source_id=source_id)
+                    file_id=file_id, source_id=source_id)
                 path = package_path.values_list('path', flat=True)
                 if path and len(path) >= 1:
                     file_path = path[0]
@@ -65,7 +68,7 @@ class CopyrightDetectionSerializer(serializers.ModelSerializer):
     def get_file_data(self, obj):
         try:
             file_copyrightscan = FileCopyrightScan.objects.get(
-                    id=obj.file_scan_id)
+                id=obj.file_scan_id)
         except FileCopyrightScan.DoesNotExist:
             return None
         file_id = file_copyrightscan.file_id
@@ -76,7 +79,7 @@ class CopyrightDetectionSerializer(serializers.ModelSerializer):
         if source_id is not None:
             try:
                 package_path = Path.objects.filter(
-                        file_id=file_id, source_id=source_id)
+                    file_id=file_id, source_id=source_id)
                 path = package_path.values_list('path', flat=True)
                 if path and len(path) >= 1:
                     file_path = path[0]
@@ -101,12 +104,12 @@ class ReportMetricsSerializer(serializers.ModelSerializer):
 
     total_scans = serializers.SerializerMethodField()
     success_scans = serializers.SerializerMethodField()
-    # complete_scans = serializers.SerializerMethodField()  # OLCS-702
+    complete_scans = serializers.SerializerMethodField()
 
     class Meta:
         model = ComponentSubscription
         fields = ["name", "active", "query_params", "total_scans",
-                  "success_scans"]
+                  "success_scans", "complete_scans"]
 
     def get_total_scans(self, obj):
         return len(obj.source_purls) if obj.source_purls else 0
@@ -116,3 +119,16 @@ class ReportMetricsSerializer(serializers.ModelSerializer):
         components = obj.get_synced_components()
         purls = [component.purl for component in components]
         return len(purls)
+
+    def get_complete_scans(self, obj):
+        subscription_id = obj.id
+        task_objs = Task.objects.filter(
+            params__contains=f'subscription_id\": {subscription_id}'
+        )
+        count = 0
+        complete_state = ["DUPLICATE", SUCCESS, FAILURE]
+        for task_obj in task_objs:
+            if task_obj.status in complete_state:
+                count += 1
+
+        return count
