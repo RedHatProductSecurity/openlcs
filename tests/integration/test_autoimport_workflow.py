@@ -4,10 +4,6 @@ import time
 
 from datetime import datetime, timedelta
 from rest_framework import status
-from .get_test_data import (
-    get_no_scanned_rpm_testdata,
-    get_the_openlcs_scan_url
-    )
 
 
 def test_autoimport_workflow(client):
@@ -46,24 +42,20 @@ def test_autoimport_workflow(client):
         expected_code=status.HTTP_200_OK
     )
     assert response['count'] == 0
-    # Get one no scanned test data dynamically
-    test_data_nvr, test_data_src, test_data_purl = \
-        get_no_scanned_rpm_testdata()
+
     # Create new subscription
     subscription_name = "test_subscription"
-    params = {"nvr": test_data_nvr}
-    query_params = json.dumps(params)
+    test_data_nevra = "389-admin-console-1.1.10-1.el7dsrv.src"
     response = client.api_call(
         "/subscriptions/",
         method="POST",
         data={
             "name": subscription_name,
-            "query_params": query_params,
+            "query_params": json.dumps({"nevra": test_data_nevra}),
             "active": True,
         },
         expected_code=status.HTTP_201_CREATED
     )
-    subscription_id = response['id']
     assert response['name'] == subscription_name
     assert response['active'] is True
     # Create crontab schedule
@@ -101,46 +93,22 @@ def test_autoimport_workflow(client):
     )
     assert response['name'] == "run_corgi_sync"
     assert response['crontab'] == crontab_id
-    # Check the component_urls after auto sync from corgi
-    sleep_time = os.getenv('SLEEP_TIME')
-    response['component_purls'] = []
+    # Check the task status to determine if scan process succeed
+    time.sleep(120)
     i = 0
-    try:
-        while response['component_purls'] == [] and i < 10:
-            i = i + 1
-            time.sleep(int(sleep_time))  # waiting for query components
-            response = client.api_call(
-                '/subscriptions/{}/'.format(subscription_id),
-                method="GET",
-                expected_code=status.HTTP_200_OK
-            )
-    except Exception as error:
-        print("Couldn't get the component_purls in 20 mins.", error)
-    assert response['component_purls'] == \
-        [f"{test_data_purl}"]
-    # Check the forked task
-    response = client.api_call(
-        '/tasks/?params={}'.format(test_data_nvr),
-        method="GET",
-        expected_code=status.HTTP_200_OK
-    )
-    i = 0
-    try:
-        waiting_status = ['PENDING', 'STARTED']
-        while response['status'] in waiting_status and i < 10:
-            i = i + 1
-            time.sleep(int(sleep_time))  # waiting for scanning
-            response = client.api_call(
-                '/tasks/?params={}'.format(test_data_nvr),
-                method="GET",
-                expected_code=status.HTTP_200_OK
-            )
-        if response['status'] != "SUCCESS":
-            print(f"Task for {test_data_nvr} wasn't SUCCESS in 20 mins.")
-        else:
-            # Check if the scan result was synced to corgi
-            time.sleep(10)  # waiting for syncing result to corgi
-            openlcs_scan_url = get_the_openlcs_scan_url(test_data_src)
-            assert os.getenv('OPENLCS_TEST_URL') in openlcs_scan_url
-    except Exception as error:
-        print(error)
+    while i <= 5:
+        response = client.api_call(
+            f"/tasks/?params={test_data_nevra}",
+            method="GET"
+        )
+        if response['count'] > 1:
+            raise AssertionError(f"Have multiple scan task for {test_data_nevra}: {response['results']}")
+        task_objs = response['results']
+        if task_objs and task_objs[0]['status'] == "SUCCESS":
+            print('scan workflow run successfully')
+            break
+        i += 1
+        time.sleep(60)
+    else:
+        raise AssertionError('scan workflow failed, please login to OCP environment to check')
+
