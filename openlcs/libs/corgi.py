@@ -17,7 +17,6 @@ from urllib import parse
 from urllib.parse import urljoin, unquote
 
 from .common import (
-    find_srpm_source,
     get_nvr_from_purl,
     group_components,
     is_generator_empty,
@@ -42,6 +41,11 @@ CORGI_SYNC_FIELDS = [
     "license_concluded",
     "copyright_text",
 ]
+
+SKIP_SCAN_PARAMS = {
+    "missing_license_declared": True,
+    "missing_scan_url": True
+}
 
 
 def corgi_include_exclude_fields_wrapper(func):
@@ -172,13 +176,11 @@ class CorgiConnector:
         # srpm, get full information by link
         sources = c.get_sources(
             component['purl'], query_params={"type": "RPM", "arch": "src"})
-        source = find_srpm_source(sources)
-        # get full information of srpm component
-        if source is not None:
-            source = c.get(source['link'], includes=c.rpm_includes)
-        # Truncate unneeded sources.
-        component["sources"] = [source] if source is not None else []
-        return component
+        empty, first = is_generator_empty(sources)
+        if not empty:
+            link = first.get("link")
+            source = c.get(link, includes=c.rpm_includes)
+            return source
 
     @corgi_include_exclude_fields_wrapper
     def get(self, url, query_params=None, timeout=30, max_retries=5,
@@ -500,11 +502,9 @@ class CorgiConnector:
         return as a generator
         """
         if includes is None:
-            includes = ["purl", 'link', 'license_declared', 'openlcs_scan_url']
-
+            includes = ["purl", 'link']
         if query_params is None:
             query_params = {}
-
         query_params["provides"] = purl
 
         return self.get_paginated_data(
@@ -517,30 +517,13 @@ class CorgiConnector:
         return as a generator
         """
         if includes is None:
-            includes = ["purl", 'link', 'license_declared', 'openlcs_scan_url']
+            includes = ["purl", 'link']
         if query_params is None:
             query_params = {}
-        # CORGI-873: Add license_declared to get unscanned provides only
         query_params["sources"] = purl
 
         return self.get_paginated_data(
             query_params=query_params, includes=includes)
-
-    def get_unscanned_srpm_component(self, component):
-        """
-        Returns the source rpm component for a RPM component
-        """
-        if component["type"] != "RPM":
-            raise ValueError(f"Unsupported component type {component['type']}")
-        if component["arch"] == "src" and not skip_scan(component):
-            return component
-        sources = component.get("sources")
-        if sources:
-            if not skip_scan(sources[0]):
-                link = sources[0].get("link")
-                logger.info("Querying component: %s", link)
-                component = self.get(link, includes=self.rpm_includes)
-                return component if component else None
 
     def _fetch_component(self, link, component_type):
         """
@@ -552,12 +535,12 @@ class CorgiConnector:
         component = self.get(link, includes=includes)
         if component:
             if component.get("type") == "RPM":
-                component = CorgiConnector.truncate_rpm_component_sources(
+                source = CorgiConnector.truncate_rpm_component_sources(
                     component)
-                return self.get_unscanned_srpm_component(component)
+                return source if not skip_scan(source) else None
             elif component.get("type") == "GOLANG":
                 return self.get_unscanned_gomod_component(component)
-            elif not skip_scan(component):
+            else:
                 return component
         else:
             return unquote(link.split("purl=")[-1])
@@ -600,7 +583,8 @@ class CorgiConnector:
             component = self.get(link, includes=self.oci_includes)
             logger.debug("Binary build %s retrieved.", component['nevra'])
         if component.get('arch') == 'noarch':
-            oci_noarch_provides = self.get_provides(component["purl"])
+            oci_noarch_provides = self.get_provides(
+                    component["purl"], query_params=SKIP_SCAN_PARAMS)
         else:
             # If the binary container arch is not noarch, get the provides
             # of the provides of the noarch container.
@@ -609,7 +593,8 @@ class CorgiConnector:
             if not empty:
                 link = first.get("link")
                 noarch_oci = self.get(link, includes=self.oci_includes)
-                oci_noarch_provides = self.get_provides(noarch_oci["purl"])
+                oci_noarch_provides = self.get_provides(
+                        noarch_oci["purl"], query_params=SKIP_SCAN_PARAMS)
         # For the noarch binary container, the different arch provides match
         # only one src component. Deduplication of these kind of provides
         # helps the performance.
@@ -619,8 +604,7 @@ class CorgiConnector:
         for provide in oci_provides:
             purl = provide.get("purl")
             # exclude those already retrieved, scanned or with a license data:
-            if (subscribed_purls and purl in subscribed_purls) or \
-                    skip_scan(provide):
+            if subscribed_purls and purl in subscribed_purls:
                 continue
 
             purl_dict = PackageURL.from_string(purl).to_dict()
@@ -669,22 +653,21 @@ class CorgiConnector:
             },
             includes=self.default_includes
         )
-        if result["count"] > 0:
-            return None if skip_scan(component) else component
+        return component if result["count"] > 0 else None
 
     def get_source_component(self, component, subscribed_purls=None):
         component_type = component.get("type")
         if component_type == "RPM":
-            component = CorgiConnector.truncate_rpm_component_sources(
+            source = CorgiConnector.truncate_rpm_component_sources(
                 component)
-            yield self.get_unscanned_srpm_component(component)
+            yield source if not skip_scan(source) else None
         elif component_type in PARENT_COMPONENT_TYPES:
             yield from self.get_provides_source_components(
                 component, subscribed_purls)
         # for GOLANG type component, filter go-package type
         elif component_type == "GOLANG":
             yield self.get_unscanned_gomod_component(component)
-        elif not skip_scan(component):
+        else:
             yield component
 
     @classmethod
@@ -761,7 +744,7 @@ class CorgiConnector:
         # subscription purls obtained from previous sync
         subscribed_purls = subscription.get("component_purls", [])
         if query_params:
-            # CORGI-873: Add license_declared to get unscanned components only
+            query_params.update(SKIP_SCAN_PARAMS)
             components = self.get_paginated_data(query_params)
             result = {"subscription_id": subscription["id"]}
             while True:
