@@ -1,13 +1,13 @@
+import json
+
+from celery.states import SUCCESS, FAILURE
 from rest_framework import serializers
 
 from reports.models import LicenseDetection
 from reports.models import CopyrightDetection
 from reports.models import FileLicenseScan, FileCopyrightScan
-from packages.models import Path
-from packages.models import ComponentSubscription
+from packages.models import Path, Component, ComponentSubscription
 from tasks.models import Task
-
-from celery.states import SUCCESS, FAILURE
 
 
 class LicenseDetectionSerializer(serializers.ModelSerializer):
@@ -105,17 +105,17 @@ class ReportMetricsSerializer(serializers.ModelSerializer):
     total_scans = serializers.SerializerMethodField()
     success_scans = serializers.SerializerMethodField()
     complete_scans = serializers.SerializerMethodField()
+    failed_scans = serializers.SerializerMethodField()
 
     class Meta:
         model = ComponentSubscription
         fields = ["name", "active", "query_params", "total_scans",
-                  "success_scans", "complete_scans"]
+                  "success_scans", "complete_scans", "failed_scans"]
 
     def get_total_scans(self, obj):
         return len(obj.source_purls) if obj.source_purls else 0
 
     def get_success_scans(self, obj):
-        purls = []
         components = obj.get_synced_components()
         purls = [component.purl for component in components]
         return len(purls)
@@ -132,3 +132,20 @@ class ReportMetricsSerializer(serializers.ModelSerializer):
                 count += 1
 
         return count
+
+    def get_failed_scans(self, obj):
+        subscription_id = obj.id
+        task_objs = Task.objects.filter(
+            params__contains=f'subscription_id\": {subscription_id}'
+        )
+        failed_purl = list()
+        for task_obj in task_objs:
+            if task_obj.status == FAILURE:
+                # check if component succeed in retry task
+                params = json.loads(task_obj.params)
+                failed_purl.append(params['component']['purl'])
+
+        succeed_number = Component.objects.filter(
+            purl__in=failed_purl, sync_status='synced').count()
+
+        return len(failed_purl) - succeed_number
