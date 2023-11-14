@@ -30,7 +30,8 @@ def test_report_metrics(openlcs_client):
             'query_params': {'ofuri': 'o:redhat:ansible_automation_platform:2.2'},
             'total_scans': 0,
             'success_scans': 0,
-            'complete_scans': 0
+            'complete_scans': 0,
+            'failed_scans': 0
         },
         {
             'name': 'redhat:3amp:2 src components',
@@ -38,7 +39,8 @@ def test_report_metrics(openlcs_client):
             'query_params': {'arch': 'src', 'ofuri': 'redhat:3amp:2'},
             'total_scans': 0,
             'success_scans': 0,
-            'complete_scans': 0
+            'complete_scans': 0,
+            'failed_scans': 0
         },
         {
             "name": "success_scan",
@@ -48,7 +50,8 @@ def test_report_metrics(openlcs_client):
             },
             "total_scans": 1,
             "success_scans": 1,
-            'complete_scans': 1
+            'complete_scans': 1,
+            'failed_scans': 0
         },
         {
             'name': 'report_subscription',
@@ -56,7 +59,8 @@ def test_report_metrics(openlcs_client):
             'query_params': {'nevra': '389-ds-base-1.2.11.15-22.el6_4.i686'},
             'total_scans': 1,
             'success_scans': 0,
-            'complete_scans': 0
+            'complete_scans': 0,
+            'failed_scans': 0
         }
     ]
     assert response.get("results") == expected
