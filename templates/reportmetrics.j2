@@ -7,8 +7,8 @@
 
 h3. Report Metrics 
 {% if subscriptions is defined -%}
-||Subscription Name||Corgi Link||Total scans||Complete Scans||Success Scans||Active||
+||Subscription Name||Corgi Link||Total scans||Complete Scans||Success Scans||Failed Scans||Active||
 {% for subscription in subscriptions -%}
-|{{subscription['name']}}|[{{subscription['corgi_link']}}|{{subscription['corgi_link']}}]|{{subscription['total_scans']}}|{{subscription['complete_scans']}}|{{subscription['success_scans']}}|{{subscription['active']}}|
+|{{subscription['name']}}|[{{subscription['corgi_link']}}|{{subscription['corgi_link']}}]|{{subscription['total_scans']}}|{{subscription['complete_scans']}}|{{subscription['success_scans']}}|{{subscription['failed_scans']}}|{{subscription['active']}}|
 {% endfor -%}
 {% endif %}
