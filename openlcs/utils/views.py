@@ -26,6 +26,7 @@ class ObtainConfigView(generics.RetrieveAPIView):
             'SCANCODE_LICENSE_SCORE',
             'SCANCODE_TIMEOUT',
             'SCANCODE_PROCESSES',
+            'SCANCODE_UNKNOWN_LICENSES',
             'EXTRACTCODE_CLI',
             'LICENSE_DIR',
             'LOGGER_DIR',
