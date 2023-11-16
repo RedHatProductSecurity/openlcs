@@ -203,6 +203,12 @@ SCANCODE_LICENSE_SCORE = 90
 SCANCODE_PROCESSES = 1
 SCANCODE_TIMEOUT = 300
 SCANCODE_CLI = '/opt/app-root/bin/scancode'
+SCANCODE_UNKNOWN_LICENSES = [
+    'free-unknown',
+    'unknown',
+    'unknown-license-reference',
+    'unknown-spdx'
+]
 EXTRACTCODE_CLI = '/opt/app-root/bin/extractcode'
 
 # Brew/Koji settings

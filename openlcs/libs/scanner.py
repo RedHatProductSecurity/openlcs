@@ -52,6 +52,8 @@ class LicenseScanner(BaseScanner):
         scancode_timeout = self.config.get('SCANCODE_TIMEOUT', 300)
         scancode_processes = self.config.get('SCANCODE_PROCESSES', 1)
         scancode_cli = self.config.get('SCANCODE_CLI', '/bin/scancode')
+        scancode_unknown_licenses = self.config.get(
+            'SCANCODE_UNKNOWN_LICENSES', 'unknown')
 
         license_list = []
         license_errors = []
@@ -90,6 +92,8 @@ class LicenseScanner(BaseScanner):
                         license_errors.append("{}: {}".format(
                             filepath, f['scan_errors']))
                     for lic in matched_licenses:
+                        if lic.get('key') in scancode_unknown_licenses:
+                            continue
                         spdx_key = lic.get('spdx_license_key', '')
                         lic_key = spdx_key if not spdx_key.startswith('LicenseRef-') else lic.get('key')  # noqa: E501
                         license_list.append(
