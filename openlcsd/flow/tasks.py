@@ -2036,7 +2036,7 @@ def publish_confluence(context, engine):
     corgi_endpoint = 'components'
     for subscription in subscriptions:
         query_params = subscription['query_params']
-        params = '&'.join([k + '=' + v for k, v in query_params.items()])
+        params = '&'.join([k + '=' + str(v) for k, v in query_params.items()])
         subscription['corgi_link'] = f"{corgi_url}{corgi_endpoint}?{params}"
     content = render_template(template, {"subscriptions": subscriptions})
     engine.logger.info(f"Start to update page {page_title} in {namespace}")
