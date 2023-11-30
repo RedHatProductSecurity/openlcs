@@ -183,7 +183,7 @@ class CorgiConnector:
             return source
 
     @corgi_include_exclude_fields_wrapper
-    def get(self, url, query_params=None, timeout=30, max_retries=5,
+    def get(self, url, query_params=None, timeout=600, max_retries=5,
             retry_delay=10, includes=None, excludes=None):
         for i in range(max_retries + 1):
             try:
