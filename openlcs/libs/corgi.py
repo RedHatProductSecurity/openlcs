@@ -23,7 +23,10 @@ from .common import (
     is_prod,
     remove_duplicates_from_list_by_key
 )
-from .constants import PARENT_COMPONENT_TYPES
+from .constants import (
+    PARENT_COMPONENT_TYPES,
+    DEFAULT_REQUEST_TIMEOUT
+)
 from .exceptions import MissingBinaryBuildException
 
 
@@ -183,8 +186,8 @@ class CorgiConnector:
             return source
 
     @corgi_include_exclude_fields_wrapper
-    def get(self, url, query_params=None, timeout=30, max_retries=5,
-            retry_delay=10, includes=None, excludes=None):
+    def get(self, url, query_params=None, timeout=DEFAULT_REQUEST_TIMEOUT,
+            max_retries=5, retry_delay=10, includes=None, excludes=None):
         for i in range(max_retries + 1):
             try:
                 response = self.session.get(
