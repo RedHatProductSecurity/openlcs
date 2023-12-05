@@ -125,13 +125,14 @@ class ReportMetricsSerializer(serializers.ModelSerializer):
         task_objs = Task.objects.filter(
             params__contains=f'subscription_id\": {subscription_id}'
         )
-        count = 0
-        complete_state = ["DUPLICATE", SUCCESS, FAILURE]
+        complete_state = [SUCCESS, FAILURE]
+        purl_list = list()
         for task_obj in task_objs:
             if task_obj.status in complete_state:
-                count += 1
+                params = json.loads(task_obj.params)
+                purl_list.append(params['component']['purl'])
 
-        return count
+        return len(set(purl_list))
 
     def get_failed_scans(self, obj):
         subscription_id = obj.id
@@ -144,6 +145,8 @@ class ReportMetricsSerializer(serializers.ModelSerializer):
                 # check if component succeed in retry task
                 params = json.loads(task_obj.params)
                 failed_purl.append(params['component']['purl'])
+
+        failed_purl = set(failed_purl)
 
         succeed_number = Component.objects.filter(
             purl__in=failed_purl, sync_status='synced').count()
