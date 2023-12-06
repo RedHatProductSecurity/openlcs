@@ -161,6 +161,7 @@ CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL',
                                    'redis://localhost:6379/0')
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_EXPIRES = None
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_RESULT_BACKEND = 'db+postgresql://{USER}:{PASSWORD}@{HOST}/{NAME}'.format(**DATABASES.get('default'))    # noqa
 CELERY_TASK_TRACK_STARTED = True
@@ -187,7 +188,7 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'openlcsd.flow.periodic_tasks.publish_confluence',
         'schedule': crontab(minute=0, hour=2),
         'kwargs': {'provenance': 'sync_corgi'}
-    },
+    }
 }
 
 # https://docs.celeryq.dev/en/v5.2.7/userguide/routing.html#redis-message-priorities
