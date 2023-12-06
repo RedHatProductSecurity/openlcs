@@ -12,6 +12,7 @@ result_backend = os.environ.get(
 task_serializer = 'json'
 accept_content = ['json']
 result_serializer = 'json'
+result_expires = None
 
 task_track_started = True
 
