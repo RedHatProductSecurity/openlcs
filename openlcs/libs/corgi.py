@@ -542,7 +542,7 @@ class CorgiConnector:
                     component)
                 return source if not skip_scan(source) else None
             elif component.get("type") == "GOLANG":
-                return self.get_unscanned_gomod_component(component)
+                return self.get_gomod_component(component)
             else:
                 return component
         else:
@@ -641,7 +641,7 @@ class CorgiConnector:
                     yield result
                     del tasks[task]
 
-    def get_unscanned_gomod_component(self, component):
+    def get_gomod_component(self, component):
         """
         Pass a GOLANG type component
         Filter go-package component, if component is a
@@ -669,7 +669,7 @@ class CorgiConnector:
                 component, subscribed_purls)
         # for GOLANG type component, filter go-package type
         elif component_type == "GOLANG":
-            yield self.get_unscanned_gomod_component(component)
+            yield self.get_gomod_component(component)
         else:
             yield component
 
@@ -747,7 +747,7 @@ class CorgiConnector:
         # subscription purls obtained from previous sync
         subscribed_purls = subscription.get("component_purls", [])
         if query_params:
-            query_params.update(SKIP_SCAN_PARAMS)
+            query_params.update({"missing_scan_url": True})
             components = self.get_paginated_data(query_params)
             result = {"subscription_id": subscription["id"]}
             while True:
