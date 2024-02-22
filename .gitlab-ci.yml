@@ -154,6 +154,7 @@ api-tests:
 build-openlcs-ci-image:
   except:
     - main
+    - tags
   tags:
     - pelc-shell-runner
   stage: build-openlcs-ci-image
@@ -193,6 +194,7 @@ deploy-to-openlcs-ci:
   <<: *ci-image
   except:
     - main
+    - tags
   stage: deploy-to-openlcs-ci
   before_script:
     - oc login --token=$MPP_CI_TOKEN --server=$MPP_CI_API_URL
@@ -214,6 +216,7 @@ integration-test:
   <<: *ci-image
   except:
     - main
+    - tags
   stage: integration-test
   before_script:
     - oc login --token=$MPP_CI_TOKEN --server=$MPP_CI_API_URL
