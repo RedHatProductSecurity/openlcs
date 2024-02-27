@@ -1,13 +1,11 @@
-# https://catalog.redhat.com/software/containers/ubi8/python-38/5dde9cacbed8bd164a0af24a?container-tabs=overview
-# FROM registry.access.redhat.com/ubi8/python-38:1-75
-FROM registry.access.redhat.com/ubi8/python-38
+FROM registry.access.redhat.com/ubi9/python-39
 
 ARG PRODSEC_DEV_OPENLCS_MAIL
 ARG ROOT_CA_URL
 ARG ENG_CA_URL
 ARG TITO_REPO_URL
-ARG RHEL8_REPO_URL
-ARG RHEL8_APPSTREAM_REPO_URL
+ARG RHEL9_REPO_URL
+ARG RHEL9_APPSTREAM_REPO_URL
 ARG DOCKER_REPO_URL
 ARG CORGI_API_STAGE
 ARG CORGI_API_PROD
@@ -64,24 +62,24 @@ RUN cd /etc/pki/ca-trust/source/anchors/ && \
         cd - && \
     dnf -y upgrade && \
     dnf config-manager --add-repo "${TITO_REPO_URL}" \
-        --add-repo "${RHEL8_REPO_URL}" \
-        --add-repo "${RHEL8_APPSTREAM_REPO_URL}" \
+        --add-repo "${RHEL9_REPO_URL}" \
+        --add-repo "${RHEL9_APPSTREAM_REPO_URL}" \
         --add-repo "${DOCKER_REPO_URL}" && \
-    dnf install --nogpgcheck --nodoc -y cpio-2.12 atool-0.39.0 vim docker-ce-cli skopeo && \
+    dnf install --nogpgcheck --nodoc -y cpio-2.13 atool-0.39.0 vim docker-ce-cli skopeo && \
     dnf clean all && \
     # To make docker cache pip package, install dependencies
     pip install --upgrade pip && pip install --upgrade setuptools && pip install -r /tmp/base.txt --use-pep517 && \
     # Add permissions for openlcs
     mkdir -p /var/openlcs/static /var/log/openlcs/ /var/cache/ && \
     chmod a+rwX -R /var/log/openlcs/ /var/cache/ /var/openlcs/static "${HOME}" /etc/passwd && \
-    chmod a+rwX -R /opt/app-root/lib64/python3.8/site-packages/ && \
-    chown -R 1001:0 /opt/app-root/lib64/python3.8/site-packages/ && \
+    chmod a+rwX -R /opt/app-root/lib64/python3.9/site-packages/ && \
+    chown -R 1001:0 /opt/app-root/lib64/python3.9/site-packages/ && \
     chmod a+x -R "${HOME}"/containers/docker-openlcs/bin/* && \
     chown -R 1001:0 "${HOME}"
 
 # Apply patches for extractcode, packagedcode
-COPY ./containers/patches/* /opt/app-root/lib64/python3.8/site-packages/
-WORKDIR /opt/app-root/lib64/python3.8/site-packages/
+COPY ./containers/patches/* /opt/app-root/lib64/python3.9/site-packages/
+WORKDIR /opt/app-root/lib64/python3.9/site-packages/
 RUN patch -p0 < extract.patch && \
     patch -p0 < rpm.patch
 
