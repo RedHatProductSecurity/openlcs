@@ -1,10 +1,10 @@
-FROM registry.access.redhat.com/ubi8/python-38
+FROM registry.access.redhat.com/ubi9/python-39
 
 ARG PRODSEC_DEV_OPENLCS_MAIL
 ARG ROOT_CA_URL
 ARG ENG_CA_URL
 ARG TITO_REPO_URL
-ARG RHEL8_REPO_URL
+ARG RHEL9_REPO_URL
 ARG OPENSHIFT_CLI_URL
 ARG CORGI_API_STAGE
 ARG CORGI_API_PROD
@@ -58,8 +58,8 @@ RUN cd /etc/pki/ca-trust/source/anchors/ && \
         cd - && \
     dnf -y upgrade && \
     dnf config-manager --add-repo "${TITO_REPO_URL}" \
-        --add-repo "${RHEL8_REPO_URL}" && \
-    dnf install --nogpgcheck --nodoc -y cpio-2.12 atool-0.39.0 && \
+        --add-repo "${RHEL9_REPO_URL}" && \
+    dnf install --nogpgcheck --nodoc -y cpio-2.13 atool-0.39.0 && \
     # Remove it caused by vulnerabilities CVE-2021-33503 and CVE-2020-26137
     dnf remove python2-urllib3 && \
     dnf clean all && \
@@ -72,12 +72,12 @@ RUN cd /etc/pki/ca-trust/source/anchors/ && \
     # But tox will use one of ['/usr/local/lib64/python3.8/site-packages',
     # '/usr/local/lib/python3.8/site-packages', '/usr/lib64/python3.8/site-packages',
     # '/usr/lib/python3.8/site-packages'] as site packages path
-    mkdir -p /usr/local/lib64/python3.8/ && \
-    ln -s /opt/app-root/lib64/python3.8/site-packages /usr/local/lib64/python3.8/
+    mkdir -p /usr/local/lib64/python3.9/ && \
+    ln -s /opt/app-root/lib64/python3.9/site-packages /usr/local/lib64/python3.9/
 
 # Apply patches for extractcode, packagedcode
-COPY ./containers/patches/* /opt/app-root/lib64/python3.8/site-packages/
-WORKDIR /opt/app-root/lib64/python3.8/site-packages/
+COPY ./containers/patches/* /opt/app-root/lib64/python3.9/site-packages/
+WORKDIR /opt/app-root/lib64/python3.9/site-packages/
 RUN patch -p0 < extract.patch && \
     patch -p0 < rpm.patch
 
