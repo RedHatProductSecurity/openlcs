@@ -3,6 +3,7 @@ import datetime
 import ijson
 import koji
 import os
+import pathlib
 import re
 import shutil
 import subprocess
@@ -471,7 +472,12 @@ class KojiConnector:
 
         archives = self._service.listArchives(
             build.get('build_id'), type='remote-sources')
-        json_archives = [a for a in archives if a.get('type_name') == 'json']
+        json_archives = [
+            a for a in archives
+            if a.get('type_name') == 'json'
+            # there could be also *.env.json and *.config.json files
+            and pathlib.Path(a['filename']).suffixes == [".json"]
+        ]
         for archive in json_archives:
             rs_path = os.path.join(
                 'packages', package_name, version, release,
